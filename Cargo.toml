@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "shaderlab-server",
+    "shaderlab-client"
+]
+resolver = "2"
