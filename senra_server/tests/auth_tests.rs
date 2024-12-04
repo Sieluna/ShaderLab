@@ -5,7 +5,7 @@ use http_body_util::BodyExt;
 use serde_json::{Value, json};
 use tower::{Service, ServiceExt};
 
-use shaderlab_server::{config::Config, db::Database, routes::create_router, state::AppState};
+use senra_server::{config::Config, db::Database, routes::create_router, state::AppState};
 
 async fn app() -> Router {
     let config = Config::new();

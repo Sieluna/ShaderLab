@@ -14,19 +14,44 @@ CREATE TABLE IF NOT EXISTS notebooks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     title TEXT NOT NULL,
-    description TEXT,
+    content JSONB NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version INTEGER DEFAULT 1,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Create resources table
+CREATE TABLE resources (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    notebook_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    resource_type TEXT NOT NULL,
+    data BLOB NOT NULL,
+    metadata JSONB,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE
 );
 
 -- Create shaders table
 CREATE TABLE IF NOT EXISTS shaders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     notebook_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    shader_type TEXT NOT NULL,
     code TEXT NOT NULL,
-    position INTEGER NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE
-); 
+);
+
+-- Create shadergraph table
+CREATE TABLE shadergraphs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    notebook_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    graph_data JSONB NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE
+);

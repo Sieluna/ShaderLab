@@ -1,7 +1,7 @@
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
-use shaderlab_server::{
+use senra_server::{
     config::Config, db::Database, errors::Result, routes::create_router, state::AppState,
 };
 

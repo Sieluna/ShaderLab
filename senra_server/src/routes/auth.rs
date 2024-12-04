@@ -22,6 +22,14 @@ pub struct RegisterRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct EditRequest {
+    pub username: Option<String>,
+    pub email: Option<String>,
+    pub password: Option<String>,
+    pub avatar_url: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AuthResponse {
     pub user: User,
     pub token: String,
@@ -69,12 +77,17 @@ async fn register(
 async fn edit_user(
     State(state): State<AppState>,
     auth_user: AuthUser,
-    Json(edit_user): Json<EditUser>,
+    Json(payload): Json<EditRequest>,
 ) -> Result<Json<User>> {
     let user = state
         .services
         .auth
-        .edit_user(auth_user.user_id, edit_user)
+        .edit_user(auth_user.user_id, EditUser {
+            username: payload.username,
+            email: payload.email,
+            password: payload.password,
+            avatar_url: payload.avatar_url,
+        })
         .await?;
 
     Ok(Json(user))
