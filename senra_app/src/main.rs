@@ -99,7 +99,7 @@ impl ShaderLab {
         }
     }
 
-    fn subscription(&mut self) -> Subscription<Message> {
+    fn subscription(&self) -> Subscription<Message> {
         Subscription::batch([
             self.global.subscription().map(Message::Global),
             self.network.subscribe().map(Message::Network),

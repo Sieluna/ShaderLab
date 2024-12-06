@@ -1,15 +1,29 @@
 use std::pin::Pin;
+use std::sync::Arc;
+
+use http::Method;
 use iced::futures::channel::mpsc;
 use iced::futures::{SinkExt, Stream, StreamExt};
 use iced::{futures, stream};
-
 use senra_api::Request;
 use tokio::net::TcpStream;
+use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::{Message, Utf8Bytes};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async};
 
-use super::{Method, NetworkError, NetworkInner, NetworkMessage};
+use super::{NetworkError, NetworkInner, NetworkMessage};
+
+impl From<tokio_tungstenite::tungstenite::Error> for NetworkError {
+    fn from(error: tokio_tungstenite::tungstenite::Error) -> Self {
+        NetworkError::WebSocket(error.to_string())
+    }
+}
+impl From<reqwest::Error> for NetworkError {
+    fn from(error: reqwest::Error) -> Self {
+        NetworkError::Http(error.to_string())
+    }
+}
 
 #[derive(Debug)]
 enum ConnectionState {
@@ -21,23 +35,27 @@ enum ConnectionState {
 }
 
 pub struct NativeNetwork {
-    state: ConnectionState,
+    state: Arc<Mutex<ConnectionState>>,
+    client: reqwest::Client,
 }
 
 impl NativeNetwork {
     pub fn new() -> Self {
         Self {
-            state: ConnectionState::Disconnected,
+            state: Arc::new(Mutex::new(ConnectionState::Disconnected)),
+            client: reqwest::Client::new(),
         }
     }
 }
 
 #[async_trait::async_trait]
 impl NetworkInner for NativeNetwork {
-    async fn subscription(&mut self) -> Pin<Box<dyn Stream<Item = NetworkMessage> + Send>> {
+    fn subscription(&self) -> Pin<Box<dyn Stream<Item = NetworkMessage> + Send>> {
+        let state = self.state.clone();
         Box::pin(stream::channel(100, move |mut output| async move {
             loop {
-                match &mut self.state {
+                let mut state = state.lock().await;
+                match &mut *state {
                     ConnectionState::Connected(websocket, input) => {
                         let mut fused_websocket = websocket.by_ref().fuse();
 
@@ -48,13 +66,14 @@ impl NetworkInner for NativeNetwork {
                                         output.send(
                                             match serde_json::from_str(message.as_str()) {
                                                 Ok(response) => NetworkMessage::Incoming(response),
-                                                Err(e) => NetworkMessage::Error(format!("Failed to parse message: {}", e)),
+                                                Err(e) => NetworkMessage::Error(NetworkError::Serialization(e).to_string()),
                                             }
                                         ).await.unwrap();
                                     }
-                                    Err(_) => {
+                                    Err(e) => {
+                                        output.send(NetworkMessage::Error(NetworkError::WebSocket(e.to_string()).to_string())).await.unwrap();
                                         output.send(NetworkMessage::Disconnected).await.unwrap();
-                                        self.state = ConnectionState::Disconnected;
+                                        *state = ConnectionState::Disconnected;
                                     }
                                     Ok(_) => continue,
                                 }
@@ -63,9 +82,10 @@ impl NetworkInner for NativeNetwork {
                             message = input.select_next_some() => {
                                 let result = websocket.send(Message::Text(message)).await;
 
-                                if result.is_err() {
+                                if let Err(e) = result {
+                                    output.send(NetworkMessage::Error(NetworkError::WebSocket(e.to_string()).to_string())).await.unwrap();
                                     output.send(NetworkMessage::Disconnected).await.unwrap();
-                                    self.state = ConnectionState::Disconnected;
+                                    *state = ConnectionState::Disconnected;
                                 }
                             }
                         }
@@ -76,7 +96,7 @@ impl NetworkInner for NativeNetwork {
         }))
     }
 
-    async fn connect(&mut self, url: &str, token: &str) -> Result<NetworkMessage, NetworkError> {
+    async fn connect(&self, url: &str, token: &str) -> Result<NetworkMessage, NetworkError> {
         let mut request = url.into_client_request().unwrap();
         request.headers_mut().insert(
             "Authorization",
@@ -86,9 +106,7 @@ impl NetworkInner for NativeNetwork {
         match connect_async(request).await {
             Ok((websocket, _)) => {
                 let (sender, receiver) = mpsc::channel(100);
-
-                self.state = ConnectionState::Connected(websocket, receiver);
-
+                *self.state.lock().await = ConnectionState::Connected(websocket, receiver);
                 Ok(NetworkMessage::Connected(sender))
             }
             Err(_) => {
@@ -104,6 +122,32 @@ impl NetworkInner for NativeNetwork {
         method: Method,
         request: Request,
     ) -> Result<NetworkMessage, NetworkError> {
-        todo!()
+        let url = format!("{}/api{}", url, self.get_endpoint(&request));
+
+        let response = self
+            .client
+            .request(method, &url)
+            .json(&request)
+            .send()
+            .await?;
+
+        if response.status().is_success() {
+            let response: senra_api::Response = response.json().await?;
+            Ok(NetworkMessage::Incoming(response))
+        } else {
+            let error = response.text().await?;
+            Ok(NetworkMessage::Error(error))
+        }
+    }
+}
+
+impl NativeNetwork {
+    fn get_endpoint(&self, request: &Request) -> &'static str {
+        match request {
+            Request::Login(_) => "/auth/login",
+            Request::Register(_) => "/auth/register",
+            Request::EditUser(_) => "/auth/edit",
+            _ => "/",
+        }
     }
 }
