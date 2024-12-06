@@ -24,4 +24,4 @@ pub struct CreateShaderGraph {
 pub struct UpdateShaderGraph {
     pub name: Option<String>,
     pub graph_data: Option<Value>,
-} 
+}

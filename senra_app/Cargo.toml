@@ -4,12 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+async-trait = "0.1"
+senra_api.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 iced = { workspace = true, features = ["tokio", "debug"] }
+reqwest = "0.12"
 tokio.workspace = true
 tokio-tungstenite = "0.26"
 tracing.workspace = true
@@ -17,5 +20,5 @@ tracing-subscriber.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 iced = { workspace = true, features = ["debug"] }
-web-sys = { version = "0.3", features = ["console"] }
+web-sys = { version = "0.3", features = ["MessageEvent", "WebSocket", "Window", "Storage"] }
 wasm-bindgen = "0.2"

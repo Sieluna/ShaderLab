@@ -1,32 +1,54 @@
-mod state;
-mod transport;
+mod global;
+mod network;
+mod pages;
+mod storage;
 
-use iced::{Application, Task, Element, Length, Settings, Theme, keyboard, window, Size, Subscription, event, mouse, Event};
-use iced::widget::{self, Container, button, column, container, row, text, text_editor};
+use iced::widget::text;
+use iced::{Element, Event, Size, Subscription, Task, Theme, event, keyboard};
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
-use crate::state::{AppState, Page};
-use crate::transport::Transport;
+pub use global::{Global, Message as GlobalMessage};
+pub use network::{Network, NetworkMessage};
+pub use storage::{Storage, StorageMessage};
+
+#[derive(Debug, Clone)]
+pub enum Page {
+    Login,
+    NotebookList,
+    NotebookDetail { id: String },
+    ShaderEditor { id: String },
+    ShaderGraph { id: String },
+}
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    WindowResized(Size),
-    ToggleFullscreen(window::Mode),
+    ToggleTheme,
+    Global(GlobalMessage),
+    Network(NetworkMessage),
+    Storage(StorageMessage),
 }
 
 struct ShaderLab {
-    state: AppState,
+    current_page: Page,
+    dark_mode: bool,
+    global: Global,
+    network: Network,
+    storage: Storage,
 }
 
 impl ShaderLab {
     fn new() -> (Self, Task<Message>) {
+        let storage = Storage::new();
+        let transport = Network::new(Arc::from("ws://localhost:3000"));
+
         (
             Self {
-                state: AppState {
-                    size: Default::default(),
-                    user: None,
-                    current: Page::NotebookList,
-                    transport: Transport {},
-                },
+                current_page: Page::NotebookList,
+                dark_mode: false,
+                global: Global::new(),
+                network: transport,
+                storage,
             },
             Task::none(),
         )
@@ -38,52 +60,50 @@ impl ShaderLab {
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::WindowResized(size) => {
-                self.state.size = size;
-                window::get_latest()
-                    .and_then(move |window| window::resize(window, size))
+            Message::ToggleTheme => {
+                self.dark_mode = !self.dark_mode;
+                Task::none()
             }
-            Message::ToggleFullscreen(mode) => {
-                window::get_latest()
-                    .and_then(move |window| window::change_mode(window, mode))
-            }
+            Message::Network(event) => match event {
+                NetworkMessage::Connected(_) => Task::none(),
+                NetworkMessage::Disconnected => Task::none(),
+                NetworkMessage::Incoming(response) => match response {
+                    _ => Task::none(),
+                },
+                NetworkMessage::Outgoing(_, _) => Task::none(),
+                NetworkMessage::Error(e) => {
+                    tracing::error!("Transport error: {}", e);
+                    Task::none()
+                }
+            },
+            Message::Storage(event) => match event {
+                StorageMessage::Error(error) => {
+                    tracing::error!("Storage error: {}", error);
+                    Task::none()
+                }
+                _ => Task::none(),
+            },
+            Message::Global(message) => self.global.update(message).map(Message::Global),
         }
     }
 
     fn view(&self) -> Element<Message> {
-        column![
-            text("Hello, world!"),
-        ]
-        .into()
+        text("Hello, this is iced!").size(20).into()
     }
 
     fn theme(&self) -> Theme {
-        Theme::Dark
+        if self.dark_mode {
+            Theme::Dark
+        } else {
+            Theme::Light
+        }
     }
 
-    fn subscription(&self) -> Subscription<Message> {
-        event::listen_with(|event, _status, _window| match event {
-            Event::Keyboard(keyboard::Event::KeyPressed { key, modifiers, .. }) => {
-                match key {
-                    keyboard::Key::Named(key) => {
-                        match (key, modifiers) {
-                            (keyboard::key::Named::ArrowUp, keyboard::Modifiers::SHIFT) => {
-                                Some(Message::ToggleFullscreen(window::Mode::Fullscreen))
-                            }
-                            (keyboard::key::Named::ArrowDown, keyboard::Modifiers::SHIFT) => {
-                                Some(Message::ToggleFullscreen(window::Mode::Windowed))
-                            }
-                            _ => None,
-                        }
-                    }
-                    _ => None,
-                }
-            }
-            Event::Window(window::Event::Resized(size)) => {
-                Some(Message::WindowResized(size))
-            }
-            _ => None,
-        })
+    fn subscription(&mut self) -> Subscription<Message> {
+        Subscription::batch([
+            self.global.subscription().map(Message::Global),
+            self.network.subscribe().map(Message::Network),
+        ])
     }
 }
 
