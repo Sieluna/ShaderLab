@@ -1,7 +1,7 @@
-use iced::widget::{Column, button, container, text, text_input};
+use iced::widget::{Space, button, checkbox, column, container, row, text, text_input};
 use iced::{Element, Length, Task};
 
-use senra_api::{Request, LoginRequest, RegisterRequest};
+use senra_api::{LoginRequest, RegisterRequest, Request};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -10,6 +10,7 @@ pub enum Message {
     InputUsername(String),
     InputEmail(String),
     InputPassword(String),
+    ToggleShowPassword,
     ClickRegister,
     ClickLogin,
     Clear,
@@ -20,6 +21,7 @@ pub struct LoginPage {
     username: String,
     email: String,
     password: String,
+    show_password: bool,
 }
 
 impl LoginPage {
@@ -29,6 +31,7 @@ impl LoginPage {
                 username: String::new(),
                 email: String::new(),
                 password: String::new(),
+                show_password: false,
             },
             Task::none(),
         )
@@ -48,12 +51,14 @@ impl LoginPage {
                 self.password = password;
                 Task::none()
             }
-            Message::ClickLogin => {
-                Task::done(Message::Submit(Request::Login(LoginRequest {
-                    username: self.username.clone(),
-                    password: self.password.clone(),
-                })))
+            Message::ToggleShowPassword => {
+                self.show_password = !self.show_password;
+                Task::none()
             }
+            Message::ClickLogin => Task::done(Message::Submit(Request::Login(LoginRequest {
+                username: self.username.clone(),
+                password: self.password.clone(),
+            }))),
             Message::ClickRegister => {
                 Task::done(Message::Submit(Request::Register(RegisterRequest {
                     username: self.username.clone(),
@@ -71,34 +76,52 @@ impl LoginPage {
     }
 
     pub fn view(&self) -> Element<Message> {
-        let mut content = Column::new()
-            .spacing(10)
-            .padding(20)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .align_x(iced::Alignment::Center);
+        let username_input = text_input("Username", &self.username)
+            .on_input(Message::InputUsername)
+            .padding(10)
+            .width(300);
 
-        content = content
-            .push(text("ShaderLab").size(40))
-            .push(
-                text_input("Username", &self.username)
-                    .on_input(Message::InputUsername)
-                    .padding(10)
-                    .width(300),
-            )
-            .push(
-                text_input("Password", &self.password)
-                    .on_input(Message::InputPassword)
-                    .padding(10)
-                    .width(300),
-            )
-            .push(button("Login").on_press(Message::ClickLogin).padding(10));
+        let password_input = text_input("Password", &self.password)
+            .on_input(Message::InputPassword)
+            .padding(10)
+            .width(300)
+            .secure(!self.show_password);
+
+        let show_password_toggle = row![
+            checkbox("Show password", self.show_password)
+                .on_toggle(|_| Message::ToggleShowPassword),
+        ]
+        .spacing(5);
+
+        let action_buttons = row![
+            button("Register")
+                .on_press(Message::ClickRegister)
+                .padding(10)
+                .width(100),
+            Space::with_width(Length::Fill),
+            button("Login")
+                .on_press(Message::ClickLogin)
+                .padding(10)
+                .width(100),
+        ]
+        .spacing(10);
+
+        let content = column![
+            text("ShaderLab").size(40),
+            Space::with_height(30),
+            username_input,
+            Space::with_height(15),
+            password_input,
+            show_password_toggle,
+            //error_message,
+            Space::with_height(30),
+            action_buttons,
+        ];
 
         container(content)
             .width(Length::Fill)
             .height(Length::Fill)
-            .center_x(0)
-            .center_y(0)
+            .align_x(iced::Alignment::Center)
             .into()
     }
 }

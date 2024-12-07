@@ -87,12 +87,12 @@ async fn test_auth_workflow() {
                 .uri("/auth/verify")
                 .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
                 .body(Body::from(
-                    serde_json::to_vec(&json!({ "token": token }))
-                        .unwrap(),
+                    serde_json::to_vec(&json!({ "token": token })).unwrap(),
                 ))
                 .unwrap(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
 

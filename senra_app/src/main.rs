@@ -8,7 +8,7 @@ use senra_api::Response;
 
 pub use global::{Global, Message as GlobalMessage};
 pub use network::{Message as NetworkMessage, Network, Protocol};
-pub use pages::{Message as PageMessage, Page, LoginPage};
+pub use pages::{LoginPage, Message as PageMessage, Page};
 pub use storage::{Message as StorageMessage, Storage};
 
 #[derive(Debug, Clone)]
@@ -63,17 +63,17 @@ impl ShaderLab {
             }
             Message::Network(event) => match event {
                 NetworkMessage::Incoming(response) => match response {
-                    Response::Auth(auth) => {
-                        self.network.update(NetworkMessage::AuthToken(auth.token.clone()))
-                            .map(Message::Network)
-                    }
+                    Response::Auth(auth) => self
+                        .network
+                        .update(NetworkMessage::AuthToken(auth.token.clone()))
+                        .map(Message::Network),
                     Response::Verify(verify) => {
                         if let Some(token) = verify.token {
-                            self.network.update(NetworkMessage::AuthToken(token))
+                            self.network
+                                .update(NetworkMessage::AuthToken(token))
                                 .map(Message::Network)
                         } else {
-                            self.page.update(PageMessage::ShowLogin)
-                                .map(Message::Page)
+                            self.page.update(PageMessage::ShowLogin).map(Message::Page)
                         }
                     }
                     _ => Task::none(),
@@ -84,7 +84,9 @@ impl ShaderLab {
                 StorageMessage::Loaded(key, value) => {
                     if key == "auth_token" {
                         if let Some(token) = value.and_then(|v| v.as_str().map(String::from)) {
-                            return self.network.update(NetworkMessage::AuthToken(token))
+                            return self
+                                .network
+                                .update(NetworkMessage::AuthToken(token))
                                 .map(Message::Network);
                         }
                     }

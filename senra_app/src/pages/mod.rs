@@ -1,12 +1,14 @@
 mod login;
 
-use std::sync::Arc;
 use iced::widget::text;
 use iced::{Element, Task};
+use iced::application::Update;
+use iced::futures::StreamExt;
+use senra_api::{Request, Response};
 
 pub use login::{LoginPage, Message as LoginMessage};
-use senra_api::{Request, Response};
-use crate::{Network, Protocol};
+
+use crate::Protocol;
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -44,13 +46,17 @@ impl Page {
                 let (page, task) = LoginPage::new();
                 self.state = PageState::Login(page);
                 task.map(Message::Login)
-            },
-            Message::Login(message) => match message {
-                LoginMessage::Submit(request) => {
-                    Task::done(Message::Request(Protocol::Http, request))
-                },
+            }
+            Message::Login(message) => match &mut self.state {
+                PageState::Login(page) => page.update(message).map(Message::Login),
                 _ => Task::none(),
             },
+            Message::Response(response) => match &mut self.state {
+                PageState::Login(page) => {
+                    Task::none()
+                },
+                _ => Task::none(),
+            }
             _ => Task::none(),
         }
     }

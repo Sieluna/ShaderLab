@@ -98,7 +98,7 @@ impl Network {
             Message::Connected(sender) => {
                 self.sender = Some(sender);
                 Task::none()
-            },
+            }
             _ => Task::none(),
         }
     }
