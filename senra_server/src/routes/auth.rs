@@ -5,15 +5,26 @@ use senra_api::*;
 
 use crate::errors::Result;
 use crate::middleware::AuthUser;
-use crate::models::{CreateUser, EditUser, LoginUser, User};
+use crate::models::{CreateUser, EditUser, LoginUser};
 use crate::state::AppState;
 
 pub fn router(state: AppState) -> Router {
     Router::new()
+        .route("/auth/verify", post(verify_token))
         .route("/auth/login", post(login))
         .route("/auth/register", post(register))
         .route("/auth/edit", patch(edit_user))
         .with_state(state)
+}
+
+async fn verify_token(
+    State(state): State<AppState>,
+    Json(payload): Json<VerifyRequest>,
+) -> Result<Json<VerifyResponse>> {
+    let auth_service = state.services.auth;
+    let token = auth_service.refresh_token(&payload.token).await?;
+
+    Ok(Json(VerifyResponse { token }))
 }
 
 async fn login(

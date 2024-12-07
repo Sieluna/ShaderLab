@@ -16,11 +16,13 @@ pub enum StorageError {
 }
 
 #[derive(Debug, Clone)]
-pub enum StorageMessage {
+pub enum Message {
     Save(String, Value),
     Load(String),
+
     Saved(String, bool),
     Loaded(String, Option<Value>),
+
     Error(String),
 }
 
@@ -61,9 +63,9 @@ impl Storage {
         self.inner.remove(key).await.is_ok()
     }
 
-    pub fn update(&mut self, message: StorageMessage) -> Task<StorageMessage> {
+    pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            StorageMessage::Save(key, value) => {
+            Message::Save(key, value) => {
                 let inner = self.inner.clone();
                 Task::perform(
                     async move {
@@ -71,12 +73,12 @@ impl Storage {
                         Ok(key)
                     },
                     |result| match result {
-                        Ok(key) => StorageMessage::Saved(key, true),
-                        Err(e) => StorageMessage::Error(e),
+                        Ok(key) => Message::Saved(key, true),
+                        Err(e) => Message::Error(e),
                     },
                 )
             }
-            StorageMessage::Load(key) => {
+            Message::Load(key) => {
                 let inner = self.inner.clone();
                 Task::perform(
                     async move {
@@ -84,8 +86,8 @@ impl Storage {
                         Ok((key, result))
                     },
                     |result| match result {
-                        Ok((key, value)) => StorageMessage::Loaded(key, value),
-                        Err(e) => StorageMessage::Error(e),
+                        Ok((key, value)) => Message::Loaded(key, value),
+                        Err(e) => Message::Error(e),
                     },
                 )
             }

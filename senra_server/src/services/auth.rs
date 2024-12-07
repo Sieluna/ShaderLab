@@ -2,12 +2,19 @@ use std::sync::Arc;
 
 use bcrypt::{DEFAULT_COST, hash, verify};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
-use serde_json::json;
+use serde::{Deserialize, Serialize};
 use sqlx::{QueryBuilder, SqlitePool};
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 
 use crate::errors::{AppError, AuthError, Result};
 use crate::models::{CreateUser, EditUser, LoginUser, User};
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Claims {
+    sub: i64,
+    exp: i64,
+    iat: i64,
+}
 
 #[derive(Clone)]
 pub struct AuthService {
@@ -102,30 +109,54 @@ impl AuthService {
     }
 
     pub async fn authorize(&self, token: &str) -> Result<i64> {
-        let token_data = decode::<serde_json::Value>(
+        let token_data = decode::<Claims>(
             token,
             &DecodingKey::from_secret(self.jwt_secret.as_bytes()),
             &Validation::default(),
         )
         .map_err(|_| AuthError::InvalidToken)?;
 
-        let user_id = token_data
-            .claims
-            .get("sub")
-            .and_then(|v| v.as_i64())
-            .ok_or(AuthError::InvalidToken)?;
+        Ok(token_data.claims.sub)
+    }
 
-        Ok(user_id)
+    pub async fn refresh_token(&self, token: &str) -> Result<Option<String>> {
+        let token_data = decode::<Claims>(
+            token,
+            &DecodingKey::from_secret(self.jwt_secret.as_bytes()),
+            &Validation::default(),
+        )
+        .map_err(|_| AuthError::InvalidToken)?;
+
+        let now = OffsetDateTime::now_utc().unix_timestamp();
+        let expires_in = token_data.claims.exp - now;
+
+        if expires_in < 1800 {
+            let claims = Claims {
+                sub: token_data.claims.sub,
+                exp: now + 3600 * 24,
+                iat: now,
+            };
+            let token = encode(
+                &Header::default(),
+                &claims,
+                &EncodingKey::from_secret(self.jwt_secret.as_bytes()),
+            )
+            .map_err(|_| AppError::InternalError("Failed to generate token".to_string()))?;
+
+            Ok(Some(token))
+        } else {
+            Ok(None)
+        }
     }
 
     async fn generate_token(&self, user_id: i64) -> Result<String> {
-        let expires_at = OffsetDateTime::now_utc() + Duration::days(7);
+        let now = OffsetDateTime::now_utc().unix_timestamp();
 
-        let claims = json!({
-            "sub": user_id,
-            "exp": expires_at.unix_timestamp() as usize,
-        });
-
+        let claims = Claims {
+            sub: user_id,
+            exp: now + 3600 * 24,
+            iat: now,
+        };
         let token = encode(
             &Header::default(),
             &claims,

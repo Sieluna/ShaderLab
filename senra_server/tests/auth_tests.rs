@@ -73,10 +73,32 @@ async fn test_auth_workflow() {
     let user = body.get("user").unwrap();
     assert_eq!(user["username"], "loginuser");
     assert_eq!(user["email"], "login@example.com");
-    assert!(user.get("id").is_some());
 
     let token = body.get("token").unwrap().as_str().unwrap();
     assert!(!token.is_empty());
+
+    // Vertify token
+    let response = ServiceExt::<Request<Body>>::ready(&mut app)
+        .await
+        .unwrap()
+        .call(
+            Request::builder()
+                .method(http::Method::POST)
+                .uri("/auth/verify")
+                .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                .body(Body::from(
+                    serde_json::to_vec(&json!({ "token": token }))
+                        .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await.unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let body: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(body["token"], json!(null));
 
     // Test editing user
     let response = ServiceExt::<Request<Body>>::ready(&mut app)

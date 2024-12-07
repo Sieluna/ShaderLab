@@ -14,6 +14,11 @@ pub struct RegisterRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerifyRequest {
+    pub token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EditRequest {
     pub username: Option<String>,
     pub email: Option<String>,
@@ -32,4 +37,9 @@ pub struct UserResponse {
 pub struct AuthResponse {
     pub user: UserResponse,
     pub token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerifyResponse {
+    pub token: Option<String>,
 }

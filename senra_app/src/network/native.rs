@@ -1,24 +1,24 @@
 use std::pin::Pin;
 use std::sync::Arc;
 
-use http::Method;
 use iced::futures::channel::mpsc;
 use iced::futures::{SinkExt, Stream, StreamExt};
 use iced::{futures, stream};
-use senra_api::Request;
+use senra_api::{Endpoint, Request};
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
-use tokio_tungstenite::tungstenite::{Message, Utf8Bytes};
+use tokio_tungstenite::tungstenite::{Message as WsMessage, Utf8Bytes};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async};
 
-use super::{NetworkError, NetworkInner, NetworkMessage};
+use super::{Message, NetworkError, NetworkInner};
 
 impl From<tokio_tungstenite::tungstenite::Error> for NetworkError {
     fn from(error: tokio_tungstenite::tungstenite::Error) -> Self {
         NetworkError::WebSocket(error.to_string())
     }
 }
+
 impl From<reqwest::Error> for NetworkError {
     fn from(error: reqwest::Error) -> Self {
         NetworkError::Http(error.to_string())
@@ -46,11 +46,26 @@ impl NativeNetwork {
             client: reqwest::Client::new(),
         }
     }
+
+    fn get_headers(&self, token: Option<&str>) -> http::HeaderMap {
+        let mut headers = http::HeaderMap::new();
+        headers.insert(
+            http::header::CONTENT_TYPE,
+            "application/json".parse().unwrap(),
+        );
+        if let Some(token) = token {
+            headers.insert(
+                http::header::AUTHORIZATION,
+                format!("Bearer {}", token).parse().unwrap(),
+            );
+        }
+        headers
+    }
 }
 
 #[async_trait::async_trait]
 impl NetworkInner for NativeNetwork {
-    fn subscription(&self) -> Pin<Box<dyn Stream<Item = NetworkMessage> + Send>> {
+    fn subscription(&self) -> Pin<Box<dyn Stream<Item = Message> + Send>> {
         let state = self.state.clone();
         Box::pin(stream::channel(100, move |mut output| async move {
             loop {
@@ -62,17 +77,17 @@ impl NetworkInner for NativeNetwork {
                         futures::select! {
                             received = fused_websocket.select_next_some() => {
                                 match received {
-                                    Ok(Message::Text(message)) => {
+                                    Ok(WsMessage::Text(message)) => {
                                         output.send(
                                             match serde_json::from_str(message.as_str()) {
-                                                Ok(response) => NetworkMessage::Incoming(response),
-                                                Err(e) => NetworkMessage::Error(NetworkError::Serialization(e).to_string()),
+                                                Ok(response) => Message::Incoming(response),
+                                                Err(e) => Message::Error(NetworkError::Serialization(e).to_string()),
                                             }
                                         ).await.unwrap();
                                     }
                                     Err(e) => {
-                                        output.send(NetworkMessage::Error(NetworkError::WebSocket(e.to_string()).to_string())).await.unwrap();
-                                        output.send(NetworkMessage::Disconnected).await.unwrap();
+                                        output.send(Message::Error(NetworkError::WebSocket(e.to_string()).to_string())).await.unwrap();
+                                        output.send(Message::Disconnected).await.unwrap();
                                         *state = ConnectionState::Disconnected;
                                     }
                                     Ok(_) => continue,
@@ -80,11 +95,11 @@ impl NetworkInner for NativeNetwork {
                             }
 
                             message = input.select_next_some() => {
-                                let result = websocket.send(Message::Text(message)).await;
+                                let result = websocket.send(WsMessage::Text(message)).await;
 
                                 if let Err(e) = result {
-                                    output.send(NetworkMessage::Error(NetworkError::WebSocket(e.to_string()).to_string())).await.unwrap();
-                                    output.send(NetworkMessage::Disconnected).await.unwrap();
+                                    output.send(Message::Error(NetworkError::WebSocket(e.to_string()).to_string())).await.unwrap();
+                                    output.send(Message::Disconnected).await.unwrap();
                                     *state = ConnectionState::Disconnected;
                                 }
                             }
@@ -96,58 +111,38 @@ impl NetworkInner for NativeNetwork {
         }))
     }
 
-    async fn connect(&self, url: &str, token: &str) -> Result<NetworkMessage, NetworkError> {
-        let mut request = url.into_client_request().unwrap();
-        request.headers_mut().insert(
-            "Authorization",
-            format!("Bearer {}", token).parse().unwrap(),
-        );
+    async fn connect(&self, url: &str, token: Option<&str>) -> Result<Message, NetworkError> {
+        let mut request = url.into_client_request()?;
+        request.headers_mut().extend(self.get_headers(token));
+        let (websocket, _) = connect_async(request).await?;
 
-        match connect_async(request).await {
-            Ok((websocket, _)) => {
-                let (sender, receiver) = mpsc::channel(100);
-                *self.state.lock().await = ConnectionState::Connected(websocket, receiver);
-                Ok(NetworkMessage::Connected(sender))
-            }
-            Err(_) => {
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                Ok(NetworkMessage::Disconnected)
-            }
-        }
+        let (sender, receiver) = mpsc::channel(100);
+        *self.state.lock().await = ConnectionState::Connected(websocket, receiver);
+        Ok(Message::Connected(sender))
     }
 
     async fn fetch(
         &self,
         url: &str,
-        method: Method,
+        token: Option<&str>,
         request: Request,
-    ) -> Result<NetworkMessage, NetworkError> {
-        let url = format!("{}/api{}", url, self.get_endpoint(&request));
-
+    ) -> Result<Message, NetworkError> {
+        let endpoint: Endpoint = request.to_owned().into();
+        let url = format!("{}{}", url, endpoint.path);
         let response = self
             .client
-            .request(method, &url)
+            .request(endpoint.method, &url)
+            .headers(self.get_headers(token))
             .json(&request)
             .send()
             .await?;
 
         if response.status().is_success() {
             let response: senra_api::Response = response.json().await?;
-            Ok(NetworkMessage::Incoming(response))
+            Ok(Message::Incoming(response))
         } else {
             let error = response.text().await?;
-            Ok(NetworkMessage::Error(error))
-        }
-    }
-}
-
-impl NativeNetwork {
-    fn get_endpoint(&self, request: &Request) -> &'static str {
-        match request {
-            Request::Login(_) => "/auth/login",
-            Request::Register(_) => "/auth/register",
-            Request::EditUser(_) => "/auth/edit",
-            _ => "/",
+            Ok(Message::Error(error))
         }
     }
 }

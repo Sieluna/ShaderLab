@@ -6,9 +6,8 @@ mod native;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use http::Method;
 use iced::futures::channel::mpsc;
-use iced::futures::{SinkExt, Stream, StreamExt};
+use iced::futures::{SinkExt, Stream};
 use iced::{Subscription, Task};
 use senra_api::{Request, Response};
 use tokio_tungstenite::tungstenite::Utf8Bytes;
@@ -27,43 +26,47 @@ pub enum NetworkError {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Protocol {
-    Http(Method),
+    Http,
     WebSocket,
 }
 
 #[derive(Debug, Clone)]
-pub enum NetworkMessage {
-    Incoming(Response),
+pub enum Message {
+    AuthToken(String),
     Outgoing(Protocol, Request),
+
+    Incoming(Response),
     Connected(mpsc::Sender<Utf8Bytes>),
     Disconnected,
+    Submitted,
+
     Error(String),
 }
 
 #[async_trait::async_trait]
 pub trait NetworkInner: Send + Sync {
-    fn subscription(&self) -> Pin<Box<dyn Stream<Item = NetworkMessage> + Send>>;
+    fn subscription(&self) -> Pin<Box<dyn Stream<Item = Message> + Send>>;
 
-    async fn connect(&self, url: &str, token: &str) -> Result<NetworkMessage, NetworkError>;
+    async fn connect(&self, url: &str, token: Option<&str>) -> Result<Message, NetworkError>;
 
     async fn fetch(
         &self,
         url: &str,
-        method: Method,
+        token: Option<&str>,
         request: Request,
-    ) -> Result<NetworkMessage, NetworkError>;
+    ) -> Result<Message, NetworkError>;
 }
 
+#[derive(Clone)]
 pub struct Network {
     inner: Arc<dyn NetworkInner>,
     sender: Option<mpsc::Sender<Utf8Bytes>>,
-    base_url: Arc<str>,
+    base_url: String,
+    auth_token: Option<String>,
 }
 
 impl Network {
-    pub fn new(base_url: Arc<str>) -> Self {
-        let base_url = Arc::clone(&base_url);
-
+    pub fn new(base_url: String) -> Self {
         #[cfg(not(target_arch = "wasm32"))]
         {
             let network = native::NativeNetwork::new();
@@ -71,57 +74,65 @@ impl Network {
                 inner: Arc::new(network),
                 sender: None,
                 base_url,
+                auth_token: None,
             }
         }
     }
 
-    pub fn update(&mut self, message: NetworkMessage) -> Task<NetworkMessage> {
+    pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            NetworkMessage::Connected(sender) => {
+            Message::AuthToken(token) => {
+                self.auth_token = Some(token);
+                let inner = self.inner.clone();
+                let url = self.base_url.clone();
+                let token = self.auth_token.clone();
+                Task::perform(
+                    async move { inner.connect(url.as_ref(), token.as_deref()).await },
+                    |result| result.unwrap_or_else(|e| Message::Error(e.to_string())),
+                )
+            }
+            Message::Outgoing(protocol, request) => match protocol {
+                Protocol::Http => self.handle_http(request),
+                Protocol::WebSocket => self.handle_websocket(request),
+            },
+            Message::Connected(sender) => {
                 self.sender = Some(sender);
                 Task::none()
-            }
-            NetworkMessage::Outgoing(protocol, request) => match protocol {
-                Protocol::Http(method) => self.handle_http(method, request),
-                Protocol::WebSocket => self.handle_websocket(request),
             },
             _ => Task::none(),
         }
     }
 
-    pub fn subscribe(&self) -> Subscription<NetworkMessage> {
+    pub fn subscribe(&self) -> Subscription<Message> {
         Subscription::run_with_id(stringify!(Transport), self.inner.clone().subscription())
     }
 
-    fn handle_http(&self, method: Method, request: Request) -> Task<NetworkMessage> {
+    fn handle_http(&self, request: Request) -> Task<Message> {
         let inner = self.inner.clone();
-        let base_url = self.base_url.clone();
+        let url = self.base_url.clone();
+        let token = self.auth_token.clone();
         Task::perform(
-            async move { inner.fetch(&base_url, method, request).await },
-            |result| result.unwrap_or_else(|e| NetworkMessage::Error(e.to_string())),
+            async move { inner.fetch(url.as_ref(), token.as_deref(), request).await },
+            |result| result.unwrap_or_else(|e| Message::Error(e.to_string())),
         )
     }
 
-    fn handle_websocket(&self, request: Request) -> Task<NetworkMessage> {
+    fn handle_websocket(&self, request: Request) -> Task<Message> {
         match self.sender.clone() {
             Some(mut sender) => Task::perform(
                 async move {
-                    match serde_json::to_string(&request) {
-                        Ok(message) => {
-                            if let Err(e) = sender.send(message.into()).await {
-                                return Err(format!("Failed to send message: {}", e));
-                            }
-                            Ok(request)
-                        }
-                        Err(e) => Err(format!("Failed to serialize message: {}", e)),
-                    }
+                    let message = serde_json::to_string(&request)?;
+
+                    sender
+                        .send(message.into())
+                        .await
+                        .map_err(|e| NetworkError::WebSocket(e.to_string()))?;
+
+                    Ok(Message::Submitted)
                 },
-                |result| match result {
-                    Ok(request) => NetworkMessage::Outgoing(Protocol::WebSocket, request),
-                    Err(e) => NetworkMessage::Error(e),
-                },
+                |result| result.unwrap_or_else(|e: NetworkError| Message::Error(e.to_string())),
             ),
-            None => Task::done(NetworkMessage::Error("Not connected".to_string())),
+            None => Task::done(Message::Error("Not connected".to_string())),
         }
     }
 }

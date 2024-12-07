@@ -3,23 +3,13 @@ mod network;
 mod pages;
 mod storage;
 
-use iced::widget::text;
-use iced::{Element, Event, Size, Subscription, Task, Theme, event, keyboard};
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use iced::{Element, Subscription, Task, Theme};
+use senra_api::Response;
 
 pub use global::{Global, Message as GlobalMessage};
-pub use network::{Network, NetworkMessage};
-pub use storage::{Storage, StorageMessage};
-
-#[derive(Debug, Clone)]
-pub enum Page {
-    Login,
-    NotebookList,
-    NotebookDetail { id: String },
-    ShaderEditor { id: String },
-    ShaderGraph { id: String },
-}
+pub use network::{Message as NetworkMessage, Network, Protocol};
+pub use pages::{Message as PageMessage, Page, LoginPage};
+pub use storage::{Message as StorageMessage, Storage};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -27,30 +17,37 @@ pub enum Message {
     Global(GlobalMessage),
     Network(NetworkMessage),
     Storage(StorageMessage),
+    Page(PageMessage),
 }
 
 struct ShaderLab {
-    current_page: Page,
     dark_mode: bool,
     global: Global,
     network: Network,
     storage: Storage,
+    page: Page,
 }
 
 impl ShaderLab {
     fn new() -> (Self, Task<Message>) {
-        let storage = Storage::new();
-        let transport = Network::new(Arc::from("ws://localhost:3000"));
+        let mut storage = Storage::new();
+        let network = Network::new(String::from("http://localhost:3000"));
+        let (page, page_task) = Page::new();
 
         (
             Self {
-                current_page: Page::NotebookList,
                 dark_mode: false,
                 global: Global::new(),
-                network: transport,
-                storage,
+                network: network.clone(),
+                storage: storage.clone(),
+                page,
             },
-            Task::none(),
+            Task::batch([
+                storage
+                    .update(StorageMessage::Load("auth_token".to_string()))
+                    .map(Message::Storage),
+                page_task.map(Message::Page),
+            ]),
         )
     }
 
@@ -65,30 +62,43 @@ impl ShaderLab {
                 Task::none()
             }
             Message::Network(event) => match event {
-                NetworkMessage::Connected(_) => Task::none(),
-                NetworkMessage::Disconnected => Task::none(),
                 NetworkMessage::Incoming(response) => match response {
+                    Response::Auth(auth) => {
+                        self.network.update(NetworkMessage::AuthToken(auth.token.clone()))
+                            .map(Message::Network)
+                    }
+                    Response::Verify(verify) => {
+                        if let Some(token) = verify.token {
+                            self.network.update(NetworkMessage::AuthToken(token))
+                                .map(Message::Network)
+                        } else {
+                            self.page.update(PageMessage::ShowLogin)
+                                .map(Message::Page)
+                        }
+                    }
                     _ => Task::none(),
                 },
-                NetworkMessage::Outgoing(_, _) => Task::none(),
-                NetworkMessage::Error(e) => {
-                    tracing::error!("Transport error: {}", e);
-                    Task::none()
-                }
+                _ => Task::none(),
             },
             Message::Storage(event) => match event {
-                StorageMessage::Error(error) => {
-                    tracing::error!("Storage error: {}", error);
+                StorageMessage::Loaded(key, value) => {
+                    if key == "auth_token" {
+                        if let Some(token) = value.and_then(|v| v.as_str().map(String::from)) {
+                            return self.network.update(NetworkMessage::AuthToken(token))
+                                .map(Message::Network);
+                        }
+                    }
                     Task::none()
                 }
                 _ => Task::none(),
             },
             Message::Global(message) => self.global.update(message).map(Message::Global),
+            Message::Page(message) => self.page.update(message).map(Message::Page),
         }
     }
 
     fn view(&self) -> Element<Message> {
-        text("Hello, this is iced!").size(20).into()
+        self.page.view().map(Message::Page)
     }
 
     fn theme(&self) -> Theme {
