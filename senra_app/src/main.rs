@@ -8,7 +8,7 @@ use senra_api::Response;
 
 pub use global::{Global, Message as GlobalMessage};
 pub use network::{Message as NetworkMessage, Network, Protocol};
-pub use pages::{LoginPage, Message as PageMessage, Page};
+pub use pages::{AuthPage, Message as PageMessage, Page};
 pub use storage::{Message as StorageMessage, Storage};
 
 #[derive(Debug, Clone)]
@@ -73,7 +73,7 @@ impl ShaderLab {
                                 .update(NetworkMessage::AuthToken(token))
                                 .map(Message::Network)
                         } else {
-                            self.page.update(PageMessage::ShowLogin).map(Message::Page)
+                            self.page.update(PageMessage::ShowAuth).map(Message::Page)
                         }
                     }
                     _ => Task::none(),
