@@ -1,14 +1,16 @@
+mod editor;
+mod pages;
 mod global;
 mod network;
-mod pages;
 mod storage;
+mod viewer;
 
 use iced::{Element, Subscription, Task, Theme};
 use senra_api::Response;
 
 pub use global::{Global, Message as GlobalMessage};
 pub use network::{Message as NetworkMessage, Network, Protocol};
-pub use pages::{AuthPage, Message as PageMessage, Page};
+pub use pages::{Message as PageMessage, Page};
 pub use storage::{Message as StorageMessage, Storage};
 
 #[derive(Debug, Clone)]
