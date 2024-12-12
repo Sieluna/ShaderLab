@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 axum = { version = "0.8", features = ["ws"] }
-bcrypt = "0.16"
+bcrypt = "0.17"
 mime = "0.3"
 senra_api.workspace = true
 serde.workspace = true

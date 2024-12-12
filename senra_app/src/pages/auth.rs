@@ -1,5 +1,7 @@
-use iced::widget::{Space, button, checkbox, column, container, row, text, text_input, Column, Row};
-use iced::{alignment, Alignment, Element, Length, Task};
+use iced::widget::{
+    Column, Row, Space, button, checkbox, column, container, row, text, text_input,
+};
+use iced::{Alignment, Element, Length, Task};
 use senra_api::{LoginRequest, RegisterRequest, Request};
 
 #[derive(Debug, Clone)]
@@ -124,7 +126,7 @@ impl AuthPage {
                 .padding(10)
                 .width(100)
         ]
-            .spacing(10);
+        .spacing(10);
 
         let username_input = text_input("Username", &self.username)
             .on_input(Message::InputUsername)
@@ -136,7 +138,7 @@ impl AuthPage {
                 text_input("Email", &self.email)
                     .on_input(Message::InputEmail)
                     .padding(10)
-                    .width(300)
+                    .width(300),
             ),
             AuthState::Login => None,
         };
@@ -150,7 +152,7 @@ impl AuthPage {
         let show_password = Row::new()
             .push(
                 checkbox("Show password", self.show_password)
-                    .on_toggle(|_| Message::ToggleShowPassword)
+                    .on_toggle(|_| Message::ToggleShowPassword),
             )
             .spacing(5);
 
@@ -164,7 +166,7 @@ impl AuthPage {
                 AuthState::Register => "Register",
                 AuthState::Login => "Login",
             })
-                .align_y(Alignment::Center),
+            .align_y(Alignment::Center),
         );
 
         let content = Column::new()

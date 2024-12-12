@@ -1,5 +1,6 @@
-use iced::{Point, Rectangle, Transformation};
 use std::time::Duration;
+
+use iced::{Point, Rectangle, Transformation};
 
 #[derive(Debug)]
 pub struct Uniforms {

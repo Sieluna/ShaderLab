@@ -1,5 +1,5 @@
-use iced::{highlighter, Task};
 use iced::widget::{focus_next, text_editor};
+use iced::{Task, highlighter};
 
 #[derive(Debug, Clone)]
 pub enum Message {

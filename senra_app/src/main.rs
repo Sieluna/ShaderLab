@@ -1,9 +1,8 @@
-mod editor;
-mod pages;
 mod global;
 mod network;
+mod pages;
 mod storage;
-mod viewer;
+mod widgets;
 
 use iced::{Element, Subscription, Task, Theme};
 use senra_api::Response;
