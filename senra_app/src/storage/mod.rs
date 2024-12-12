@@ -11,8 +11,6 @@ pub enum StorageError {
     Io(#[from] std::io::Error),
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
-    #[error("Path error: {0}")]
-    PathError(String),
 }
 
 #[derive(Debug, Clone)]

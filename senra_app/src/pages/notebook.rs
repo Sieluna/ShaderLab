@@ -1,4 +1,4 @@
-use crate::widgets::{Cell, CellType, Message as CellMessage};
+use crate::widgets::{Cell, CellType, CellMessage};
 
 #[derive(Debug, Clone)]
 pub enum Direction {
