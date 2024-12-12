@@ -1,6 +1,7 @@
-use iced::widget::shader::wgpu;
-use iced::Rectangle;
 use std::borrow::Cow;
+
+use iced::Rectangle;
+use iced::widget::shader::wgpu;
 
 use super::uniforms;
 
@@ -66,7 +67,12 @@ impl Pipeline {
         let fragment_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("pipeline.fragment_shader"),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(
-                format!("{}\n{}", include_str!("shaders/shared_uniforms.wgsl"), shader).as_str(),
+                format!(
+                    "{}\n{}",
+                    include_str!("shaders/shared_uniforms.wgsl"),
+                    shader
+                )
+                .as_str(),
             )),
         });
 

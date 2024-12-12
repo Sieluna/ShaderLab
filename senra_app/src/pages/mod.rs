@@ -1,9 +1,8 @@
 mod auth;
+mod notebook;
 
 use iced::widget::text;
 use iced::{Element, Task};
-use iced::application::Update;
-use iced::futures::StreamExt;
 use senra_api::{Request, Response};
 
 pub use auth::{AuthPage, Message as AuthMessage};
@@ -70,10 +69,8 @@ impl Page {
                         _ => Task::none(),
                     }
                 }
-            }
-            Message::Request(protocol, request) => {
-                Task::done(Message::Request(protocol, request))
-            }
+            },
+            Message::Request(protocol, request) => Task::done(Message::Request(protocol, request)),
         }
     }
 

@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
+use iced::Rectangle;
 use iced::advanced::graphics::Viewport;
 use iced::widget::shader;
-use iced::widget::shader::wgpu::{CommandEncoder, Device, Queue, TextureFormat, TextureView};
 use iced::widget::shader::Storage;
-use iced::Rectangle;
+use iced::widget::shader::wgpu::{CommandEncoder, Device, Queue, TextureFormat, TextureView};
 
 use super::pipeline::Pipeline;
 use super::uniforms::Uniforms;
@@ -24,7 +24,7 @@ impl shader::Primitive for Primitive {
         format: TextureFormat,
         storage: &mut Storage,
         _bounds: &Rectangle,
-        viewport: &Viewport
+        viewport: &Viewport,
     ) {
         let should_store = storage
             .get::<Pipeline>()
@@ -39,7 +39,9 @@ impl shader::Primitive for Primitive {
 
         pipeline.prepare(
             queue,
-            &self.uniforms.to_raw(viewport.scale_factor() as f32, viewport.projection())
+            &self
+                .uniforms
+                .to_raw(viewport.scale_factor() as f32, viewport.projection()),
         );
     }
 
@@ -48,7 +50,7 @@ impl shader::Primitive for Primitive {
         encoder: &mut CommandEncoder,
         storage: &Storage,
         target: &TextureView,
-        clip_bounds: &Rectangle<u32>
+        clip_bounds: &Rectangle<u32>,
     ) {
         let pipeline = storage.get::<Pipeline>().unwrap();
 

@@ -6,8 +6,8 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use iced::advanced::Shell;
-use iced::{event, mouse, Rectangle, window, Point};
 use iced::widget::shader;
+use iced::{Point, Rectangle, event, mouse, window};
 use primitive::Primitive;
 use uniforms::Uniforms;
 
@@ -21,9 +21,7 @@ impl Default for Viewer {
     fn default() -> Self {
         Self {
             start: Instant::now(),
-            last_valid_shader: Arc::new(
-                include_str!("shaders/default_frag.wgsl").to_string(),
-            ),
+            last_valid_shader: Arc::new(include_str!("shaders/default_frag.wgsl").to_string()),
             version: 0,
         }
     }
