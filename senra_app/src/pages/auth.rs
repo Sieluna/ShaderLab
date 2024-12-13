@@ -156,10 +156,10 @@ impl AuthPage {
             )
             .spacing(5);
 
-        let error_message = match &self.error_message {
-            Some(error) => Some(text(error).color(iced::Color::from_rgb(1.0, 0.0, 0.0))),
-            None => None,
-        };
+        let error_message = self
+            .error_message
+            .as_ref()
+            .map(|error| text(error).color(iced::Color::from_rgb(1.0, 0.0, 0.0)));
 
         let submit_button = button(
             text(match &self.state {
