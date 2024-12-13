@@ -1,13 +1,25 @@
 use std::ops::Range;
 
 use iced::advanced::text::highlighter;
-use iced::{font, Color, Font};
+use iced::{Color, Font, font};
 use once_cell::sync::Lazy;
 use syntect::highlighting;
 use syntect::parsing;
 
+use super::Syntax;
+
 static SYNTAXES: Lazy<parsing::SyntaxSet> = Lazy::new(|| {
-    parsing::SyntaxSet::load_from_folder(concat!(env!("CARGO_MANIFEST_DIR"), "/assets")).unwrap()
+    let mut builder = parsing::SyntaxSetBuilder::new();
+    builder.add(
+        parsing::SyntaxDefinition::load_from_str(
+            include_str!("assets/WGSL.sublime-syntax"),
+            true,
+            None,
+        )
+        .unwrap(),
+    );
+    builder.add_plain_text_syntax();
+    builder.build()
 });
 
 static THEMES: Lazy<highlighting::ThemeSet> = Lazy::new(highlighting::ThemeSet::load_defaults);
@@ -17,7 +29,7 @@ const LINES_PER_SNAPSHOT: usize = 50;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Settings {
     pub theme: String,
-    pub token: String,
+    pub token: Syntax,
     pub errors: Vec<Range<usize>>,
 }
 
@@ -26,9 +38,9 @@ pub struct Highlight(highlighting::StyleModifier);
 
 impl Highlight {
     pub fn color(&self) -> Option<Color> {
-        self.0.foreground.map(|color| {
-            Color::from_rgba8(color.r, color.g, color.b, color.a as f32 / 255.0)
-        })
+        self.0
+            .foreground
+            .map(|color| Color::from_rgba8(color.r, color.g, color.b, color.a as f32 / 255.0))
     }
 
     pub fn font(&self) -> Option<Font> {
@@ -80,17 +92,14 @@ impl iced::advanced::text::Highlighter for Highlighter {
     type Settings = Settings;
     type Highlight = Highlight;
 
-    type Iterator<'a> =
-        Box<dyn Iterator<Item = (Range<usize>, Self::Highlight)> + 'a>;
+    type Iterator<'a> = Box<dyn Iterator<Item = (Range<usize>, Self::Highlight)> + 'a>;
 
     fn new(settings: &Self::Settings) -> Self {
         let syntax = SYNTAXES
-            .find_syntax_by_token(&settings.token)
+            .find_syntax_by_token(settings.token.key())
             .unwrap_or_else(|| SYNTAXES.find_syntax_plain_text());
 
-        let highlighter = highlighting::Highlighter::new(
-            &THEMES.themes[&settings.theme],
-        );
+        let highlighter = highlighting::Highlighter::new(&THEMES.themes[&settings.theme]);
 
         let parser = parsing::ParseState::new(syntax);
         let stack = parsing::ScopeStack::new();
@@ -106,12 +115,10 @@ impl iced::advanced::text::Highlighter for Highlighter {
 
     fn update(&mut self, settings: &Self::Settings) {
         self.syntax = SYNTAXES
-            .find_syntax_by_token(&settings.token)
+            .find_syntax_by_token(settings.token.key())
             .unwrap_or_else(|| SYNTAXES.find_syntax_plain_text());
 
-        self.highlighter = highlighting::Highlighter::new(
-            &THEMES.themes[&settings.theme],
-        );
+        self.highlighter = highlighting::Highlighter::new(&THEMES.themes[&settings.theme]);
 
         self.errors = settings.errors.clone();
         // Restart the highlighter
@@ -129,29 +136,26 @@ impl iced::advanced::text::Highlighter for Highlighter {
             self.current_line = 0;
         }
 
-        let (parser, stack) =
-            self.caches.last().cloned().unwrap_or_else(|| {
-                (
-                    parsing::ParseState::new(self.syntax),
-                    parsing::ScopeStack::new(),
-                )
-            });
+        let (parser, stack) = self.caches.last().cloned().unwrap_or_else(|| {
+            (
+                parsing::ParseState::new(self.syntax),
+                parsing::ScopeStack::new(),
+            )
+        });
 
         self.caches.push((parser, stack));
     }
 
     fn highlight_line(&mut self, line: &str) -> Self::Iterator<'_> {
         if self.current_line / LINES_PER_SNAPSHOT >= self.caches.len() {
-            let (parser, stack) =
-                self.caches.last().expect("Caches must not be empty");
+            let (parser, stack) = self.caches.last().expect("Caches must not be empty");
 
             self.caches.push((parser.clone(), stack.clone()));
         }
 
         self.current_line += 1;
 
-        let (parser, stack) =
-            self.caches.last_mut().expect("Caches must not be empty");
+        let (parser, stack) = self.caches.last_mut().expect("Caches must not be empty");
 
         let ops = parser.parse_line(line, &SYNTAXES).unwrap_or_default();
 
