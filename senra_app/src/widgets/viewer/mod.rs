@@ -17,6 +17,16 @@ pub struct Viewer {
     pub version: usize,
 }
 
+impl Viewer {
+    pub fn new(shader_code: String) -> Self {
+        Self {
+            start: Instant::now(),
+            last_valid_shader: Arc::new(shader_code),
+            version: 0,
+        }
+    }
+}
+
 impl Default for Viewer {
     fn default() -> Self {
         Self {
