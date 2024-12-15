@@ -1,6 +1,4 @@
-use std::sync::Arc;
-
-use iced::widget::{Shader, button, column, container, markdown, pane_grid, row};
+use iced::widget::{Shader, button, column, container, markdown, pane_grid, row, scrollable};
 use iced::{Alignment, Element, Length, Task, Theme};
 
 use super::editor::{Editor, Message as EditorMessage, Syntax};
@@ -14,6 +12,7 @@ pub enum Message {
     MoveDown,
     Delete,
 
+    CompileShader,
     Editor(EditorMessage),
     Markdown(markdown::Url),
 }
@@ -82,16 +81,26 @@ impl Cell {
                         let markdown = markdown::parse(&self.editor.content()).collect();
                         CellPreview::Markdown(markdown)
                     }
-                    CellType::Shader => {
-                        let mut viewer = Viewer::default();
-                        viewer.last_valid_shader = Arc::new(self.editor.content());
-                        CellPreview::Renderer(viewer)
-                    }
+                    CellType::Shader => CellPreview::Renderer(Viewer::default()),
                 };
+
                 Task::none()
             }
-            Message::Editor(editor_message) => {
-                self.editor.update(editor_message).map(Message::Editor)
+            Message::Editor(message) => {
+                if let EditorMessage::ActionPerformed(action) = &message {
+                    let is_edit = action.is_edit();
+
+                    if matches!(self.preview, CellPreview::Markdown { .. }) && is_edit {
+                        let markdown = markdown::parse(&self.editor.content()).collect();
+                        self.preview = CellPreview::Markdown(markdown);
+                    }
+                }
+                self.editor.update(message).map(Message::Editor)
+            }
+            Message::CompileShader => {
+                let viewer = Viewer::new(self.editor.content());
+                self.preview = CellPreview::Renderer(viewer);
+                Task::none()
             }
             _ => Task::none(),
         }
@@ -99,10 +108,14 @@ impl Cell {
 
     pub fn view(&self) -> Element<Message> {
         let title_bar = row![
-            button("↑").on_press(Message::MoveUp),
-            button("↓").on_press(Message::MoveDown),
-            button("x").on_press(Message::Delete),
+            button(" ↑ ").on_press(Message::MoveUp),
+            button(" ↓ ").on_press(Message::MoveDown),
+            button(" x ").on_press(Message::Delete),
         ]
+        .push_maybe(match &self.preview {
+            CellPreview::Renderer { .. } => Some(button(" > ").on_press(Message::CompileShader)),
+            _ => None,
+        })
         .padding(8)
         .align_y(Alignment::Center);
 
@@ -110,16 +123,19 @@ impl Cell {
             CellPane::Editor => pane_grid::Content::new(self.editor.view().map(Message::Editor)),
             CellPane::Preview => match &self.preview {
                 CellPreview::Markdown(markdown) => pane_grid::Content::new(
-                    markdown::view(
-                        markdown,
-                        markdown::Settings::default(),
-                        markdown::Style::from_palette(Theme::TokyoNightStorm.palette()),
+                    scrollable(
+                        markdown::view(
+                            markdown,
+                            markdown::Settings::default(),
+                            markdown::Style::from_palette(Theme::TokyoNightStorm.palette()),
+                        )
+                        .map(Message::Markdown),
                     )
-                    .map(Message::Markdown),
+                    .width(Length::Fill),
                 ),
                 CellPreview::Renderer(viewer) => Shader::new(viewer)
                     .width(Length::Fill)
-                    .height(Length::Fill)
+                    .height(Length::Shrink)
                     .into(),
             },
         });
@@ -128,7 +144,7 @@ impl Cell {
             title_bar,
             container(pane_grid)
                 .width(Length::Fill)
-                .height(Length::Fill)
+                .height(Length::Fixed(300.0))
                 .padding(10)
         ]
         .into()

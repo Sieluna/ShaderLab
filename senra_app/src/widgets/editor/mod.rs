@@ -80,6 +80,7 @@ impl Editor {
 
     pub fn view(&self) -> Element<Message> {
         let text_editor = TextEditor::new(&self.content)
+            .placeholder("Type your ideas here...")
             .padding(10)
             .highlight_with::<Highlighter>(
                 Settings {
