@@ -1,7 +1,15 @@
+mod bindings;
+mod content;
+mod editor;
 mod highlighter;
+mod state;
+mod style;
 
+use content::Content;
+use editor::TextEditor;
 use highlighter::{Highlighter, Settings};
-use iced::widget::{TextEditor, column, text_editor};
+use iced::advanced::text::editor::Action;
+use iced::widget::column;
 use iced::{Element, Task};
 
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -29,12 +37,12 @@ pub enum Message {
 
     Snapshoted(String),
 
-    ActionPerformed(text_editor::Action),
+    ActionPerformed(Action),
     WordWrapToggled(bool),
 }
 
 pub struct Editor {
-    content: text_editor::Content,
+    content: Content,
     theme: String,
     syntax: Syntax,
     word_wrap: bool,
@@ -46,7 +54,7 @@ impl Editor {
         let content = content.unwrap_or_default();
 
         Self {
-            content: text_editor::Content::with_text(&content),
+            content: Content::with_text(&content),
             theme: String::from("InspiredGitHub"),
             syntax,
             word_wrap: false,
@@ -82,7 +90,7 @@ impl Editor {
         let text_editor = TextEditor::new(&self.content)
             .placeholder("Type your ideas here...")
             .padding(10)
-            .highlight_with::<Highlighter>(
+            .highlight::<Highlighter>(
                 Settings {
                     theme: self.theme.clone(),
                     token: self.syntax.clone(),

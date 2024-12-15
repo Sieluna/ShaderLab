@@ -3,8 +3,7 @@ use std::ops::Range;
 use iced::advanced::text::highlighter;
 use iced::{Color, Font, font};
 use once_cell::sync::Lazy;
-use syntect::highlighting;
-use syntect::parsing;
+use syntect::{highlighting, parsing};
 
 use super::Syntax;
 
