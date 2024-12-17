@@ -108,33 +108,27 @@ impl<Message> Update<Message> {
         cursor: mouse::Cursor,
         key_binding: Option<&dyn Fn(KeyPress) -> Option<Binding<Message>>>,
     ) -> Option<Self> {
-        let binding = |binding| Some(Update::Binding(binding));
-
         match event {
             Event::Mouse(event) => match event {
                 mouse::Event::ButtonPressed(mouse::Button::Left) => {
                     if let Some(cursor_position) = cursor.position_in(bounds) {
-                        let cursor_position =
-                            cursor_position - Vector::new(padding.top, padding.left);
                         let click = mouse::Click::new(
-                            cursor_position,
+                            cursor_position - Vector::new(padding.top, padding.left),
                             mouse::Button::Left,
                             state.last_click,
                         );
                         Some(Update::Click(click))
                     } else if state.focus.is_some() {
-                        binding(Binding::Unfocus)
+                        Some(Update::Binding(Binding::Unfocus))
                     } else {
                         None
                     }
                 }
                 mouse::Event::ButtonReleased(mouse::Button::Left) => Some(Update::Release),
                 mouse::Event::CursorMoved { .. } => match state.drag_click {
-                    Some(mouse::click::Kind::Single) => {
-                        let cursor_position =
-                            cursor.position_in(bounds)? - Vector::new(padding.top, padding.left);
-                        Some(Update::Drag(cursor_position))
-                    }
+                    Some(mouse::click::Kind::Single) => Some(Update::Drag(
+                        cursor.position_in(bounds)? - Vector::new(padding.top, padding.left),
+                    )),
                     _ => None,
                 },
                 mouse::Event::WheelScrolled { delta } if cursor.is_over(bounds) => {
