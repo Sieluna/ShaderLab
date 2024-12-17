@@ -145,15 +145,6 @@ where
     }
 
     #[must_use]
-    pub fn style(mut self, style: impl Fn(&Theme, Status) -> Style + 'a) -> Self
-    where
-        Theme::Class<'a>: From<StyleFn<'a, Theme>>,
-    {
-        self.class = (Box::new(style) as StyleFn<'a, Theme>).into();
-        self
-    }
-
-    #[must_use]
     pub fn class(mut self, class: impl Into<Theme::Class<'a>>) -> Self {
         self.class = class.into();
         self
@@ -176,6 +167,7 @@ where
             focus: None,
             last_click: None,
             drag_click: None,
+            accumulate_scroll: 0.0,
             partial_scroll: 0.0,
             highlighter: RefCell::new(Highlighter::new(&self.highlighter_settings)),
             highlighter_settings: self.highlighter_settings.clone(),
@@ -256,7 +248,7 @@ where
         event: Event,
         layout: layout::Layout<'_>,
         cursor: mouse::Cursor,
-        _renderer: &Renderer,
+        renderer: &Renderer,
         clipboard: &mut dyn clipboard::Clipboard,
         shell: &mut Shell<'_, Message>,
         _viewport: &Rectangle,
@@ -332,13 +324,19 @@ where
             }
             Update::Scroll(lines) => {
                 let bounds = self.content.0.borrow().editor.bounds();
+                let line_count = self.content.0.borrow().editor.line_count();
 
                 if bounds.height >= i32::MAX as f32 {
                     return event::Status::Ignored;
                 }
 
+                let text_size = self.text_size.unwrap_or(renderer.default_size());
+                let line_height = self.line_height.to_absolute(text_size).0;
+                let max_scroll = (line_count as f32 - (bounds.height / line_height)).max(0.0);
+
                 let lines = lines + state.partial_scroll;
                 state.partial_scroll = lines.fract();
+                state.accumulate_scroll = (state.accumulate_scroll + lines).clamp(0.0, max_scroll);
 
                 shell.publish(on_edit(editor::Action::Scroll {
                     lines: lines as i32,
@@ -484,25 +482,28 @@ where
         let line_height = self.line_height.to_absolute(text_size).0;
 
         for i in 0..line_count {
-            let number = format!("{:>width$}", i + 1, width = digit_count);
-            let y = line_number_bounds.y + (i as f32 * line_height);
+            let y = line_number_bounds.y + (i as f32 - state.accumulate_scroll) * line_height;
 
-            renderer.fill_text(
-                text::Text {
-                    content: number,
-                    bounds: Size::new(line_number_bounds.width, line_height),
-                    size: text_size,
-                    line_height: self.line_height,
-                    font,
-                    horizontal_alignment: alignment::Horizontal::Left,
-                    vertical_alignment: alignment::Vertical::Top,
-                    shaping: text::Shaping::Advanced,
-                    wrapping: text::Wrapping::None,
-                },
-                Point::new(line_number_bounds.x, y),
-                style.line_number,
-                line_number_bounds,
-            );
+            if y + line_height >= line_number_bounds.y
+                && y <= line_number_bounds.y + line_number_bounds.height
+            {
+                renderer.fill_text(
+                    text::Text {
+                        content: format!("{:>width$}", i + 1, width = digit_count),
+                        bounds: Size::new(line_number_bounds.width, line_height),
+                        size: text_size,
+                        line_height: self.line_height,
+                        font,
+                        horizontal_alignment: alignment::Horizontal::Left,
+                        vertical_alignment: alignment::Vertical::Top,
+                        shaping: text::Shaping::Advanced,
+                        wrapping: text::Wrapping::None,
+                    },
+                    Point::new(line_number_bounds.x, y),
+                    style.line_number,
+                    line_number_bounds,
+                );
+            }
         }
 
         if internal.editor.is_empty() {

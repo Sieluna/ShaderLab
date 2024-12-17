@@ -8,6 +8,7 @@ pub struct State<Highlighter: text::Highlighter> {
     pub focus: Option<Focus>,
     pub last_click: Option<mouse::Click>,
     pub drag_click: Option<mouse::click::Kind>,
+    pub accumulate_scroll: f32,
     pub partial_scroll: f32,
     pub highlighter: RefCell<Highlighter>,
     pub highlighter_settings: Highlighter::Settings,
