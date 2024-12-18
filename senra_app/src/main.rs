@@ -2,13 +2,14 @@ mod global;
 mod network;
 mod pages;
 mod storage;
+mod widgets;
 
 use iced::{Element, Subscription, Task, Theme};
 use senra_api::Response;
 
 pub use global::{Global, Message as GlobalMessage};
 pub use network::{Message as NetworkMessage, Network, Protocol};
-pub use pages::{LoginPage, Message as PageMessage, Page};
+pub use pages::{Message as PageMessage, Page};
 pub use storage::{Message as StorageMessage, Storage};
 
 #[derive(Debug, Clone)]
@@ -44,7 +45,7 @@ impl ShaderLab {
             },
             Task::batch([
                 storage
-                    .update(StorageMessage::Load("auth_token".to_string()))
+                    .update(StorageMessage::Get("auth_token".to_string()))
                     .map(Message::Storage),
                 page_task.map(Message::Page),
             ]),
@@ -73,7 +74,7 @@ impl ShaderLab {
                                 .update(NetworkMessage::AuthToken(token))
                                 .map(Message::Network)
                         } else {
-                            self.page.update(PageMessage::ShowLogin).map(Message::Page)
+                            self.page.update(PageMessage::ShowAuth).map(Message::Page)
                         }
                     }
                     _ => Task::none(),
@@ -81,7 +82,7 @@ impl ShaderLab {
                 _ => Task::none(),
             },
             Message::Storage(event) => match event {
-                StorageMessage::Loaded(key, value) => {
+                StorageMessage::GetSuccess(key, value) => {
                     if key == "auth_token" {
                         if let Some(token) = value.and_then(|v| v.as_str().map(String::from)) {
                             return self

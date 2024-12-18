@@ -1,9 +1,12 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod native;
+#[cfg(target_arch = "wasm32")]
+mod web;
+
+use std::sync::Arc;
 
 use iced::Task;
 use serde_json::Value;
-use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error)]
 pub enum StorageError {
@@ -11,17 +14,17 @@ pub enum StorageError {
     Io(#[from] std::io::Error),
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
-    #[error("Path error: {0}")]
-    PathError(String),
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Save(String, Value),
-    Load(String),
+    Get(String),
+    Set(String, Value),
+    Remove(String),
 
-    Saved(String, bool),
-    Loaded(String, Option<Value>),
+    GetSuccess(String, Option<Value>),
+    SetSuccess(String),
+    RemoveSuccess(String),
 
     Error(String),
 }
@@ -42,12 +45,19 @@ pub struct Storage {
 
 impl Storage {
     pub fn new() -> Self {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let storage = native::FileStorage::new();
-            Self {
-                inner: Arc::new(storage),
+        let storage = {
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                native::FileStorage::new()
             }
+            #[cfg(target_arch = "wasm32")]
+            {
+                web::WebStorage::new()
+            }
+        };
+
+        Self {
+            inner: Arc::new(storage),
         }
     }
 
@@ -65,7 +75,7 @@ impl Storage {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::Save(key, value) => {
+            Message::Set(key, value) => {
                 let inner = self.inner.clone();
                 Task::perform(
                     async move {
@@ -73,12 +83,12 @@ impl Storage {
                         Ok(key)
                     },
                     |result| match result {
-                        Ok(key) => Message::Saved(key, true),
+                        Ok(key) => Message::SetSuccess(key),
                         Err(e) => Message::Error(e),
                     },
                 )
             }
-            Message::Load(key) => {
+            Message::Get(key) => {
                 let inner = self.inner.clone();
                 Task::perform(
                     async move {
@@ -86,7 +96,20 @@ impl Storage {
                         Ok((key, result))
                     },
                     |result| match result {
-                        Ok((key, value)) => Message::Loaded(key, value),
+                        Ok((key, value)) => Message::GetSuccess(key, value),
+                        Err(e) => Message::Error(e),
+                    },
+                )
+            }
+            Message::Remove(key) => {
+                let inner = self.inner.clone();
+                Task::perform(
+                    async move {
+                        inner.remove(&key).await.map_err(|e| e.to_string())?;
+                        Ok(key)
+                    },
+                    |result| match result {
+                        Ok(key) => Message::RemoveSuccess(key),
                         Err(e) => Message::Error(e),
                     },
                 )

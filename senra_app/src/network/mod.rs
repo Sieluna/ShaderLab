@@ -1,7 +1,7 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod native;
-// #[cfg(target_arch = "wasm32")]
-// mod web;
+#[cfg(target_arch = "wasm32")]
+mod web;
 
 use std::pin::Pin;
 use std::sync::Arc;
@@ -9,8 +9,7 @@ use std::sync::Arc;
 use iced::futures::channel::mpsc;
 use iced::futures::{SinkExt, Stream};
 use iced::{Subscription, Task};
-use senra_api::{Request, Response};
-use tokio_tungstenite::tungstenite::Utf8Bytes;
+use senra_api::{Endpoint, Request, Response};
 
 #[derive(Debug, thiserror::Error)]
 pub enum NetworkError {
@@ -19,7 +18,7 @@ pub enum NetworkError {
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
     #[error("HTTP error: {0}")]
-    Http(String),
+    Http(#[from] reqwest::Error),
     #[error("WebSocket error: {0}")]
     WebSocket(String),
 }
@@ -36,7 +35,7 @@ pub enum Message {
     Outgoing(Protocol, Request),
 
     Incoming(Response),
-    Connected(mpsc::Sender<Utf8Bytes>),
+    Connected(mpsc::Sender<String>),
     Disconnected,
     Submitted,
 
@@ -47,49 +46,49 @@ pub enum Message {
 pub trait NetworkInner: Send + Sync {
     fn subscription(&self) -> Pin<Box<dyn Stream<Item = Message> + Send>>;
 
-    async fn connect(&self, url: &str, token: Option<&str>) -> Result<Message, NetworkError>;
-
-    async fn fetch(
-        &self,
-        url: &str,
-        token: Option<&str>,
-        request: Request,
-    ) -> Result<Message, NetworkError>;
+    async fn connect(&self, url: &str) -> Result<Message, NetworkError>;
 }
 
 #[derive(Clone)]
 pub struct Network {
     inner: Arc<dyn NetworkInner>,
-    sender: Option<mpsc::Sender<Utf8Bytes>>,
+    client: reqwest::Client,
+    sender: Option<mpsc::Sender<String>>,
     base_url: String,
     auth_token: Option<String>,
 }
 
 impl Network {
     pub fn new(base_url: String) -> Self {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let network = native::NativeNetwork::new();
-            Self {
-                inner: Arc::new(network),
-                sender: None,
-                base_url,
-                auth_token: None,
+        let network = {
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                native::NativeNetwork::new()
             }
+            #[cfg(target_arch = "wasm32")]
+            {
+                web::WebNetwork::new()
+            }
+        };
+
+        Self {
+            inner: Arc::new(network),
+            client: reqwest::Client::new(),
+            sender: None,
+            base_url,
+            auth_token: None,
         }
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::AuthToken(token) => {
-                self.auth_token = Some(token);
+                let url = format!("{}/ws?token={}", &self.base_url, &token);
                 let inner = self.inner.clone();
-                let url = self.base_url.clone();
-                let token = self.auth_token.clone();
-                Task::perform(
-                    async move { inner.connect(url.as_ref(), token.as_deref()).await },
-                    |result| result.unwrap_or_else(|e| Message::Error(e.to_string())),
-                )
+                self.auth_token = Some(token);
+                Task::perform(async move { inner.connect(url.as_ref()).await }, |result| {
+                    result.unwrap_or_else(|e| Message::Error(e.to_string()))
+                })
             }
             Message::Outgoing(protocol, request) => match protocol {
                 Protocol::Http => self.handle_http(request),
@@ -108,12 +107,41 @@ impl Network {
     }
 
     fn handle_http(&self, request: Request) -> Task<Message> {
-        let inner = self.inner.clone();
+        let client = self.client.clone();
         let url = self.base_url.clone();
         let token = self.auth_token.clone();
+
         Task::perform(
-            async move { inner.fetch(url.as_ref(), token.as_deref(), request).await },
-            |result| result.unwrap_or_else(|e| Message::Error(e.to_string())),
+            async move {
+                let endpoint: Endpoint = request.to_owned().into();
+                let url = format!("{}{}", url, endpoint.path);
+                let mut headers = http::HeaderMap::new();
+                headers.insert(
+                    http::header::CONTENT_TYPE,
+                    "application/json".parse().unwrap(),
+                );
+                if let Some(token) = token {
+                    headers.insert(
+                        http::header::AUTHORIZATION,
+                        format!("Bearer {}", token).parse().unwrap(),
+                    );
+                }
+                let response = client
+                    .request(endpoint.method, &url)
+                    .headers(headers)
+                    .json(&request)
+                    .send()
+                    .await?;
+
+                if response.status().is_success() {
+                    let response: Response = response.json().await?;
+                    Ok(Message::Incoming(response))
+                } else {
+                    let error = response.text().await?;
+                    Ok(Message::Error(error))
+                }
+            },
+            |result| result.unwrap_or_else(|e: NetworkError| Message::Error(e.to_string())),
         )
     }
 
@@ -124,7 +152,7 @@ impl Network {
                     let message = serde_json::to_string(&request)?;
 
                     sender
-                        .send(message.into())
+                        .send(message)
                         .await
                         .map_err(|e| NetworkError::WebSocket(e.to_string()))?;
 
