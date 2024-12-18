@@ -113,7 +113,7 @@ impl Cell {
             button(" x ").on_press(Message::Delete),
         ]
         .push_maybe(match &self.preview {
-            CellPreview::Renderer { .. } => Some(button(" > ").on_press(Message::CompileShader)),
+            CellPreview::Renderer { .. } => Some(button(" ▶ ").on_press(Message::CompileShader)),
             _ => None,
         })
         .padding(8)

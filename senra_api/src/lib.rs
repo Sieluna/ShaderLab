@@ -1,6 +1,8 @@
 mod auth;
+mod notebook;
 
 pub use auth::*;
+pub use notebook::*;
 use http::Method;
 use serde::{Deserialize, Serialize};
 
@@ -26,10 +28,6 @@ pub const EDIT_USER: Endpoint = Endpoint {
     path: "/auth/edit",
     method: Method::PATCH,
 };
-pub const WEBSOCKET: Endpoint = Endpoint {
-    path: "/ws",
-    method: Method::GET,
-};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "payload")]
@@ -38,7 +36,6 @@ pub enum Request {
     Login(LoginRequest),
     Register(RegisterRequest),
     EditUser(EditRequest),
-    Ping,
 }
 
 impl From<Request> for Endpoint {
@@ -48,7 +45,6 @@ impl From<Request> for Endpoint {
             Request::Login(_) => LOGIN,
             Request::Register(_) => REGISTER,
             Request::EditUser(_) => EDIT_USER,
-            Request::Ping => WEBSOCKET,
         }
     }
 }
@@ -59,5 +55,4 @@ pub enum Response {
     Verify(VerifyResponse),
     User(UserResponse),
     Auth(AuthResponse),
-    Pong,
 }
