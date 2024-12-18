@@ -12,7 +12,7 @@ use iced::{Element, Length, Padding, Pixels, Point, Rectangle, Size, alignment, 
 use super::bindings::{Binding, KeyPress, Update};
 use super::content::Content;
 use super::state::{Focus, State};
-use super::style::{Catalog, Status, Style, StyleFn};
+use super::style::{Catalog, Status};
 
 pub struct TextEditor<'a, Highlighter, Message, Theme = iced::Theme, Renderer = iced::Renderer>
 where

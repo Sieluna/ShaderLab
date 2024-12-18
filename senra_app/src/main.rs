@@ -45,7 +45,7 @@ impl ShaderLab {
             },
             Task::batch([
                 storage
-                    .update(StorageMessage::Load("auth_token".to_string()))
+                    .update(StorageMessage::Get("auth_token".to_string()))
                     .map(Message::Storage),
                 page_task.map(Message::Page),
             ]),
@@ -82,7 +82,7 @@ impl ShaderLab {
                 _ => Task::none(),
             },
             Message::Storage(event) => match event {
-                StorageMessage::Loaded(key, value) => {
+                StorageMessage::GetSuccess(key, value) => {
                     if key == "auth_token" {
                         if let Some(token) = value.and_then(|v| v.as_str().map(String::from)) {
                             return self
