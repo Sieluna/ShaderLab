@@ -44,4 +44,4 @@ pub struct NotebookListResponse {
 pub struct NotebookVersionListResponse {
     pub versions: Vec<NotebookVersionResponse>,
     pub total: i64,
-} 
+}

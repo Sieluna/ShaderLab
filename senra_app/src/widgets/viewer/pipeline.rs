@@ -12,6 +12,9 @@ pub struct Pipeline {
     pipeline: wgpu::RenderPipeline,
 }
 
+unsafe impl Send for Pipeline {}
+unsafe impl Sync for Pipeline {}
+
 impl Pipeline {
     pub fn new(
         device: &wgpu::Device,

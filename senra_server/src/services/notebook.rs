@@ -1,5 +1,4 @@
 use sqlx::SqlitePool;
-use time::OffsetDateTime;
 
 use crate::errors::{NotebookError, Result};
 use crate::models::{Notebook, NotebookVersion};
@@ -11,9 +10,7 @@ pub struct NotebookService {
 
 impl NotebookService {
     pub fn new(pool: &SqlitePool) -> Self {
-        Self {
-            pool: pool.clone(),
-        }
+        Self { pool: pool.clone() }
     }
 
     pub async fn list_notebooks(
@@ -153,7 +150,7 @@ impl NotebookService {
             WHERE notebook_id = $1
             ORDER BY created_at DESC
             LIMIT $2 OFFSET $3
-            "#
+            "#,
         )
         .bind(notebook_id)
         .bind(per_page)
@@ -168,11 +165,10 @@ impl NotebookService {
             "#,
             notebook_id
         )
-        .bind(notebook_id)
         .fetch_one(&self.pool)
         .await?
         .count;
 
         Ok((versions, total))
     }
-} 
+}

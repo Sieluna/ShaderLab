@@ -1,8 +1,8 @@
 use axum::extract::{Path, Query, State};
 use axum::routing::get;
 use axum::{Json, Router};
-use serde::Deserialize;
 use senra_api::*;
+use serde::Deserialize;
 
 use crate::errors::Result;
 use crate::middleware::AuthUser;
@@ -18,12 +18,12 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/notebooks", get(list_notebooks).post(create_notebook))
         .route(
-            "/notebooks/:id",
+            "/notebooks/{id}",
             get(get_notebook)
                 .patch(update_notebook)
                 .delete(delete_notebook),
         )
-        .route("/notebooks/:id/versions", get(list_versions))
+        .route("/notebooks/{id}/versions", get(list_versions))
         .with_state(state)
 }
 
@@ -139,7 +139,7 @@ async fn delete_notebook(
 
 async fn list_versions(
     State(state): State<AppState>,
-    auth_user: AuthUser,
+    _auth_user: AuthUser,
     Path(id): Path<i64>,
     Query(pagination): Query<PaginationParams>,
 ) -> Result<Json<NotebookVersionListResponse>> {
@@ -166,5 +166,4 @@ async fn list_versions(
             .collect(),
         total,
     }))
-} 
- 
+}
