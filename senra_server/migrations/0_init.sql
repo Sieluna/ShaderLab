@@ -21,6 +21,18 @@ CREATE TABLE IF NOT EXISTS notebooks (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Create notebook_versions table
+CREATE TABLE IF NOT EXISTS notebook_versions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    notebook_id INTEGER NOT NULL,
+    version INTEGER NOT NULL,
+    content JSON NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by INTEGER NOT NULL,
+    FOREIGN KEY (notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+);
+
 -- Create resources table
 CREATE TABLE resources (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
