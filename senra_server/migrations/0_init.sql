@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS notebook_versions (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by INTEGER NOT NULL,
     FOREIGN KEY (notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE,
-    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Create resources table

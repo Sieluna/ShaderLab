@@ -37,7 +37,7 @@ impl NetworkInner for WebNetwork {
         let (tx, rx) = mpsc::unbounded();
 
         *self.event_tx.borrow_mut() = Some(tx);
-        
+
         Box::pin(rx)
     }
 
