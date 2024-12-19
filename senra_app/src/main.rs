@@ -2,6 +2,7 @@ mod global;
 mod network;
 mod pages;
 mod storage;
+mod styles;
 mod widgets;
 
 use iced::{Element, Subscription, Task, Theme};

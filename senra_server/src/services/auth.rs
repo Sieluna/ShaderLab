@@ -30,22 +30,22 @@ impl AuthService {
         }
     }
 
-    pub async fn register(&self, new_user: CreateUser) -> Result<(User, String)> {
-        if new_user.username.is_empty() {
+    pub async fn register(&self, create_user: CreateUser) -> Result<(User, String)> {
+        if create_user.username.is_empty() {
             Err(AuthError::InvalidUsername)?;
         }
 
-        if new_user.email.is_empty() {
+        if create_user.email.is_empty() {
             Err(AuthError::InvalidEmail)?;
         }
 
-        if new_user.password.is_empty() {
+        if create_user.password.is_empty() {
             Err(AuthError::InvalidPassword)?;
         }
 
         let existing_user = sqlx::query("SELECT id FROM users WHERE username = ? OR email = ?")
-            .bind(&new_user.username)
-            .bind(&new_user.email)
+            .bind(&create_user.username)
+            .bind(&create_user.email)
             .fetch_optional(&self.pool)
             .await?;
 
@@ -53,7 +53,7 @@ impl AuthService {
             Err(AuthError::UserExists)?;
         }
 
-        let password_hash = hash(new_user.password, DEFAULT_COST)
+        let password_hash = hash(create_user.password, DEFAULT_COST)
             .map_err(|_| AppError::InternalError("Failed to hash password".to_string()))?;
 
         let user: User = sqlx::query_as(
@@ -63,8 +63,8 @@ impl AuthService {
             RETURNING id, username, email, password, avatar_url, created_at, updated_at
             "#,
         )
-        .bind(new_user.username)
-        .bind(new_user.email)
+        .bind(create_user.username)
+        .bind(create_user.email)
         .bind(password_hash)
         .fetch_one(&self.pool)
         .await?;
