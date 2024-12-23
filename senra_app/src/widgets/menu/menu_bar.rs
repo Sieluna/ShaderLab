@@ -10,7 +10,7 @@ use super::menu_bar_overlay::MenuBarOverlay;
 use super::style::{Status, StyleFn};
 use super::*;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct MenuBarState {
     pub active_root: Index,
     pub open: bool,

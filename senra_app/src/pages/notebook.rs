@@ -16,7 +16,7 @@ pub enum Message {
     ShowButtons(Option<u32>),
 }
 
-pub struct Notebook {
+pub struct NotebookPage {
     cells: HashMap<u32, Cell>,
     cell_order: Vec<u32>,
     next_id: u32,
@@ -24,7 +24,7 @@ pub struct Notebook {
     hovered: Option<u32>,
 }
 
-impl Notebook {
+impl NotebookPage {
     pub fn new() -> (Self, Task<Message>) {
         (
             Self {

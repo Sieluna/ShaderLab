@@ -7,7 +7,7 @@ pub enum Message {
 }
 
 pub struct Global {
-    size: Size,
+    pub size: Size,
 }
 
 impl Global {

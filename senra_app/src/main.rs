@@ -4,6 +4,7 @@ mod pages;
 mod storage;
 mod widgets;
 
+use iced::widget::center;
 use iced::{Element, Subscription, Task, Theme};
 use senra_api::Response;
 
@@ -101,7 +102,7 @@ impl ShaderLab {
     }
 
     fn view(&self) -> Element<Message> {
-        self.page.view().map(Message::Page)
+        center(self.page.view().map(Message::Page)).into()
     }
 
     fn theme(&self) -> Theme {
