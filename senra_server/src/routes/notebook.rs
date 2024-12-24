@@ -106,7 +106,7 @@ async fn update_notebook(
     State(state): State<AppState>,
     auth_user: AuthUser,
     Path(id): Path<i64>,
-    Json(payload): Json<UpdateNotebookRequest>,
+    Json(payload): Json<EditNotebookRequest>,
 ) -> Result<Json<NotebookResponse>> {
     let notebook = state
         .services

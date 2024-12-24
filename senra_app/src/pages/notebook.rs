@@ -2,14 +2,17 @@ use std::collections::HashMap;
 
 use iced::widget::{button, column, container, mouse_area, row, scrollable};
 use iced::{Element, Length, Task};
+use senra_api::{Request, Response};
 
 use crate::widgets::{Cell, CellMessage, CellType};
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    Send(Request),
+    Receive(Response),
+
     CreateCell(CellType, Option<u32>),
     RemoveCell(u32),
-
     MoveUp(u32),
     MoveDown(u32),
     Cell(u32, CellMessage),
@@ -25,7 +28,7 @@ pub struct NotebookPage {
 }
 
 impl NotebookPage {
-    pub fn new() -> (Self, Task<Message>) {
+    pub fn new(id: Option<u64>) -> (Self, Task<Message>) {
         (
             Self {
                 cells: HashMap::new(),
@@ -34,12 +37,17 @@ impl NotebookPage {
                 selected: None,
                 hovered: None,
             },
-            Task::none(),
+            id.map_or(Task::none(), |id| {
+                Task::done(Message::Send(Request::GetNotebook(id)))
+            }),
         )
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::Receive(response) => match response {
+                _ => Task::none(),
+            },
             Message::CreateCell(cell_type, position) => {
                 let id = self.next_id;
                 self.next_id += 1;
@@ -100,6 +108,7 @@ impl NotebookPage {
                 self.hovered = cell_id;
                 Task::none()
             }
+            _ => Task::none(),
         }
     }
 

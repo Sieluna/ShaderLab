@@ -18,13 +18,13 @@ pub enum StorageError {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Get(String),
-    Set(String, Value),
-    Remove(String),
+    GetRequest(String),
+    SetRequest(String, Value),
+    RemoveRequest(String),
 
-    GetSuccess(String, Option<Value>),
-    SetSuccess(String),
-    RemoveSuccess(String),
+    GetRespond(String, Option<Value>),
+    SetRespond(String),
+    RemoveRespond(String),
 
     Error(String),
 }
@@ -75,7 +75,7 @@ impl Storage {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::Set(key, value) => {
+            Message::SetRequest(key, value) => {
                 let inner = self.inner.clone();
                 Task::perform(
                     async move {
@@ -83,12 +83,12 @@ impl Storage {
                         Ok(key)
                     },
                     |result| match result {
-                        Ok(key) => Message::SetSuccess(key),
+                        Ok(key) => Message::SetRespond(key),
                         Err(e) => Message::Error(e),
                     },
                 )
             }
-            Message::Get(key) => {
+            Message::GetRequest(key) => {
                 let inner = self.inner.clone();
                 Task::perform(
                     async move {
@@ -96,12 +96,12 @@ impl Storage {
                         Ok((key, result))
                     },
                     |result| match result {
-                        Ok((key, value)) => Message::GetSuccess(key, value),
+                        Ok((key, value)) => Message::GetRespond(key, value),
                         Err(e) => Message::Error(e),
                     },
                 )
             }
-            Message::Remove(key) => {
+            Message::RemoveRequest(key) => {
                 let inner = self.inner.clone();
                 Task::perform(
                     async move {
@@ -109,7 +109,7 @@ impl Storage {
                         Ok(key)
                     },
                     |result| match result {
-                        Ok(key) => Message::RemoveSuccess(key),
+                        Ok(key) => Message::RemoveRespond(key),
                         Err(e) => Message::Error(e),
                     },
                 )

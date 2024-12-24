@@ -8,7 +8,7 @@ pub struct CreateNotebookRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UpdateNotebookRequest {
+pub struct EditNotebookRequest {
     pub title: Option<String>,
     pub content: Option<Value>,
 }

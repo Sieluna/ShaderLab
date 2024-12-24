@@ -14,6 +14,8 @@ pub use network::{Message as NetworkMessage, Network, Protocol};
 pub use pages::{Message as PageMessage, Page};
 pub use storage::{Message as StorageMessage, Storage};
 
+const TOKEN_KEY: &str = "auth_token";
+
 #[derive(Debug, Clone)]
 pub enum Message {
     ToggleTheme,
@@ -47,7 +49,7 @@ impl ShaderLab {
             },
             Task::batch([
                 storage
-                    .update(StorageMessage::Get("auth_token".to_string()))
+                    .update(StorageMessage::GetRequest(TOKEN_KEY.to_string()))
                     .map(Message::Storage),
                 page_task.map(Message::Page),
             ]),
@@ -65,40 +67,55 @@ impl ShaderLab {
                 Task::none()
             }
             Message::Network(event) => match event {
-                NetworkMessage::Incoming(response) => match response {
-                    Response::Auth(auth) => self
-                        .network
-                        .update(NetworkMessage::AuthToken(auth.token.clone()))
-                        .map(Message::Network),
-                    Response::Verify(verify) => {
+                NetworkMessage::MessageRespond(response) => match response {
+                    Response::Auth(auth) => Task::batch([
+                        self
+                            .page
+                            .update(PageMessage::ShowAuthRequest)
+                            .map(Message::Page),
+                        self
+                           .network
+                            .update(NetworkMessage::ConnectRequest(auth.token.clone()))
+                            .map(Message::Network)
+                    ]),
+                    Response::Token(verify) => {
                         if let Some(token) = verify.token {
                             self.network
-                                .update(NetworkMessage::AuthToken(token))
+                                .update(NetworkMessage::ConnectRequest(token))
                                 .map(Message::Network)
                         } else {
-                            self.page.update(PageMessage::ShowAuth).map(Message::Page)
+                            self.page
+                                .update(PageMessage::ShowAuthRequest)
+                                .map(Message::Page)
                         }
                     }
-                    _ => Task::none(),
+                    _ => self
+                        .page
+                        .update(PageMessage::Receive(response))
+                        .map(Message::Page),
                 },
                 _ => Task::none(),
             },
             Message::Storage(event) => match event {
-                StorageMessage::GetSuccess(key, value) => {
-                    if key == "auth_token" {
-                        if let Some(token) = value.and_then(|v| v.as_str().map(String::from)) {
-                            return self
-                                .network
-                                .update(NetworkMessage::AuthToken(token))
-                                .map(Message::Network);
-                        }
+                StorageMessage::GetRespond(key, value) if key == TOKEN_KEY => {
+                    if let Some(token) = value.and_then(|v| v.as_str().map(String::from)) {
+                        self.network
+                            .update(NetworkMessage::ConnectRequest(token))
+                            .map(Message::Network)
+                    } else {
+                        Task::none()
                     }
-                    Task::none()
                 }
                 _ => Task::none(),
             },
             Message::Global(message) => self.global.update(message).map(Message::Global),
-            Message::Page(message) => self.page.update(message).map(Message::Page),
+            Message::Page(message) => match message {
+                PageMessage::Send(protocol, request) => self
+                    .network
+                    .update(NetworkMessage::MessageRequest(protocol, request))
+                    .map(Message::Network),
+                _ => self.page.update(message).map(Message::Page),
+            },
         }
     }
 

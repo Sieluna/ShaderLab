@@ -1,6 +1,11 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthRequest {
+    pub token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoginRequest {
     pub username: String,
     pub password: String,
@@ -14,16 +19,16 @@ pub struct RegisterRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VerifyRequest {
-    pub token: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EditRequest {
+pub struct EditUserRequest {
     pub username: Option<String>,
     pub email: Option<String>,
     pub password: Option<String>,
     pub avatar_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TokenResponse {
+    pub token: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,9 +42,4 @@ pub struct UserResponse {
 pub struct AuthResponse {
     pub user: UserResponse,
     pub token: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VerifyResponse {
-    pub token: Option<String>,
 }

@@ -12,39 +12,60 @@ pub struct Endpoint {
     pub method: Method,
 }
 
-pub const AUTH_TOKEN: Endpoint = Endpoint {
-    path: "/auth/verify",
-    method: Method::POST,
-};
-pub const LOGIN: Endpoint = Endpoint {
-    path: "/auth/login",
-    method: Method::POST,
-};
-pub const REGISTER: Endpoint = Endpoint {
-    path: "/auth/register",
-    method: Method::POST,
-};
-pub const EDIT_USER: Endpoint = Endpoint {
-    path: "/auth/edit",
-    method: Method::PATCH,
-};
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "payload")]
 pub enum Request {
-    Verify(VerifyRequest),
+    Auth(AuthRequest),
     Login(LoginRequest),
     Register(RegisterRequest),
-    EditUser(EditRequest),
+    EditUser(EditUserRequest),
+
+    GetNotebookList,
+    GetNotebook(u64),
+    CreateNotebook(CreateNotebookRequest),
+    EditNotebook(u64, EditNotebookRequest),
+    RemoveNotebook(u64),
 }
 
 impl From<Request> for Endpoint {
     fn from(request: Request) -> Self {
         match request {
-            Request::Verify(_) => AUTH_TOKEN,
-            Request::Login(_) => LOGIN,
-            Request::Register(_) => REGISTER,
-            Request::EditUser(_) => EDIT_USER,
+            Request::Auth(_) => Endpoint {
+                path: "/auth/verify",
+                method: Method::POST,
+            },
+            Request::Login(_) => Endpoint {
+                path: "/auth/login",
+                method: Method::POST,
+            },
+            Request::Register(_) => Endpoint {
+                path: "/auth/register",
+                method: Method::POST,
+            },
+            Request::EditUser(_) => Endpoint {
+                path: "/auth/edit",
+                method: Method::PATCH,
+            },
+            Request::GetNotebookList => Endpoint {
+                path: "/notebooks",
+                method: Method::GET,
+            },
+            Request::GetNotebook(_) => Endpoint {
+                path: "/notebooks/{id}",
+                method: Method::GET,
+            },
+            Request::CreateNotebook(_) => Endpoint {
+                path: "/notebooks",
+                method: Method::POST,
+            },
+            Request::EditNotebook(_, _) => Endpoint {
+                path: "/notebooks/{id}",
+                method: Method::PATCH,
+            },
+            Request::RemoveNotebook(_) => Endpoint {
+                path: "/notebooks/{id}",
+                method: Method::DELETE,
+            },
         }
     }
 }
@@ -52,7 +73,10 @@ impl From<Request> for Endpoint {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "payload")]
 pub enum Response {
-    Verify(VerifyResponse),
+    Token(TokenResponse),
     User(UserResponse),
     Auth(AuthResponse),
+
+    Notebook(NotebookResponse),
+    NotebookList(NotebookListResponse),
 }

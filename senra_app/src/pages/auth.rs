@@ -4,9 +4,8 @@ use senra_api::{LoginRequest, RegisterRequest, Request};
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    Send(Request),
     Error(String),
-
-    Submit(Request),
 
     Switch(AuthState),
     InputUsername(String),
@@ -85,7 +84,7 @@ impl AuthPage {
                     return Task::none();
                 }
                 self.error_message = None;
-                Task::done(Message::Submit(Request::Login(LoginRequest {
+                Task::done(Message::Send(Request::Login(LoginRequest {
                     username: self.username.clone(),
                     password: self.password.clone(),
                 })))
@@ -96,7 +95,7 @@ impl AuthPage {
                     return Task::none();
                 }
                 self.error_message = None;
-                Task::done(Message::Submit(Request::Register(RegisterRequest {
+                Task::done(Message::Send(Request::Register(RegisterRequest {
                     username: self.username.clone(),
                     email: self.email.clone(),
                     password: self.password.clone(),

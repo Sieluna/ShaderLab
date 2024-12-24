@@ -19,12 +19,12 @@ pub fn router(state: AppState) -> Router {
 
 async fn verify_token(
     State(state): State<AppState>,
-    Json(payload): Json<VerifyRequest>,
-) -> Result<Json<VerifyResponse>> {
+    Json(payload): Json<AuthRequest>,
+) -> Result<Json<TokenResponse>> {
     let auth_service = state.services.auth;
     let token = auth_service.refresh_token(&payload.token).await?;
 
-    Ok(Json(VerifyResponse { token }))
+    Ok(Json(TokenResponse { token }))
 }
 
 async fn login(
@@ -75,7 +75,7 @@ async fn register(
 async fn edit_user(
     State(state): State<AppState>,
     auth_user: AuthUser,
-    Json(payload): Json<EditRequest>,
+    Json(payload): Json<EditUserRequest>,
 ) -> Result<Json<UserResponse>> {
     let user = state
         .services
