@@ -2,8 +2,8 @@ mod auth;
 mod notebook;
 
 pub use auth::*;
-pub use notebook::*;
 use http::Method;
+pub use notebook::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]

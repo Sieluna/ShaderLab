@@ -1,6 +1,7 @@
+use sqlx::SqlitePool;
+
 use crate::config::Config;
 use crate::errors::{AppError, Result};
-use sqlx::SqlitePool;
 
 #[derive(Clone)]
 pub struct Database {
