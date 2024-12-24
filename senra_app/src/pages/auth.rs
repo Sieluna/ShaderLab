@@ -157,11 +157,11 @@ impl AuthPage {
                     .width(Length::Fill)
                     .padding([8, 12]),
             )
-            .push_maybe(self.error_message.as_ref().map(|error| {
-                text(error)
-                    .size(14)
-                    .color(Color::from_rgb(1.0, 0.0, 0.0))
-            }))
+            .push_maybe(
+                self.error_message
+                    .as_ref()
+                    .map(|error| text(error).size(14).color(Color::from_rgb(1.0, 0.0, 0.0))),
+            )
             .push(
                 checkbox("Show password", self.show_password)
                     .on_toggle(|_| Message::ToggleShowPassword)

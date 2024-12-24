@@ -1,4 +1,5 @@
 mod auth;
+mod home;
 mod notebook;
 
 use iced::widget::{button, center, column, container, row, text, text_input};
@@ -6,6 +7,7 @@ use iced::{Alignment, Element, Length, Renderer, Task, Theme};
 use senra_api::{Request, Response};
 
 use auth::{AuthPage, Message as AuthMessage};
+use home::{HomePage, Message as HomeMessage};
 use notebook::{Message as NotebookMessage, NotebookPage};
 
 use crate::Protocol;
@@ -21,11 +23,13 @@ pub enum Message {
     Request(Protocol, Request),
 
     Auth(AuthMessage),
+    Home(HomeMessage),
     Notebook(NotebookMessage),
 }
 
 pub enum PageState {
     Login(AuthPage),
+    Home(HomePage),
     Notebook(NotebookPage),
 }
 
@@ -35,12 +39,12 @@ pub struct Page {
 
 impl Page {
     pub fn new() -> (Self, Task<Message>) {
-        let (page, task) = AuthPage::new();
+        let (page, task) = HomePage::new();
         (
             Self {
-                state: PageState::Login(page),
+                state: PageState::Home(page),
             },
-            task.map(Message::Auth),
+            task.map(Message::Home),
         )
     }
 
@@ -52,10 +56,9 @@ impl Page {
                 task.map(Message::Auth)
             }
             Message::ShowHome => {
-                // let (page, task) = HomePage::new();
-                // self.state = PageState::Home(page);
-                // task.map(Message::Home)
-                Task::none()
+                let (page, task) = HomePage::new();
+                self.state = PageState::Home(page);
+                task.map(Message::Home)
             }
             Message::ShowNotebook => {
                 let (page, task) = NotebookPage::new();
@@ -64,6 +67,10 @@ impl Page {
             }
             Message::Auth(message) => match &mut self.state {
                 PageState::Login(page) => page.update(message).map(Message::Auth),
+                _ => Task::none(),
+            },
+            Message::Home(message) => match &mut self.state {
+                PageState::Home(page) => page.update(message).map(Message::Home),
                 _ => Task::none(),
             },
             Message::Notebook(message) => match &mut self.state {
@@ -83,6 +90,7 @@ impl Page {
                     }
                     _ => Task::none(),
                 },
+                PageState::Home(page) => Task::none(),
                 PageState::Notebook(page) => Task::none(),
             },
             Message::Request(protocol, request) => Task::done(Message::Request(protocol, request)),
@@ -176,8 +184,8 @@ impl Page {
         // Main content
         let content = match &self.state {
             PageState::Login(page) => page.view().map(Message::Auth),
+            PageState::Home(page) => page.view().map(Message::Home),
             PageState::Notebook(page) => page.view().map(Message::Notebook),
-            _ => text("Not implemented").size(20).into(),
         };
 
         column![menu_bar, center(content)].into()
