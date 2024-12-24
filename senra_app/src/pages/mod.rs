@@ -2,8 +2,9 @@ mod auth;
 mod home;
 mod notebook;
 
-use iced::widget::{button, center, column, container, row, text, text_input};
+use iced::widget::{button, center, column, container, image, row, text, text_input};
 use iced::{Alignment, Element, Length, Renderer, Task, Theme};
+use iced::advanced::image::Handle;
 use senra_api::{Request, Response};
 
 use auth::{AuthPage, Message as AuthMessage};
@@ -17,7 +18,7 @@ use crate::{NetworkMessage, Protocol, StorageMessage};
 pub struct User {
     id: u64,
     username: String,
-    // avatar:
+    avatar: Vec<u8>,
 }
 
 #[derive(Debug, Clone)]
@@ -163,7 +164,7 @@ impl Page {
         let right_bar = row![]
             .push(match &self.current_user {
                 Some(user) => {
-                    button(user)
+                    button(image(Handle::from_bytes(user.avatar.clone())))
                         .width(Length::Shrink)
                         .padding([6, 12])
                         .on_press(Message::ShowHomeRequest)
