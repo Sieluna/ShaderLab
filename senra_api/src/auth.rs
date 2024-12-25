@@ -23,7 +23,7 @@ pub struct EditUserRequest {
     pub username: Option<String>,
     pub email: Option<String>,
     pub password: Option<String>,
-    pub avatar_url: Option<String>,
+    pub avatar: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,7 +35,7 @@ pub struct TokenResponse {
 pub struct UserResponse {
     pub username: String,
     pub email: String,
-    pub avatar_url: String,
+    pub avatar: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

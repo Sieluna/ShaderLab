@@ -1,11 +1,13 @@
 use iced::widget::{button, checkbox, column, container, row, text, text_input};
 use iced::{Alignment, Color, Element, Length, Task};
-use senra_api::{LoginRequest, RegisterRequest, Request};
+use senra_api::{LoginRequest, RegisterRequest};
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Send(Request),
-    Error(String),
+    ErrorRequest(String),
+
+    LoginRespond(LoginRequest),
+    RegisterRespond(RegisterRequest),
 
     Switch(AuthState),
     InputUsername(String),
@@ -50,7 +52,7 @@ impl AuthPage {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::Error(error) => {
+            Message::ErrorRequest(error) => {
                 self.error_message = Some(error);
                 Task::none()
             }
@@ -84,10 +86,10 @@ impl AuthPage {
                     return Task::none();
                 }
                 self.error_message = None;
-                Task::done(Message::Send(Request::Login(LoginRequest {
+                Task::done(Message::LoginRespond(LoginRequest {
                     username: self.username.clone(),
                     password: self.password.clone(),
-                })))
+                }))
             }
             Message::ClickRegister => {
                 if self.username.is_empty() || self.email.is_empty() || self.password.is_empty() {
@@ -95,19 +97,20 @@ impl AuthPage {
                     return Task::none();
                 }
                 self.error_message = None;
-                Task::done(Message::Send(Request::Register(RegisterRequest {
+                Task::done(Message::RegisterRespond(RegisterRequest {
                     username: self.username.clone(),
                     email: self.email.clone(),
                     password: self.password.clone(),
-                })))
+                }))
             }
-            _ => {
+            Message::Clear => {
                 self.username.clear();
                 self.email.clear();
                 self.password.clear();
                 self.error_message = None;
                 Task::none()
             }
+            _ => Task::none(),
         }
     }
 

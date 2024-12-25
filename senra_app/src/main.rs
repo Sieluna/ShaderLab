@@ -8,6 +8,7 @@ mod widgets;
 use iced::widget::center;
 use iced::{Element, Subscription, Task, Theme};
 use senra_api::Response;
+use tracing::warn;
 
 pub use global::{Global, Message as GlobalMessage};
 pub use network::{Message as NetworkMessage, Network, Protocol};
@@ -69,19 +70,17 @@ impl ShaderLab {
             Message::Network(event) => match event {
                 NetworkMessage::MessageRespond(response) => match response {
                     Response::Auth(auth) => Task::batch([
-                        self
-                            .page
-                            .update(PageMessage::ShowAuthRequest)
+                        self.page
+                            .update(PageMessage::Receive(Response::Auth(auth.clone())))
                             .map(Message::Page),
-                        self
-                           .network
+                        self.network
                             .update(NetworkMessage::ConnectRequest(auth.token.clone()))
-                            .map(Message::Network)
+                            .map(Message::Network),
                     ]),
                     Response::Token(verify) => {
-                        if let Some(token) = verify.token {
+                        if let Some(token) = &verify.token {
                             self.network
-                                .update(NetworkMessage::ConnectRequest(token))
+                                .update(NetworkMessage::ConnectRequest(token.clone()))
                                 .map(Message::Network)
                         } else {
                             self.page
@@ -94,6 +93,10 @@ impl ShaderLab {
                         .update(PageMessage::Receive(response))
                         .map(Message::Page),
                 },
+                NetworkMessage::Error(error) => {
+                    warn!("Network connection error: {}", error);
+                    Task::none()
+                }
                 _ => Task::none(),
             },
             Message::Storage(event) => match event {
@@ -141,7 +144,17 @@ impl ShaderLab {
 
 fn main() -> iced::Result {
     #[cfg(not(target_arch = "wasm32"))]
-    tracing_subscriber::fmt::init();
+    {
+        tracing_subscriber::fmt()
+            .with_env_filter(
+                tracing_subscriber::EnvFilter::from_default_env().add_directive(
+                    format!("{}=debug", env!("CARGO_CRATE_NAME"))
+                        .parse()
+                        .unwrap(),
+                ),
+            )
+            .init();
+    }
 
     iced::application(ShaderLab::title, ShaderLab::update, ShaderLab::view)
         .subscription(ShaderLab::subscription)

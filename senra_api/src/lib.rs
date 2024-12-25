@@ -27,6 +27,23 @@ pub enum Request {
     RemoveNotebook(u64),
 }
 
+impl Request {
+    pub fn serialize_for_http(&self) -> serde_json::Value {
+        match self {
+            Request::Auth(req) => serde_json::to_value(req).unwrap(),
+            Request::Login(req) => serde_json::to_value(req).unwrap(),
+            Request::Register(req) => serde_json::to_value(req).unwrap(),
+            Request::EditUser(req) => serde_json::to_value(req).unwrap(),
+
+            Request::CreateNotebook(req) => serde_json::to_value(req).unwrap(),
+            Request::EditNotebook(_, req) => serde_json::to_value(req).unwrap(),
+            Request::GetNotebookList => serde_json::Value::Null,
+            Request::GetNotebook(id) => serde_json::to_value(id).unwrap(),
+            Request::RemoveNotebook(id) => serde_json::to_value(id).unwrap(),
+        }
+    }
+}
+
 impl From<Request> for Endpoint {
     fn from(request: Request) -> Self {
         match request {
@@ -79,4 +96,24 @@ pub enum Response {
 
     Notebook(NotebookResponse),
     NotebookList(NotebookListResponse),
+}
+
+impl Response {
+    pub fn deserialize_from_http(value: serde_json::Value) -> Result<Self, serde_json::Error> {
+        if let Ok(auth) = serde_json::from_value::<AuthResponse>(value.clone()) {
+            return Ok(Response::Auth(auth));
+        }
+        if let Ok(token) = serde_json::from_value::<TokenResponse>(value.clone()) {
+            return Ok(Response::Token(token));
+        }
+
+        if let Ok(notebook) = serde_json::from_value::<NotebookResponse>(value.clone()) {
+            return Ok(Response::Notebook(notebook));
+        }
+        if let Ok(notebook_list) = serde_json::from_value::<NotebookListResponse>(value.clone()) {
+            return Ok(Response::NotebookList(notebook_list));
+        }
+
+        serde_json::from_value(value)
+    }
 }

@@ -2,36 +2,48 @@ mod auth;
 mod home;
 mod notebook;
 
+use iced::advanced::image::Handle;
 use iced::widget::{button, center, column, container, image, row, text, text_input};
 use iced::{Alignment, Element, Length, Renderer, Task, Theme};
-use iced::advanced::image::Handle;
-use senra_api::{Request, Response};
+use senra_api::{Request, Response, UserResponse};
+use tracing::{debug, info};
 
 use auth::{AuthPage, Message as AuthMessage};
 use home::{HomePage, Message as HomeMessage};
 use notebook::{Message as NotebookMessage, NotebookPage};
 
 use crate::widgets::menu::{Item, Menu, MenuBar};
-use crate::{NetworkMessage, Protocol, StorageMessage};
+use crate::{Protocol, StorageMessage};
 
 #[derive(Debug, Clone)]
 pub struct User {
-    id: u64,
     username: String,
     avatar: Vec<u8>,
 }
 
+impl From<UserResponse> for User {
+    fn from(message: UserResponse) -> Self {
+        User {
+            username: message.username,
+            avatar: message.avatar,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Message {
-    LoginRequest(User),
     ShowAuthRequest,
     ShowHomeRequest,
     ShowNotebookRequest(Option<u64>),
 
     LogoutRespond,
+    Noop,
 
     Send(Protocol, Request),
     Receive(Response),
+
+    SearchInputChanged(String),
+    SearchSubmit,
 
     Auth(AuthMessage),
     Home(HomeMessage),
@@ -48,6 +60,7 @@ pub enum PageState {
 pub struct Page {
     state: PageState,
     current_user: Option<User>,
+    search_input: String,
 }
 
 impl Page {
@@ -57,6 +70,7 @@ impl Page {
             Self {
                 state: PageState::Home(page),
                 current_user: None,
+                search_input: String::new(),
             },
             task.map(Message::Home),
         )
@@ -64,10 +78,6 @@ impl Page {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::LoginRequest(user) => {
-                self.current_user = Some(user);
-                Task::none()
-            },
             Message::ShowAuthRequest => {
                 let (page, task) = AuthPage::new();
                 self.state = PageState::Login(page);
@@ -89,10 +99,33 @@ impl Page {
                 self.state = PageState::Home(page);
                 task.map(Message::Home)
             }
-            Message::Send(protocol, request) => Task::done(Message::Send(protocol, request)),
-            Message::Receive(response) => Task::done(Message::Receive(response)),
+            Message::Receive(response) => {
+                debug!("Received response: {:?}", response);
+                match response {
+                    Response::Auth(auth) => {
+                        self.current_user = Some(auth.user.into());
+                        let (page, task) = HomePage::new();
+                        self.state = PageState::Home(page);
+                        task.map(Message::Home)
+                    }
+                    _ => Task::none(),
+                }
+            }
             Message::Auth(message) => match &mut self.state {
-                PageState::Login(page) => page.update(message).map(Message::Auth),
+                PageState::Login(page) => Task::batch([
+                    match &message {
+                        AuthMessage::LoginRespond(request) => {
+                            let request = Request::Login(request.to_owned());
+                            Task::done(Message::Send(Protocol::Http, request))
+                        }
+                        AuthMessage::RegisterRespond(request) => {
+                            let request = Request::Register(request.to_owned());
+                            Task::done(Message::Send(Protocol::Http, request))
+                        }
+                        _ => Task::none(),
+                    },
+                    page.update(message).map(Message::Auth),
+                ]),
                 _ => Task::none(),
             },
             Message::Home(message) => match &mut self.state {
@@ -100,9 +133,22 @@ impl Page {
                 _ => Task::none(),
             },
             Message::Notebook(message) => match &mut self.state {
-                PageState::Notebook(page) => page.update(message).map(Message::Notebook),
+                PageState::Notebook(page) => Task::batch([
+                    match &message {
+                        NotebookMessage::Send(request) => {
+                            Task::done(Message::Send(Protocol::Http, request.to_owned()))
+                        }
+                        _ => Task::none(),
+                    },
+                    page.update(message).map(Message::Notebook),
+                ]),
                 _ => Task::none(),
             },
+            Message::SearchInputChanged(value) => {
+                self.search_input = value;
+                Task::none()
+            }
+            _ => Task::none(),
         }
     }
 
@@ -117,7 +163,10 @@ impl Page {
                     .style(button::primary),
             ),
             Item::with_menu(
-                button("File").width(Length::Shrink).style(button::primary),
+                button("File")
+                    .width(Length::Shrink)
+                    .on_press(Message::Noop)
+                    .style(button::primary),
                 Menu::new(vec![
                     Item::new(
                         button("New")
@@ -146,7 +195,10 @@ impl Page {
                 .spacing(6),
             ),
             Item::with_menu(
-                button("Help").width(Length::Shrink).style(button::primary),
+                button("Help")
+                    .width(Length::Shrink)
+                    .on_press(Message::Noop)
+                    .style(button::primary),
                 Menu::new(vec![Item::new(
                     button("About")
                         .width(Length::Fill)
@@ -163,27 +215,26 @@ impl Page {
 
         let right_bar = row![]
             .push(match &self.current_user {
-                Some(user) => {
-                    button(image(Handle::from_bytes(user.avatar.clone())))
-                        .width(Length::Shrink)
-                        .padding([6, 12])
-                        .on_press(Message::ShowHomeRequest)
-                        .style(button::primary)
-                }
-                None => {
-                    button("Login")
-                        .width(Length::Shrink)
-                        .padding([6, 12])
-                        .on_press(Message::ShowAuthRequest)
-                        .style(button::primary)
-                }
+                Some(user) => button(
+                    image(Handle::from_bytes(user.avatar.clone()))
+                        .width(Length::Fixed(24.0))
+                        .height(Length::Fixed(24.0)),
+                )
+                .width(Length::Shrink)
+                .on_press(Message::ShowHomeRequest)
+                .style(button::primary),
+                None => button("Login")
+                    .width(Length::Shrink)
+                    .padding([6, 12])
+                    .on_press(Message::ShowAuthRequest)
+                    .style(button::primary),
             })
             .push(
                 button("+ Notebook")
                     .width(Length::Shrink)
                     .padding([6, 12])
                     .on_press(Message::ShowNotebookRequest(None))
-                    .style(button::primary)
+                    .style(button::primary),
             )
             .spacing(12);
 
@@ -191,9 +242,11 @@ impl Page {
             container(left_bar)
                 .align_x(Alignment::Start)
                 .width(Length::FillPortion(1)),
-            text_input("Search...", "")
+            text_input("Search...", &self.search_input)
                 .width(Length::FillPortion(1))
-                .padding([6, 10]),
+                .padding([6, 10])
+                .on_input(Message::SearchInputChanged)
+                .on_submit(Message::SearchSubmit),
             container(right_bar)
                 .align_x(Alignment::End)
                 .width(Length::FillPortion(1)),

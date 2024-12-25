@@ -43,7 +43,7 @@ async fn login(
         user: UserResponse {
             username: user.username,
             email: user.email,
-            avatar_url: user.avatar_url.unwrap_or_default(),
+            avatar: user.avatar.unwrap_or_default(),
         },
         token,
     }))
@@ -66,7 +66,7 @@ async fn register(
         user: UserResponse {
             username: user.username,
             email: user.email,
-            avatar_url: user.avatar_url.unwrap_or_default(),
+            avatar: user.avatar.unwrap_or_default(),
         },
         token,
     }))
@@ -86,7 +86,7 @@ async fn edit_user(
                 username: payload.username,
                 email: payload.email,
                 password: payload.password,
-                avatar_url: payload.avatar_url,
+                avatar: payload.avatar,
             },
         )
         .await?;
@@ -94,6 +94,6 @@ async fn edit_user(
     Ok(Json(UserResponse {
         username: user.username,
         email: user.email,
-        avatar_url: user.avatar_url.unwrap_or_default(),
+        avatar: user.avatar.unwrap_or_default(),
     }))
 }

@@ -88,7 +88,11 @@ impl Network {
                 Protocol::WebSocket => self.handle_websocket(request),
             },
             Message::ConnectRequest(token) => {
-                let url = format!("{}/ws?token={}", &self.base_url, &token);
+                let url = format!(
+                    "{}/ws?token={}",
+                    self.base_url.replace("http", "ws"),
+                    &token
+                );
                 let inner = self.inner.clone();
                 self.auth_token = Some(token);
                 Task::perform(async move { inner.connect(url.as_ref()).await }, |result| {
@@ -134,12 +138,13 @@ impl Network {
                 let response = client
                     .request(endpoint.method, &url)
                     .headers(headers)
-                    .json(&request)
+                    .json(&request.serialize_for_http())
                     .send()
                     .await?;
 
                 if response.status().is_success() {
-                    let response: Response = response.json().await?;
+                    let value: serde_json::Value = response.json().await?;
+                    let response = Response::deserialize_from_http(value)?;
                     Ok(Message::MessageRespond(response))
                 } else {
                     let error = response.text().await?;

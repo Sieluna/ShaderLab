@@ -1,6 +1,9 @@
+use std::hash::{DefaultHasher, Hash, Hasher};
+use std::io::Cursor;
 use std::sync::Arc;
 
 use bcrypt::{DEFAULT_COST, hash, verify};
+use image::{ImageBuffer, ImageFormat, Rgba};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use sqlx::{QueryBuilder, SqlitePool};
@@ -56,16 +59,54 @@ impl AuthService {
         let password_hash = hash(create_user.password, DEFAULT_COST)
             .map_err(|_| AppError::InternalError("Failed to hash password".to_string()))?;
 
+        let mut hasher = DefaultHasher::new();
+        create_user.username.hash(&mut hasher);
+        let seed = hasher.finish();
+
+        let mut bytes = Vec::new();
+        let mut img = ImageBuffer::new(64, 64);
+
+        let color = Rgba([
+            ((seed >> 16) & 0xFF) as u8,
+            ((seed >> 8) & 0xFF) as u8,
+            (seed & 0xFF) as u8,
+            255,
+        ]);
+
+        let grid_size = 5;
+        let cell_size = 12;
+        let padding = (64 - grid_size * cell_size) / 2;
+
+        for y in 0..grid_size {
+            for x in 0..(grid_size / 2 + 1) {
+                let pattern = (seed >> (y * 3 + x)) & 0x7;
+                if pattern % 2 == 0 {
+                    for px in padding + x * cell_size..padding + (x + 1) * cell_size {
+                        for py in padding + y * cell_size..padding + (y + 1) * cell_size {
+                            *img.get_pixel_mut(px as u32, py as u32) = color;
+                            if x < grid_size / 2 {
+                                *img.get_pixel_mut((64 - px - 1) as u32, py as u32) = color;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        img.write_to(&mut Cursor::new(&mut bytes), ImageFormat::WebP)
+            .ok();
+
         let user: User = sqlx::query_as(
             r#"
-            INSERT INTO users (username, email, password)
-            VALUES (?, ?, ?)
-            RETURNING id, username, email, password, avatar_url, created_at, updated_at
+            INSERT INTO users (username, email, password, avatar)
+            VALUES (?, ?, ?, ?)
+            RETURNING id, username, email, password, avatar, created_at, updated_at
             "#,
         )
         .bind(create_user.username)
         .bind(create_user.email)
         .bind(password_hash)
+        .bind(bytes)
         .fetch_one(&self.pool)
         .await?;
 
@@ -85,7 +126,7 @@ impl AuthService {
 
         let user: Option<User> = sqlx::query_as(
             r#"
-            SELECT id, username, email, password, avatar_url, created_at, updated_at
+            SELECT id, username, email, password, avatar, created_at, updated_at
             FROM users
             WHERE username = ?
             "#,
@@ -204,11 +245,11 @@ impl AuthService {
             has_changes = true;
         }
 
-        if let Some(avatar_url) = &edit_user.avatar_url {
+        if let Some(avatar) = &edit_user.avatar {
             if has_changes {
                 query_builder.push(", ");
             }
-            query_builder.push("avatar_url = ").push_bind(avatar_url);
+            query_builder.push("avatar = ").push_bind(avatar);
             has_changes = true;
         }
 
@@ -220,7 +261,7 @@ impl AuthService {
             .push(", updated_at = datetime('now') WHERE id = ")
             .push_bind(user_id);
         query_builder
-            .push(" RETURNING id, username, email, password, avatar_url, created_at, updated_at");
+            .push(" RETURNING id, username, email, password, avatar, created_at, updated_at");
 
         let user = query_builder
             .build_query_as::<User>()
