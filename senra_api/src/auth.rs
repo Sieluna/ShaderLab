@@ -33,6 +33,7 @@ pub struct TokenResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserResponse {
+    pub id: i64,
     pub username: String,
     pub email: String,
     pub avatar: Vec<u8>,

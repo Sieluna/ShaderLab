@@ -10,6 +10,9 @@ pub enum NotebookError {
 
     #[error("Permission denied")]
     PermissionDenied,
+
+    #[error("No changes provided")]
+    NoChanges,
 }
 
 impl ErrorResponse for NotebookError {
@@ -17,6 +20,7 @@ impl ErrorResponse for NotebookError {
         match self {
             NotebookError::NotFound => StatusCode::NOT_FOUND,
             NotebookError::PermissionDenied => StatusCode::FORBIDDEN,
+            NotebookError::NoChanges => StatusCode::BAD_REQUEST,
         }
     }
 

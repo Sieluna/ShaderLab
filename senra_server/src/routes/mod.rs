@@ -1,5 +1,6 @@
 mod auth;
 mod notebook;
+mod user;
 mod ws;
 
 use axum::Router;
@@ -13,6 +14,7 @@ pub fn create_router(state: AppState) -> Router {
     Router::new()
         .merge(auth::router(state.clone()))
         .merge(notebook::router(state.clone()))
+        .merge(user::router(state.clone()))
         .merge(ws::router(state.clone()))
         .layer(TraceLayer::new_for_http())
         .layer(

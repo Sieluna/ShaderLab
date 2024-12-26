@@ -6,6 +6,7 @@ use serde::Deserialize;
 
 use crate::errors::Result;
 use crate::middleware::AuthUser;
+use crate::models::{CreateNotebook, UpdateNotebook};
 use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
@@ -41,19 +42,45 @@ async fn list_notebooks(
         .list_notebooks(auth_user.user_id, page, per_page)
         .await?;
 
+    let mut result = Vec::new();
+    for notebook in notebooks {
+        let stats = state
+            .services
+            .notebook
+            .get_notebook_stats(notebook.id)
+            .await?;
+        let tags = state
+            .services
+            .notebook
+            .get_notebook_tags(notebook.id)
+            .await?;
+        let user = state.services.user.get_user(notebook.user_id).await?;
+
+        result.push(NotebookStatsResponse {
+            notebook: NotebookResponse {
+                id: notebook.id,
+                user_id: notebook.user_id,
+                title: notebook.title,
+                description: notebook.description,
+                content: notebook.content,
+                preview: notebook.preview,
+                visibility: notebook.visibility,
+                version: notebook.version,
+                created_at: notebook.created_at.to_string(),
+                updated_at: notebook.updated_at.to_string(),
+            },
+            view_count: stats.view_count,
+            like_count: stats.like_count,
+            comment_count: stats.comment_count,
+            tags: tags.iter().map(|tag| tag.tag.clone()).collect(),
+            is_liked: false,
+            author: user.username,
+            author_avatar: Some(user.avatar),
+        });
+    }
+
     Ok(Json(NotebookListResponse {
-        notebooks: notebooks
-            .into_iter()
-            .map(|n| NotebookResponse {
-                id: n.id,
-                user_id: n.user_id,
-                title: n.title,
-                content: n.content,
-                created_at: n.created_at.to_string(),
-                updated_at: n.updated_at.to_string(),
-                version: n.version,
-            })
-            .collect(),
+        notebooks: result,
         total,
     }))
 }
@@ -66,17 +93,44 @@ async fn create_notebook(
     let notebook = state
         .services
         .notebook
-        .create_notebook(auth_user.user_id, payload.title, payload.content)
+        .create_notebook(
+            auth_user.user_id,
+            CreateNotebook {
+                title: payload.title,
+                description: payload.description,
+                content: payload.content,
+                tags: payload.tags.clone(),
+                preview: payload.preview,
+                visibility: "public".to_string(),
+            },
+        )
+        .await?;
+
+    for tag in payload.tags {
+        state
+            .services
+            .notebook
+            .create_notebook_tag(notebook.id, tag)
+            .await?;
+    }
+
+    state
+        .services
+        .notebook
+        .create_notebook_stats(notebook.id)
         .await?;
 
     Ok(Json(NotebookResponse {
         id: notebook.id,
         user_id: notebook.user_id,
         title: notebook.title,
+        description: notebook.description,
         content: notebook.content,
+        preview: notebook.preview,
+        visibility: notebook.visibility,
+        version: notebook.version,
         created_at: notebook.created_at.to_string(),
         updated_at: notebook.updated_at.to_string(),
-        version: notebook.version,
     }))
 }
 
@@ -95,10 +149,13 @@ async fn get_notebook(
         id: notebook.id,
         user_id: notebook.user_id,
         title: notebook.title,
+        description: notebook.description,
         content: notebook.content,
+        preview: notebook.preview,
+        visibility: notebook.visibility,
+        version: notebook.version,
         created_at: notebook.created_at.to_string(),
         updated_at: notebook.updated_at.to_string(),
-        version: notebook.version,
     }))
 }
 
@@ -111,17 +168,31 @@ async fn update_notebook(
     let notebook = state
         .services
         .notebook
-        .update_notebook(auth_user.user_id, id, payload.title, payload.content)
+        .update_notebook(
+            auth_user.user_id,
+            id,
+            UpdateNotebook {
+                title: payload.title,
+                description: payload.description,
+                content: payload.content,
+                tags: Some(payload.tags),
+                preview: payload.preview,
+                visibility: None,
+            },
+        )
         .await?;
 
     Ok(Json(NotebookResponse {
         id: notebook.id,
         user_id: notebook.user_id,
         title: notebook.title,
+        description: notebook.description,
         content: notebook.content,
+        preview: notebook.preview,
+        visibility: notebook.visibility,
+        version: notebook.version,
         created_at: notebook.created_at.to_string(),
         updated_at: notebook.updated_at.to_string(),
-        version: notebook.version,
     }))
 }
 
@@ -158,10 +229,10 @@ async fn list_versions(
             .map(|v| NotebookVersionResponse {
                 id: v.id,
                 notebook_id: v.notebook_id,
+                user_id: v.user_id,
                 version: v.version,
                 content: v.content,
                 created_at: v.created_at.to_string(),
-                created_by: v.created_by,
             })
             .collect(),
         total,

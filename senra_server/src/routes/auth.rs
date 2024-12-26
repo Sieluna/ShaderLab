@@ -41,9 +41,10 @@ async fn login(
 
     Ok(Json(AuthResponse {
         user: UserResponse {
+            id: user.id,
             username: user.username,
             email: user.email,
-            avatar: user.avatar.unwrap_or_default(),
+            avatar: user.avatar,
         },
         token,
     }))
@@ -53,20 +54,23 @@ async fn register(
     State(state): State<AppState>,
     Json(payload): Json<RegisterRequest>,
 ) -> Result<Json<AuthResponse>> {
-    let auth_service = state.services.auth;
-    let (user, token) = auth_service
-        .register(CreateUser {
+    let user_service = state.services.user;
+    let user = user_service
+        .create_user(CreateUser {
             username: payload.username,
             email: payload.email,
             password: payload.password,
         })
         .await?;
+    let auth_service = state.services.auth;
+    let token = auth_service.generate_token(user.id).await?;
 
     Ok(Json(AuthResponse {
         user: UserResponse {
+            id: user.id,
             username: user.username,
             email: user.email,
-            avatar: user.avatar.unwrap_or_default(),
+            avatar: user.avatar,
         },
         token,
     }))
@@ -77,9 +81,8 @@ async fn edit_user(
     auth_user: AuthUser,
     Json(payload): Json<EditUserRequest>,
 ) -> Result<Json<UserResponse>> {
-    let user = state
-        .services
-        .auth
+    let user_service = state.services.user;
+    let user = user_service
         .edit_user(
             auth_user.user_id,
             EditUser {
@@ -92,8 +95,9 @@ async fn edit_user(
         .await?;
 
     Ok(Json(UserResponse {
+        id: user.id,
         username: user.username,
         email: user.email,
-        avatar: user.avatar.unwrap_or_default(),
+        avatar: user.avatar,
     }))
 }

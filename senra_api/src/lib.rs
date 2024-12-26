@@ -25,6 +25,11 @@ pub enum Request {
     CreateNotebook(CreateNotebookRequest),
     EditNotebook(u64, EditNotebookRequest),
     RemoveNotebook(u64),
+
+    LikeNotebook(u64),
+    UnlikeNotebook(u64),
+    AddComment(u64, String),
+    GetComments(u64, u64, u64),
 }
 
 impl Request {
@@ -35,11 +40,25 @@ impl Request {
             Request::Register(req) => serde_json::to_value(req).unwrap(),
             Request::EditUser(req) => serde_json::to_value(req).unwrap(),
 
-            Request::CreateNotebook(req) => serde_json::to_value(req).unwrap(),
-            Request::EditNotebook(_, req) => serde_json::to_value(req).unwrap(),
             Request::GetNotebookList => serde_json::Value::Null,
             Request::GetNotebook(id) => serde_json::to_value(id).unwrap(),
+            Request::CreateNotebook(req) => serde_json::to_value(req).unwrap(),
+            Request::EditNotebook(_, req) => serde_json::to_value(req).unwrap(),
             Request::RemoveNotebook(id) => serde_json::to_value(id).unwrap(),
+
+            Request::LikeNotebook(id) => serde_json::to_value(id).unwrap(),
+            Request::UnlikeNotebook(id) => serde_json::to_value(id).unwrap(),
+            Request::AddComment(id, content) => {
+                let mut value = serde_json::to_value(id).unwrap();
+                value["content"] = serde_json::to_value(content).unwrap();
+                value
+            }
+            Request::GetComments(id, page, per_page) => {
+                let mut value = serde_json::to_value(id).unwrap();
+                value["page"] = serde_json::to_value(page).unwrap();
+                value["per_page"] = serde_json::to_value(per_page).unwrap();
+                value
+            }
         }
     }
 }
@@ -82,6 +101,22 @@ impl From<Request> for Endpoint {
             Request::RemoveNotebook(_) => Endpoint {
                 path: "/notebooks/{id}",
                 method: Method::DELETE,
+            },
+            Request::LikeNotebook(_) => Endpoint {
+                path: "/notebooks/{id}/like",
+                method: Method::POST,
+            },
+            Request::UnlikeNotebook(_) => Endpoint {
+                path: "/notebooks/{id}/unlike",
+                method: Method::POST,
+            },
+            Request::AddComment(_, _) => Endpoint {
+                path: "/notebooks/{id}/comments",
+                method: Method::POST,
+            },
+            Request::GetComments(_, _, _) => Endpoint {
+                path: "/notebooks/{id}/comments",
+                method: Method::GET,
             },
         }
     }
