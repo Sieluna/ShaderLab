@@ -31,10 +31,10 @@ impl NotebookService {
     pub async fn create_notebook_tag(&self, notebook_id: i64, tag: String) -> Result<NotebookTag> {
         let tag = sqlx::query_as(
             r#"
-                INSERT INTO notebook_tags (notebook_id, tag)
-                VALUES ($1, $2)
-                RETURNING *
-                "#,
+            INSERT INTO notebook_tags (notebook_id, tag)
+            VALUES ($1, $2)
+            RETURNING *
+            "#,
         )
         .bind(notebook_id)
         .bind(tag)
@@ -71,6 +71,21 @@ impl NotebookService {
         .await?;
 
         Ok(stats)
+    }
+
+    pub async fn is_notebook_liked(&self, user_id: i64, notebook_id: i64) -> Result<bool> {
+        let count: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*) FROM notebook_likes
+            WHERE user_id = $1 AND notebook_id = $2
+            "#,
+        )
+        .bind(user_id)
+        .bind(notebook_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(count > 0)
     }
 
     pub async fn list_notebooks(
@@ -172,6 +187,18 @@ impl NotebookService {
             }
             query_builder.push("content = ").push_bind(content);
             has_changes = true;
+
+            sqlx::query(
+                r#"
+                INSERT INTO notebook_versions (notebook_id, user_id, version, content)
+                SELECT id, user_id, version, content
+                FROM notebooks
+                WHERE id = $1
+                "#,
+            )
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
         }
 
         if let Some(preview) = &update_notebook.preview {
@@ -195,7 +222,7 @@ impl NotebookService {
         }
 
         query_builder
-            .push(", updated_at = datetime('now'), version = version + 1 WHERE id = ")
+            .push(", updated_at = datetime('now') WHERE id = ")
             .push_bind(id)
             .push(" AND user_id = ")
             .push_bind(user_id)
@@ -267,17 +294,98 @@ impl NotebookService {
         .fetch_all(&self.pool)
         .await?;
 
-        let total = sqlx::query!(
+        let total = sqlx::query_scalar(
             r#"
-            SELECT COUNT(*) as count FROM notebook_versions
+            SELECT COUNT(*) FROM notebook_versions
             WHERE notebook_id = $1
             "#,
-            notebook_id
         )
+        .bind(notebook_id)
         .fetch_one(&self.pool)
-        .await?
-        .count;
+        .await?;
 
         Ok((versions, total))
+    }
+
+    pub async fn list_comments(
+        &self,
+        notebook_id: i64,
+        page: i64,
+        per_page: i64,
+    ) -> Result<(Vec<NotebookComment>, i64)> {
+        let offset = (page - 1) * per_page;
+
+        let comments: Vec<NotebookComment> = sqlx::query_as(
+            r#"
+            SELECT * FROM notebook_comments
+            WHERE notebook_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(notebook_id)
+        .bind(per_page)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let total = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*) FROM notebook_comments
+            WHERE notebook_id = $1
+            "#,
+        )
+        .bind(notebook_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok((comments, total))
+    }
+
+    pub async fn create_comment(
+        &self,
+        user_id: i64,
+        notebook_id: i64,
+        content: String,
+    ) -> Result<NotebookComment> {
+        let comment: NotebookComment = sqlx::query_as(
+            r#"
+            INSERT INTO notebook_comments (notebook_id, user_id, content)
+            VALUES ($1, $2, $3)
+            RETURNING *
+            "#,
+        )
+        .bind(notebook_id)
+        .bind(user_id)
+        .bind(content)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(comment)
+    }
+
+    pub async fn delete_comment(
+        &self,
+        user_id: i64,
+        notebook_id: i64,
+        comment_id: i64,
+    ) -> Result<()> {
+        let result = sqlx::query(
+            r#"
+            DELETE FROM notebook_comments
+            WHERE id = $1 AND notebook_id = $2 AND user_id = $3
+            "#,
+        )
+        .bind(comment_id)
+        .bind(notebook_id)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(NotebookError::NotFound.into());
+        }
+
+        Ok(())
     }
 }

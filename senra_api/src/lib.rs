@@ -1,10 +1,13 @@
 mod auth;
 mod notebook;
+mod user;
 
 pub use auth::*;
 use http::Method;
 pub use notebook::*;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+pub use user::*;
 
 #[derive(Debug, Clone)]
 pub struct Endpoint {
@@ -28,8 +31,9 @@ pub enum Request {
 
     LikeNotebook(u64),
     UnlikeNotebook(u64),
-    AddComment(u64, String),
-    GetComments(u64, u64, u64),
+
+    GetCommentList,
+    CreateComment(u64, String),
 }
 
 impl Request {
@@ -48,16 +52,13 @@ impl Request {
 
             Request::LikeNotebook(id) => serde_json::to_value(id).unwrap(),
             Request::UnlikeNotebook(id) => serde_json::to_value(id).unwrap(),
-            Request::AddComment(id, content) => {
-                let mut value = serde_json::to_value(id).unwrap();
-                value["content"] = serde_json::to_value(content).unwrap();
-                value
-            }
-            Request::GetComments(id, page, per_page) => {
-                let mut value = serde_json::to_value(id).unwrap();
-                value["page"] = serde_json::to_value(page).unwrap();
-                value["per_page"] = serde_json::to_value(per_page).unwrap();
-                value
+
+            Request::GetCommentList => serde_json::Value::Null,
+            Request::CreateComment(id, content) => {
+                json!({
+                    "notebook_id": id,
+                    "comment": content,
+                })
             }
         }
     }
@@ -79,7 +80,7 @@ impl From<Request> for Endpoint {
                 method: Method::POST,
             },
             Request::EditUser(_) => Endpoint {
-                path: "/auth/edit",
+                path: "/user",
                 method: Method::PATCH,
             },
             Request::GetNotebookList => Endpoint {
@@ -110,13 +111,13 @@ impl From<Request> for Endpoint {
                 path: "/notebooks/{id}/unlike",
                 method: Method::POST,
             },
-            Request::AddComment(_, _) => Endpoint {
-                path: "/notebooks/{id}/comments",
-                method: Method::POST,
-            },
-            Request::GetComments(_, _, _) => Endpoint {
+            Request::GetCommentList => Endpoint {
                 path: "/notebooks/{id}/comments",
                 method: Method::GET,
+            },
+            Request::CreateComment(_, _) => Endpoint {
+                path: "/notebooks/{id}/comments",
+                method: Method::POST,
             },
         }
     }
@@ -126,7 +127,7 @@ impl From<Request> for Endpoint {
 #[serde(tag = "type", content = "payload")]
 pub enum Response {
     Token(TokenResponse),
-    User(UserResponse),
+    User(UserInfoResponse),
     Auth(AuthResponse),
 
     Notebook(NotebookResponse),

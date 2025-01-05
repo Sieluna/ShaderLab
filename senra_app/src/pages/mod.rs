@@ -135,8 +135,9 @@ impl Page {
             Message::Notebook(message) => match &mut self.state {
                 PageState::Notebook(page) => Task::batch([
                     match &message {
-                        NotebookMessage::Send(request) => {
-                            Task::done(Message::Send(Protocol::Http, request.to_owned()))
+                        NotebookMessage::SaveNotebookRespond(request) => {
+                            let request = Request::CreateNotebook(request.to_owned());
+                            Task::done(Message::Send(Protocol::Http, request))
                         }
                         _ => Task::none(),
                     },

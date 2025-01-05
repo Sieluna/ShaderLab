@@ -1,0 +1,33 @@
+pub mod mock_notebook;
+pub mod mock_user;
+
+use axum::Router;
+use axum::body::Body;
+use axum::routing::RouterIntoService;
+use senra_server::config::Config;
+use senra_server::db::Database;
+use senra_server::routes::create_router;
+use senra_server::state::AppState;
+
+pub struct MockServer {
+    pub app: Router,
+    state: AppState,
+}
+
+impl MockServer {
+    pub async fn new() -> Self {
+        let config = Config::new();
+
+        let db = Database::new(&config).await.unwrap();
+        db.run_migrations().await.unwrap();
+
+        let state = AppState::new(config, db);
+        let app = create_router(state.clone());
+
+        Self { app, state }
+    }
+
+    pub fn into_service(&self) -> RouterIntoService<Body> {
+        self.app.clone().into_service()
+    }
+}
