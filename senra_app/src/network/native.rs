@@ -56,14 +56,14 @@ impl NetworkInner for NativeNetwork {
                                     Ok(WsMessage::Text(message)) => {
                                         output.send(
                                             match serde_json::from_str(message.as_str()) {
-                                                Ok(response) => Message::Incoming(response),
+                                                Ok(response) => Message::MessageRespond(response),
                                                 Err(e) => Message::Error(NetworkError::Serialization(e).to_string()),
                                             }
                                         ).await.unwrap();
                                     }
                                     Err(e) => {
                                         output.send(Message::Error(NetworkError::WebSocket(e.to_string()).to_string())).await.unwrap();
-                                        output.send(Message::Disconnected).await.unwrap();
+                                        output.send(Message::Disconnect).await.unwrap();
                                         *state = ConnectionState::Disconnected;
                                     }
                                     Ok(_) => continue,
@@ -75,7 +75,7 @@ impl NetworkInner for NativeNetwork {
 
                                 if let Err(e) = result {
                                     output.send(Message::Error(NetworkError::WebSocket(e.to_string()).to_string())).await.unwrap();
-                                    output.send(Message::Disconnected).await.unwrap();
+                                    output.send(Message::Disconnect).await.unwrap();
                                     *state = ConnectionState::Disconnected;
                                 }
                             }
@@ -93,6 +93,6 @@ impl NetworkInner for NativeNetwork {
 
         let (sender, receiver) = mpsc::channel(100);
         *self.state.lock().await = ConnectionState::Connected(websocket, receiver);
-        Ok(Message::Connected(sender))
+        Ok(Message::Connect(sender))
     }
 }

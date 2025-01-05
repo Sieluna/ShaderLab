@@ -1,14 +1,13 @@
-use iced::widget::{
-    Column, Row, Space, button, checkbox, column, container, row, text, text_input,
-};
-use iced::{Alignment, Element, Length, Task};
-use senra_api::{LoginRequest, RegisterRequest, Request};
+use iced::widget::{button, checkbox, column, container, row, text, text_input};
+use iced::{Alignment, Color, Element, Length, Task};
+use senra_api::{LoginRequest, RegisterRequest};
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Error(String),
+    ErrorRequest(String),
 
-    Submit(Request),
+    LoginRespond(LoginRequest),
+    RegisterRespond(RegisterRequest),
 
     Switch(AuthState),
     InputUsername(String),
@@ -53,7 +52,7 @@ impl AuthPage {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::Error(error) => {
+            Message::ErrorRequest(error) => {
                 self.error_message = Some(error);
                 Task::none()
             }
@@ -87,10 +86,10 @@ impl AuthPage {
                     return Task::none();
                 }
                 self.error_message = None;
-                Task::done(Message::Submit(Request::Login(LoginRequest {
+                Task::done(Message::LoginRespond(LoginRequest {
                     username: self.username.clone(),
                     password: self.password.clone(),
-                })))
+                }))
             }
             Message::ClickRegister => {
                 if self.username.is_empty() || self.email.is_empty() || self.password.is_empty() {
@@ -98,96 +97,106 @@ impl AuthPage {
                     return Task::none();
                 }
                 self.error_message = None;
-                Task::done(Message::Submit(Request::Register(RegisterRequest {
+                Task::done(Message::RegisterRespond(RegisterRequest {
                     username: self.username.clone(),
                     email: self.email.clone(),
                     password: self.password.clone(),
-                })))
+                }))
             }
-            _ => {
+            Message::Clear => {
                 self.username.clear();
                 self.email.clear();
                 self.password.clear();
                 self.error_message = None;
                 Task::none()
             }
+            _ => Task::none(),
         }
     }
 
     pub fn view(&self) -> Element<Message> {
         let state_switch = row![
-            button("Register")
+            button(text("Register").align_x(Alignment::Center))
+                .width(Length::FillPortion(1))
+                .padding([8, 12])
                 .on_press(Message::Switch(AuthState::Register))
-                .padding(10)
-                .width(100),
-            Space::with_width(Length::Fill),
-            button("Login")
+                .style(match self.state {
+                    AuthState::Register => button::primary,
+                    AuthState::Login => button::secondary,
+                }),
+            button(text("Login").align_x(Alignment::Center))
+                .width(Length::FillPortion(1))
+                .padding([8, 12])
                 .on_press(Message::Switch(AuthState::Login))
-                .padding(10)
-                .width(100)
+                .style(match self.state {
+                    AuthState::Register => button::secondary,
+                    AuthState::Login => button::primary,
+                }),
         ]
-        .spacing(10);
+        .spacing(6)
+        .width(Length::Fill);
 
-        let username_input = text_input("Username", &self.username)
-            .on_input(Message::InputUsername)
-            .padding(10)
-            .width(300);
-
-        let email_input = match &self.state {
-            AuthState::Register => Some(
-                text_input("Email", &self.email)
-                    .on_input(Message::InputEmail)
-                    .padding(10)
-                    .width(300),
-            ),
-            AuthState::Login => None,
-        };
-
-        let password_input = text_input("Password", &self.password)
-            .on_input(Message::InputPassword)
-            .padding(10)
-            .width(300)
-            .secure(!self.show_password);
-
-        let show_password = Row::new()
+        let form = column![]
+            .push(
+                text_input("Username", &self.username)
+                    .on_input(Message::InputUsername)
+                    .width(Length::Fill)
+                    .padding([8, 12]),
+            )
+            .push_maybe(match &self.state {
+                AuthState::Register => Some(
+                    text_input("Email", &self.email)
+                        .on_input(Message::InputEmail)
+                        .width(Length::Fill)
+                        .padding([8, 12]),
+                ),
+                AuthState::Login => None,
+            })
+            .push(
+                text_input("Password", &self.password)
+                    .secure(!self.show_password)
+                    .on_input(Message::InputPassword)
+                    .width(Length::Fill)
+                    .padding([8, 12]),
+            )
+            .push_maybe(
+                self.error_message
+                    .as_ref()
+                    .map(|error| text(error).size(14).color(Color::from_rgb(1.0, 0.0, 0.0))),
+            )
             .push(
                 checkbox("Show password", self.show_password)
-                    .on_toggle(|_| Message::ToggleShowPassword),
+                    .on_toggle(|_| Message::ToggleShowPassword)
+                    .width(Length::Fill)
+                    .spacing(12)
+                    .text_size(14),
             )
-            .spacing(5);
-
-        let error_message = self
-            .error_message
-            .as_ref()
-            .map(|error| text(error).color(iced::Color::from_rgb(1.0, 0.0, 0.0)));
+            .spacing(12);
 
         let submit_button = button(
-            text(match &self.state {
+            text(match self.state {
                 AuthState::Register => "Register",
                 AuthState::Login => "Login",
             })
-            .align_y(Alignment::Center),
-        );
+            .width(Length::Fill)
+            .align_x(Alignment::Center),
+        )
+        .width(Length::Fill)
+        .padding([8, 12])
+        .on_press(match self.state {
+            AuthState::Register => Message::ClickRegister,
+            AuthState::Login => Message::ClickLogin,
+        })
+        .style(button::primary);
 
-        let content = Column::new()
-            .push(text("ShaderLab").size(40))
-            .push(Space::with_height(20))
-            .push(state_switch)
-            .push(Space::with_height(20))
-            .push(username_input)
-            .push_maybe(email_input.map(|input| column![input, Space::with_height(10)]))
-            .push(Space::with_height(10))
-            .push(password_input)
-            .push(Space::with_height(10))
-            .push_maybe(error_message.map(|error| column![error, Space::with_height(10)]))
-            .push(show_password)
-            .push(Space::with_height(20))
-            .push(submit_button);
+        let content = column![state_switch, form, submit_button]
+            .spacing(24)
+            .padding([24, 0])
+            .max_width(350);
 
         container(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .align_x(Alignment::Center)
+            .center_x(Length::Fill)
+            .align_top(Length::Fill)
             .into()
     }
 }

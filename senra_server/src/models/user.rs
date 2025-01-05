@@ -9,7 +9,7 @@ pub struct User {
     pub email: String,
     #[serde(skip_serializing)]
     pub password: Option<String>,
-    pub avatar_url: Option<String>,
+    pub avatar: Vec<u8>,
     pub created_at: OffsetDateTime,
     pub updated_at: OffsetDateTime,
 }
@@ -32,5 +32,5 @@ pub struct EditUser {
     pub username: Option<String>,
     pub email: Option<String>,
     pub password: Option<String>,
-    pub avatar_url: Option<String>,
+    pub avatar: Option<Vec<u8>>,
 }

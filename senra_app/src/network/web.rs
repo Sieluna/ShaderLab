@@ -54,7 +54,7 @@ impl NetworkInner for WebNetwork {
                 if let Some(text) = e.data().as_string() {
                     if let Some(tx) = event_tx.borrow_mut().as_mut() {
                         if let Ok(response) = serde_json::from_str(&text) {
-                            let _ = tx.unbounded_send(Message::Incoming(response));
+                            let _ = tx.unbounded_send(Message::MessageRespond(response));
                         }
                     }
                 }
@@ -67,7 +67,7 @@ impl NetworkInner for WebNetwork {
             let event_tx = event_tx.clone();
             let onerror = Closure::<dyn FnMut(_)>::new(move |e: ErrorEvent| {
                 if let Some(tx) = event_tx.borrow_mut().as_mut() {
-                    let _ = tx.unbounded_send(Message::Error(format!("WS错误: {:?}", e)));
+                    let _ = tx.unbounded_send(Message::Error(format!("Ws fail: {:?}", e)));
                 }
             });
             ws.set_onerror(Some(onerror.as_ref().unchecked_ref()));
@@ -78,7 +78,7 @@ impl NetworkInner for WebNetwork {
             let event_tx = event_tx.clone();
             let onclose = Closure::<dyn FnMut()>::new(move || {
                 if let Some(tx) = event_tx.borrow_mut().as_mut() {
-                    let _ = tx.unbounded_send(Message::Disconnected);
+                    let _ = tx.unbounded_send(Message::Disconnect);
                 }
             });
             ws.set_onclose(Some(onclose.as_ref().unchecked_ref()));
@@ -90,7 +90,7 @@ impl NetworkInner for WebNetwork {
             let cmd_tx_clone = cmd_tx.clone();
             let onopen = Closure::<dyn FnMut()>::new(move || {
                 if let Some(tx) = event_tx.borrow_mut().as_mut() {
-                    let _ = tx.unbounded_send(Message::Connected(cmd_tx_clone.clone()));
+                    let _ = tx.unbounded_send(Message::Connect(cmd_tx_clone.clone()));
                 }
             });
             ws.set_onopen(Some(onopen.as_ref().unchecked_ref()));
@@ -102,12 +102,12 @@ impl NetworkInner for WebNetwork {
             while let Some(msg) = cmd_rx.next().await {
                 if let Err(e) = ws_clone.send_with_str(&msg) {
                     if let Some(tx) = event_tx.borrow_mut().as_mut() {
-                        let _ = tx.unbounded_send(Message::Error(format!("发送失败: {:?}", e)));
+                        let _ = tx.unbounded_send(Message::Error(format!("Send fail: {:?}", e)));
                     }
                 }
             }
         });
 
-        Ok(Message::Connected(cmd_tx))
+        Ok(Message::Connect(cmd_tx))
     }
 }

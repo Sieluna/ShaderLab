@@ -17,6 +17,14 @@ static SYNTAXES: Lazy<parsing::SyntaxSet> = Lazy::new(|| {
         )
         .unwrap(),
     );
+    builder.add(
+        parsing::SyntaxDefinition::load_from_str(
+            include_str!("assets/Markdown.sublime-syntax"),
+            true,
+            None,
+        )
+        .unwrap(),
+    );
     builder.add_plain_text_syntax();
     builder.build()
 });

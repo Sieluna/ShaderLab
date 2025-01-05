@@ -1,5 +1,12 @@
 use serde::{Deserialize, Serialize};
 
+use crate::user::UserInfoResponse;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthRequest {
+    pub token: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoginRequest {
     pub username: String,
@@ -14,32 +21,12 @@ pub struct RegisterRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VerifyRequest {
-    pub token: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EditRequest {
-    pub username: Option<String>,
-    pub email: Option<String>,
-    pub password: Option<String>,
-    pub avatar_url: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserResponse {
-    pub username: String,
-    pub email: String,
-    pub avatar_url: String,
+pub struct TokenResponse {
+    pub token: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthResponse {
-    pub user: UserResponse,
+    pub user: UserInfoResponse,
     pub token: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VerifyResponse {
-    pub token: Option<String>,
 }

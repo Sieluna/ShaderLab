@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use bcrypt::{DEFAULT_COST, hash, verify};
+use bcrypt::verify;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
-use sqlx::{QueryBuilder, SqlitePool};
+use sqlx::SqlitePool;
 use time::OffsetDateTime;
 
 use crate::errors::{AppError, AuthError, Result};
-use crate::models::{CreateUser, EditUser, LoginUser, User};
+use crate::models::{LoginUser, User};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
@@ -30,50 +30,6 @@ impl AuthService {
         }
     }
 
-    pub async fn register(&self, create_user: CreateUser) -> Result<(User, String)> {
-        if create_user.username.is_empty() {
-            Err(AuthError::InvalidUsername)?;
-        }
-
-        if create_user.email.is_empty() {
-            Err(AuthError::InvalidEmail)?;
-        }
-
-        if create_user.password.is_empty() {
-            Err(AuthError::InvalidPassword)?;
-        }
-
-        let existing_user = sqlx::query("SELECT id FROM users WHERE username = ? OR email = ?")
-            .bind(&create_user.username)
-            .bind(&create_user.email)
-            .fetch_optional(&self.pool)
-            .await?;
-
-        if existing_user.is_some() {
-            Err(AuthError::UserExists)?;
-        }
-
-        let password_hash = hash(create_user.password, DEFAULT_COST)
-            .map_err(|_| AppError::InternalError("Failed to hash password".to_string()))?;
-
-        let user: User = sqlx::query_as(
-            r#"
-            INSERT INTO users (username, email, password)
-            VALUES (?, ?, ?)
-            RETURNING id, username, email, password, avatar_url, created_at, updated_at
-            "#,
-        )
-        .bind(create_user.username)
-        .bind(create_user.email)
-        .bind(password_hash)
-        .fetch_one(&self.pool)
-        .await?;
-
-        let token = self.generate_token(user.id).await?;
-
-        Ok((user, token))
-    }
-
     pub async fn login(&self, login_user: LoginUser) -> Result<(User, String)> {
         if login_user.username.is_empty() {
             Err(AuthError::InvalidUsername)?;
@@ -85,9 +41,9 @@ impl AuthService {
 
         let user: Option<User> = sqlx::query_as(
             r#"
-            SELECT id, username, email, password, avatar_url, created_at, updated_at
+            SELECT id, username, email, password, avatar, created_at, updated_at
             FROM users
-            WHERE username = ?
+            WHERE username = $1
             "#,
         )
         .bind(login_user.username)
@@ -149,7 +105,7 @@ impl AuthService {
         }
     }
 
-    async fn generate_token(&self, user_id: i64) -> Result<String> {
+    pub async fn generate_token(&self, user_id: i64) -> Result<String> {
         let now = OffsetDateTime::now_utc().unix_timestamp();
 
         let claims = Claims {
@@ -165,68 +121,5 @@ impl AuthService {
         .map_err(|_| AppError::InternalError("Failed to generate token".to_string()))?;
 
         Ok(token)
-    }
-
-    pub async fn edit_user(&self, user_id: i64, edit_user: EditUser) -> Result<User> {
-        let mut query_builder = QueryBuilder::new("UPDATE users SET ");
-
-        let mut has_changes = false;
-
-        if let Some(username) = &edit_user.username {
-            if username.is_empty() {
-                Err(AuthError::InvalidUsername)?;
-            }
-            query_builder.push("username = ").push_bind(username);
-            has_changes = true;
-        }
-
-        if let Some(email) = &edit_user.email {
-            if email.is_empty() {
-                Err(AuthError::InvalidEmail)?;
-            }
-            if has_changes {
-                query_builder.push(", ");
-            }
-            query_builder.push("email = ").push_bind(email);
-            has_changes = true;
-        }
-
-        if let Some(password) = &edit_user.password {
-            if password.is_empty() {
-                Err(AuthError::InvalidPassword)?;
-            }
-            let password_hash = hash(password, DEFAULT_COST)
-                .map_err(|_| AppError::InternalError("Failed to hash password".to_string()))?;
-            if has_changes {
-                query_builder.push(", ");
-            }
-            query_builder.push("password = ").push_bind(password_hash);
-            has_changes = true;
-        }
-
-        if let Some(avatar_url) = &edit_user.avatar_url {
-            if has_changes {
-                query_builder.push(", ");
-            }
-            query_builder.push("avatar_url = ").push_bind(avatar_url);
-            has_changes = true;
-        }
-
-        if !has_changes {
-            Err(AuthError::NoChanges)?;
-        }
-
-        query_builder
-            .push(", updated_at = datetime('now') WHERE id = ")
-            .push_bind(user_id);
-        query_builder
-            .push(" RETURNING id, username, email, password, avatar_url, created_at, updated_at");
-
-        let user = query_builder
-            .build_query_as::<User>()
-            .fetch_one(&self.pool)
-            .await?;
-
-        Ok(user)
     }
 }

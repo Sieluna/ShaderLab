@@ -31,13 +31,14 @@ pub enum Protocol {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    AuthToken(String),
-    Outgoing(Protocol, Request),
+    MessageRequest(Protocol, Request),
+    ConnectRequest(String),
 
-    Incoming(Response),
-    Connected(mpsc::Sender<String>),
-    Disconnected,
-    Submitted,
+    MessageRespond(Response),
+    MessageSubmit,
+
+    Connect(mpsc::Sender<String>),
+    Disconnect,
 
     Error(String),
 }
@@ -82,20 +83,28 @@ impl Network {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::AuthToken(token) => {
-                let url = format!("{}/ws?token={}", &self.base_url, &token);
+            Message::MessageRequest(protocol, request) => match protocol {
+                Protocol::Http => self.handle_http(request),
+                Protocol::WebSocket => self.handle_websocket(request),
+            },
+            Message::ConnectRequest(token) => {
+                let url = format!(
+                    "{}/ws?token={}",
+                    self.base_url.replace("http", "ws"),
+                    &token
+                );
                 let inner = self.inner.clone();
                 self.auth_token = Some(token);
                 Task::perform(async move { inner.connect(url.as_ref()).await }, |result| {
                     result.unwrap_or_else(|e| Message::Error(e.to_string()))
                 })
             }
-            Message::Outgoing(protocol, request) => match protocol {
-                Protocol::Http => self.handle_http(request),
-                Protocol::WebSocket => self.handle_websocket(request),
-            },
-            Message::Connected(sender) => {
+            Message::Connect(sender) => {
                 self.sender = Some(sender);
+                Task::none()
+            }
+            Message::Disconnect => {
+                self.sender = None;
                 Task::none()
             }
             _ => Task::none(),
@@ -129,13 +138,14 @@ impl Network {
                 let response = client
                     .request(endpoint.method, &url)
                     .headers(headers)
-                    .json(&request)
+                    .json(&request.serialize_for_http())
                     .send()
                     .await?;
 
                 if response.status().is_success() {
-                    let response: Response = response.json().await?;
-                    Ok(Message::Incoming(response))
+                    let value: serde_json::Value = response.json().await?;
+                    let response = Response::deserialize_from_http(value)?;
+                    Ok(Message::MessageRespond(response))
                 } else {
                     let error = response.text().await?;
                     Ok(Message::Error(error))
@@ -156,7 +166,7 @@ impl Network {
                         .await
                         .map_err(|e| NetworkError::WebSocket(e.to_string()))?;
 
-                    Ok(Message::Submitted)
+                    Ok(Message::MessageSubmit)
                 },
                 |result| result.unwrap_or_else(|e: NetworkError| Message::Error(e.to_string())),
             ),

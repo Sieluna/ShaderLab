@@ -1,10 +1,12 @@
 mod auth;
 mod notebook;
 mod shader;
+mod user;
 
 pub use auth::AuthError;
 pub use notebook::NotebookError;
 pub use shader::ShaderError;
+pub use user::UserError;
 
 use axum::Json;
 use axum::http::StatusCode;
@@ -22,6 +24,9 @@ pub trait ErrorResponse: std::fmt::Display {
 pub enum AppError {
     #[error("Authentication error: {0}")]
     AuthError(#[from] AuthError),
+
+    #[error("User error: {0}")]
+    UserError(#[from] UserError),
 
     #[error("Database error: {0}")]
     DatabaseError(#[from] sqlx::Error),
@@ -46,6 +51,7 @@ impl ErrorResponse for AppError {
     fn status_code(&self) -> StatusCode {
         match self {
             AppError::AuthError(e) => e.status_code(),
+            AppError::UserError(e) => e.status_code(),
             AppError::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::ValidationError(_) => StatusCode::BAD_REQUEST,
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
@@ -58,6 +64,7 @@ impl ErrorResponse for AppError {
     fn error_message(&self) -> String {
         match self {
             AppError::AuthError(e) => e.error_message(),
+            AppError::UserError(e) => e.error_message(),
             AppError::DatabaseError(e) => e.to_string(),
             AppError::ValidationError(msg) => msg.clone(),
             AppError::NotFound(msg) => msg.clone(),
