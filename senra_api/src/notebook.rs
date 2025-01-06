@@ -24,6 +24,11 @@ pub struct EditNotebookRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateNotebookCommentRequest {
+    pub content: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NotebookStats {
     pub view_count: i64,
     pub like_count: i64,
