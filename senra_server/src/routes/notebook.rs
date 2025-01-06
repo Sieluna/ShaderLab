@@ -353,7 +353,7 @@ async fn create_comment(
     State(state): State<AppState>,
     auth_user: AuthUser,
     Path(id): Path<i64>,
-    Json(payload): Json<CreateCommentRequest>,
+    Json(payload): Json<CreateNotebookCommentRequest>,
 ) -> Result<Json<NotebookCommentItem>> {
     let comment = state
         .services
