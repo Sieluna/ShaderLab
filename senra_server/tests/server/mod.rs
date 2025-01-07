@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod mock_notebook;
 pub mod mock_user;
 

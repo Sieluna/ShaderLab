@@ -13,6 +13,7 @@ impl NotebookService {
         Self { pool: pool.clone() }
     }
 
+    /// Retrieves all tags associated with a notebook
     pub async fn get_notebook_tags(&self, notebook_id: i64) -> Result<Vec<NotebookTag>> {
         let tags: Vec<NotebookTag> = sqlx::query_as(
             r#"
@@ -28,22 +29,7 @@ impl NotebookService {
         Ok(tags)
     }
 
-    pub async fn create_notebook_tag(&self, notebook_id: i64, tag: String) -> Result<NotebookTag> {
-        let tag = sqlx::query_as(
-            r#"
-            INSERT INTO notebook_tags (notebook_id, tag)
-            VALUES ($1, $2)
-            RETURNING *
-            "#,
-        )
-        .bind(notebook_id)
-        .bind(tag)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(tag)
-    }
-
+    /// Retrieves statistics for a notebook
     pub async fn get_notebook_stats(&self, notebook_id: i64) -> Result<NotebookStats> {
         let stats: NotebookStats = sqlx::query_as(
             r#"
@@ -58,21 +44,7 @@ impl NotebookService {
         Ok(stats)
     }
 
-    pub async fn create_notebook_stats(&self, notebook_id: i64) -> Result<NotebookStats> {
-        let stats: NotebookStats = sqlx::query_as(
-            r#"
-            INSERT INTO notebook_stats (notebook_id)
-            VALUES ($1)
-            RETURNING *
-            "#,
-        )
-        .bind(notebook_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(stats)
-    }
-
+    /// Checks if a user has liked a notebook
     pub async fn is_notebook_liked(&self, user_id: i64, notebook_id: i64) -> Result<bool> {
         let count: i64 = sqlx::query_scalar(
             r#"
@@ -88,6 +60,7 @@ impl NotebookService {
         Ok(count > 0)
     }
 
+    /// Lists notebooks for a user with pagination
     pub async fn list_notebooks(
         &self,
         user_id: i64,
@@ -118,6 +91,7 @@ impl NotebookService {
         Ok((notebooks, total))
     }
 
+    /// Retrieves a specific notebook by ID
     pub async fn get_notebook(&self, user_id: i64, id: i64) -> Result<Notebook> {
         let notebook: Notebook = sqlx::query_as(
             r#"
@@ -134,11 +108,20 @@ impl NotebookService {
         Ok(notebook)
     }
 
+    /// Creates a new notebook with all related data in a transaction
+    /// This includes:
+    /// - Notebook record
+    /// - Initial version
+    /// - Statistics
+    /// - Tags
     pub async fn create_notebook(
         &self,
         user_id: i64,
         create_notebook: CreateNotebook,
     ) -> Result<Notebook> {
+        let mut tx = self.pool.begin().await?;
+
+        // Create notebook record
         let notebook: Notebook = sqlx::query_as(
             r#"
             INSERT INTO notebooks (user_id, title, description, content, preview, visibility)
@@ -152,22 +135,68 @@ impl NotebookService {
         .bind(create_notebook.content)
         .bind(create_notebook.preview)
         .bind(create_notebook.visibility)
-        .fetch_one(&self.pool)
+        .fetch_one(&mut *tx)
         .await?;
 
+        // Create initial version
+        sqlx::query(
+            r#"
+            INSERT INTO notebook_versions (notebook_id, user_id, version, content)
+            VALUES ($1, $2, 1, $3)
+            "#,
+        )
+        .bind(notebook.id)
+        .bind(user_id)
+        .bind(notebook.content.clone())
+        .execute(&mut *tx)
+        .await?;
+
+        // Create initial statistics
+        sqlx::query(
+            r#"
+            INSERT INTO notebook_stats (notebook_id)
+            VALUES ($1)
+            "#,
+        )
+        .bind(notebook.id)
+        .execute(&mut *tx)
+        .await?;
+
+        // Add tags
+        for tag in create_notebook.tags {
+            sqlx::query(
+                r#"
+                INSERT INTO notebook_tags (notebook_id, tag)
+                VALUES ($1, $2)
+                "#,
+            )
+            .bind(notebook.id)
+            .bind(tag)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        tx.commit().await?;
         Ok(notebook)
     }
 
+    /// Updates a notebook and its related data in a transaction
+    /// Handles:
+    /// - Notebook updates
+    /// - Version tracking
+    /// - Tag updates
     pub async fn update_notebook(
         &self,
         user_id: i64,
         id: i64,
         update_notebook: UpdateNotebook,
     ) -> Result<Notebook> {
-        let mut query_builder = QueryBuilder::new("UPDATE notebooks SET ");
+        let mut tx = self.pool.begin().await?;
 
+        let mut query_builder = QueryBuilder::new("UPDATE notebooks SET ");
         let mut has_changes = false;
 
+        // Build update query based on provided fields
         if let Some(title) = &update_notebook.title {
             query_builder.push("title = ").push_bind(title);
             has_changes = true;
@@ -185,20 +214,40 @@ impl NotebookService {
             if has_changes {
                 query_builder.push(", ");
             }
-            query_builder.push("content = ").push_bind(content);
-            has_changes = true;
 
-            sqlx::query(
+            // Get current version and increment
+            let current_version: i64 = sqlx::query_scalar(
                 r#"
-                INSERT INTO notebook_versions (notebook_id, user_id, version, content)
-                SELECT id, user_id, version, content
-                FROM notebooks
-                WHERE id = $1
+                SELECT COALESCE(MAX(version), 0) FROM notebook_versions
+                WHERE notebook_id = $1
                 "#,
             )
             .bind(id)
-            .execute(&self.pool)
+            .fetch_one(&mut *tx)
             .await?;
+
+            let update_version = current_version + 1;
+
+            // Create new version
+            sqlx::query(
+                r#"
+                INSERT INTO notebook_versions (notebook_id, user_id, version, content)
+                VALUES ($1, $2, $3, $4)
+                "#,
+            )
+            .bind(id)
+            .bind(user_id)
+            .bind(update_version)
+            .bind(content)
+            .execute(&mut *tx)
+            .await?;
+
+            query_builder
+                .push("content = ")
+                .push_bind(content)
+                .push(", version = ")
+                .push_bind(update_version);
+            has_changes = true;
         }
 
         if let Some(preview) = &update_notebook.preview {
@@ -217,42 +266,62 @@ impl NotebookService {
             has_changes = true;
         }
 
-        if !has_changes {
-            Err(NotebookError::NoChanges)?;
-        }
+        if has_changes {
+            query_builder
+                .push(", updated_at = CURRENT_TIMESTAMP WHERE id = ")
+                .push_bind(id)
+                .push(" AND user_id = ")
+                .push_bind(user_id);
 
-        query_builder
-            .push(", updated_at = datetime('now') WHERE id = ")
-            .push_bind(id)
-            .push(" AND user_id = ")
-            .push_bind(user_id)
-            .push(" RETURNING *");
+            query_builder
+                .push(" RETURNING id, user_id, title, description, content, preview, visibility, version, created_at, updated_at");
 
-        let notebook = query_builder
-            .build_query_as::<Notebook>()
-            .fetch_optional(&self.pool)
-            .await?
-            .ok_or(NotebookError::NotFound)?;
+            let notebook = query_builder
+                .build_query_as::<Notebook>()
+                .fetch_one(&mut *tx)
+                .await?;
 
-        if let Some(tags) = &update_notebook.tags {
-            sqlx::query(
-                r#"
-                DELETE FROM notebook_tags
-                WHERE notebook_id = $1
-                "#,
-            )
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
+            // Update tags if provided
+            if let Some(tags) = &update_notebook.tags {
+                sqlx::query(
+                    r#"
+                    DELETE FROM notebook_tags
+                    WHERE notebook_id = $1
+                    "#,
+                )
+                .bind(id)
+                .execute(&mut *tx)
+                .await?;
 
-            for tag in tags {
-                self.create_notebook_tag(id, tag.clone()).await?;
+                for tag in tags {
+                    sqlx::query(
+                        r#"
+                        INSERT INTO notebook_tags (notebook_id, tag)
+                        VALUES ($1, $2)
+                        "#,
+                    )
+                    .bind(id)
+                    .bind(tag)
+                    .execute(&mut *tx)
+                    .await?;
+                }
             }
-        }
 
-        Ok(notebook)
+            tx.commit().await?;
+            Ok(notebook)
+        } else {
+            tx.rollback().await?;
+            Err(NotebookError::NoChanges)?
+        }
     }
 
+    /// Deletes a notebook and all its related data
+    /// This includes:
+    /// - Tags
+    /// - Versions
+    /// - Comments
+    /// - Statistics
+    /// - Likes
     pub async fn delete_notebook(&self, user_id: i64, id: i64) -> Result<()> {
         let result = sqlx::query(
             r#"
@@ -272,19 +341,37 @@ impl NotebookService {
         Ok(())
     }
 
+    /// Lists versions of a notebook with pagination
     pub async fn list_versions(
         &self,
         notebook_id: i64,
         page: i64,
         per_page: i64,
     ) -> Result<(Vec<NotebookVersion>, i64)> {
+        // Check if notebook exists
+        let exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM notebooks
+                WHERE id = $1
+            )
+            "#,
+        )
+        .bind(notebook_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        if !exists {
+            Err(NotebookError::NotFound)?;
+        }
+
         let offset = (page - 1) * per_page;
 
         let versions: Vec<NotebookVersion> = sqlx::query_as(
             r#"
             SELECT * FROM notebook_versions
             WHERE notebook_id = $1
-            ORDER BY created_at DESC
+            ORDER BY version DESC
             LIMIT $2 OFFSET $3
             "#,
         )
@@ -307,6 +394,7 @@ impl NotebookService {
         Ok((versions, total))
     }
 
+    /// Lists comments for a notebook with pagination
     pub async fn list_comments(
         &self,
         notebook_id: i64,
@@ -342,6 +430,7 @@ impl NotebookService {
         Ok((comments, total))
     }
 
+    /// Creates a new comment for a notebook
     pub async fn create_comment(
         &self,
         user_id: i64,
@@ -364,6 +453,7 @@ impl NotebookService {
         Ok(comment)
     }
 
+    /// Deletes a comment from a notebook
     pub async fn delete_comment(
         &self,
         user_id: i64,

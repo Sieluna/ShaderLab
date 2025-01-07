@@ -8,7 +8,7 @@ use server::MockServer;
 use tower::{Service, ServiceExt};
 
 #[tokio::test]
-async fn test_notebook_comment_routes() {
+async fn test_notebook_version_routes() {
     let mut server = MockServer::new().await;
     let mut app = server.into_service();
 
@@ -17,63 +17,14 @@ async fn test_notebook_comment_routes() {
     let token = server.create_test_token(user.id).await;
     let notebook = server.create_test_notebook(user.id).await;
 
-    // Test creating a comment
-    let response = ServiceExt::<Request<Body>>::ready(&mut app)
-        .await
-        .unwrap()
-        .call(
-            Request::builder()
-                .method(http::Method::POST)
-                .uri(format!("/notebooks/{}/comments", notebook.id))
-                .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
-                .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
-                .body(Body::from(
-                    serde_json::to_vec(&json!({
-                        "content": "This is a test comment"
-                    }))
-                    .unwrap(),
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(response.status(), StatusCode::OK);
-    let body = response.into_body().collect().await.unwrap().to_bytes();
-    let body: Value = serde_json::from_slice(&body).unwrap();
-    let comment_id = body["id"].as_i64().unwrap();
-
-    // Test creating another comment
-    let response = ServiceExt::<Request<Body>>::ready(&mut app)
-        .await
-        .unwrap()
-        .call(
-            Request::builder()
-                .method(http::Method::POST)
-                .uri(format!("/notebooks/{}/comments", notebook.id))
-                .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
-                .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
-                .body(Body::from(
-                    serde_json::to_vec(&json!({
-                        "content": "This is another test comment"
-                    }))
-                    .unwrap(),
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(response.status(), StatusCode::OK);
-
-    // Test getting comment list
+    // Test initial version
     let response = ServiceExt::<Request<Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(
             Request::builder()
                 .method(http::Method::GET)
-                .uri(format!("/notebooks/{}/comments", notebook.id))
+                .uri(format!("/notebooks/{}/versions", notebook.id))
                 .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
                 .body(Body::empty())
                 .unwrap(),
@@ -84,8 +35,60 @@ async fn test_notebook_comment_routes() {
     assert_eq!(response.status(), StatusCode::OK);
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let body: Value = serde_json::from_slice(&body).unwrap();
-    assert_eq!(body["comments"].as_array().unwrap().len(), 2);
+    assert_eq!(body["versions"].as_array().unwrap().len(), 1);
+    assert_eq!(body["total"], 1);
+    assert_eq!(body["versions"][0]["version"], 1);
+
+    // Update notebook content to create a new version
+    let response = ServiceExt::<Request<Body>>::ready(&mut app)
+        .await
+        .unwrap()
+        .call(
+            Request::builder()
+                .method(http::Method::PATCH)
+                .uri(format!("/notebooks/{}", notebook.id))
+                .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
+                .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                .body(Body::from(
+                    serde_json::to_vec(&json!({
+                        "content": {
+                            "cells": [{
+                                "type": "code",
+                                "content": "print('Hello World')"
+                            }]
+                        }
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    // Test version list after update
+    let response = ServiceExt::<Request<Body>>::ready(&mut app)
+        .await
+        .unwrap()
+        .call(
+            Request::builder()
+                .method(http::Method::GET)
+                .uri(format!("/notebooks/{}/versions", notebook.id))
+                .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let body: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(body["versions"].as_array().unwrap().len(), 2);
     assert_eq!(body["total"], 2);
+    assert_eq!(body["versions"][0]["version"], 2);
+    assert_eq!(body["versions"][1]["version"], 1);
 
     // Test pagination
     let response = ServiceExt::<Request<Body>>::ready(&mut app)
@@ -95,7 +98,7 @@ async fn test_notebook_comment_routes() {
             Request::builder()
                 .method(http::Method::GET)
                 .uri(format!(
-                    "/notebooks/{}/comments?page=1&per_page=1",
+                    "/notebooks/{}/versions?page=1&per_page=1",
                     notebook.id
                 ))
                 .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
@@ -108,22 +111,26 @@ async fn test_notebook_comment_routes() {
     assert_eq!(response.status(), StatusCode::OK);
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let body: Value = serde_json::from_slice(&body).unwrap();
-    assert_eq!(body["comments"].as_array().unwrap().len(), 1);
+    assert_eq!(body["versions"].as_array().unwrap().len(), 1);
     assert_eq!(body["total"], 2);
+    assert_eq!(body["versions"][0]["version"], 2);
 
-    // Test deleting a comment
+    // Test updating notebook without content change (should not create new version)
     let response = ServiceExt::<Request<Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(
             Request::builder()
-                .method(http::Method::DELETE)
-                .uri(format!(
-                    "/notebooks/{}/comments/{}",
-                    notebook.id, comment_id
-                ))
+                .method(http::Method::PATCH)
+                .uri(format!("/notebooks/{}", notebook.id))
                 .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
-                .body(Body::empty())
+                .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                .body(Body::from(
+                    serde_json::to_vec(&json!({
+                        "title": "Updated Title"
+                    }))
+                    .unwrap(),
+                ))
                 .unwrap(),
         )
         .await
@@ -131,48 +138,14 @@ async fn test_notebook_comment_routes() {
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    // Test deleting a non-existent comment
-    let response = ServiceExt::<Request<Body>>::ready(&mut app)
-        .await
-        .unwrap()
-        .call(
-            Request::builder()
-                .method(http::Method::DELETE)
-                .uri(format!("/notebooks/{}/comments/999", notebook.id))
-                .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
-
-    // Test deleting a comment with invalid notebook ID
-    let response = ServiceExt::<Request<Body>>::ready(&mut app)
-        .await
-        .unwrap()
-        .call(
-            Request::builder()
-                .method(http::Method::DELETE)
-                .uri(format!("/notebooks/999/comments/{}", comment_id))
-                .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
-
-    // Verify comment has been deleted
+    // Verify version count remains the same
     let response = ServiceExt::<Request<Body>>::ready(&mut app)
         .await
         .unwrap()
         .call(
             Request::builder()
                 .method(http::Method::GET)
-                .uri(format!("/notebooks/{}/comments", notebook.id))
+                .uri(format!("/notebooks/{}/versions", notebook.id))
                 .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
                 .body(Body::empty())
                 .unwrap(),
@@ -183,6 +156,23 @@ async fn test_notebook_comment_routes() {
     assert_eq!(response.status(), StatusCode::OK);
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let body: Value = serde_json::from_slice(&body).unwrap();
-    assert_eq!(body["comments"].as_array().unwrap().len(), 1);
-    assert_eq!(body["total"], 1);
+    assert_eq!(body["versions"].as_array().unwrap().len(), 2);
+    assert_eq!(body["total"], 2);
+
+    // Test getting versions for non-existent notebook
+    let response = ServiceExt::<Request<Body>>::ready(&mut app)
+        .await
+        .unwrap()
+        .call(
+            Request::builder()
+                .method(http::Method::GET)
+                .uri("/notebooks/999/versions")
+                .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }

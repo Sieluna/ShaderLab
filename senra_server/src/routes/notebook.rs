@@ -165,31 +165,11 @@ async fn create_notebook(
         )
         .await?;
 
-    for tag in payload.tags {
-        state
-            .services
-            .notebook
-            .create_notebook_tag(notebook.id, tag)
-            .await?;
-    }
-
-    state
-        .services
-        .notebook
-        .create_notebook_stats(notebook.id)
-        .await?;
-
-    let stats = state
-        .services
-        .notebook
-        .get_notebook_stats(notebook.id)
-        .await?;
-    let tags = state
-        .services
-        .notebook
-        .get_notebook_tags(notebook.id)
-        .await?;
     let user = state.services.user.get_user(auth_user.user_id).await?;
+
+    let notebook_service = state.services.notebook;
+    let stats = notebook_service.get_notebook_stats(notebook.id).await?;
+    let tags = notebook_service.get_notebook_tags(notebook.id).await?;
 
     Ok(Json(NotebookResponse {
         inner: NotebookInfo {
@@ -223,9 +203,9 @@ async fn update_notebook(
     Path(id): Path<i64>,
     Json(payload): Json<EditNotebookRequest>,
 ) -> Result<Json<NotebookResponse>> {
-    let notebook = state
-        .services
-        .notebook
+    let notebook_service = state.services.notebook;
+
+    let notebook = notebook_service
         .update_notebook(
             auth_user.user_id,
             id,
@@ -240,14 +220,11 @@ async fn update_notebook(
         )
         .await?;
 
-    let stats = state.services.notebook.get_notebook_stats(id).await?;
-    let tags = state.services.notebook.get_notebook_tags(id).await?;
-    let is_liked = state
-        .services
-        .notebook
-        .is_notebook_liked(auth_user.user_id, id)
-        .await?;
     let user = state.services.user.get_user(auth_user.user_id).await?;
+
+    let stats = notebook_service.get_notebook_stats(id).await?;
+    let tags = notebook_service.get_notebook_tags(id).await?;
+    let is_liked = notebook_service.is_notebook_liked(user.id, id).await?;
 
     Ok(Json(NotebookResponse {
         inner: NotebookInfo {
