@@ -70,8 +70,8 @@ impl NotebookService {
                 WITH notebook_scores AS (
                     SELECT 
                         n.*,
-                        -- Base popularity score (weights: views 0.3, likes 0.3, favorites 0.2, comments 0.2)
-                        (s.view_count * 0.3 + s.like_count * 0.3 + s.favorite_count * 0.2 + s.comment_count * 0.2) as base_score,
+                        -- Base popularity score (weights: views 0.4, likes 0.3, comments 0.3)
+                        (s.view_count * 0.4 + s.like_count * 0.3 + s.comment_count * 0.3) as base_score,
                         -- Time decay factor (higher weight for content within 24 hours)
                         CASE 
                             WHEN datetime(n.updated_at) > datetime('now', '-24 hours') THEN 1.5
@@ -81,7 +81,7 @@ impl NotebookService {
                         -- Content quality factor (based on engagement rate)
                         CASE 
                             WHEN s.view_count > 0 THEN 
-                                (s.like_count + s.favorite_count + s.comment_count) * 1.0 / s.view_count
+                                (s.like_count + s.comment_count) * 1.0 / s.view_count
                             ELSE 0
                         END as quality_factor
                     FROM notebooks n

@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-pub mod mock_notebook;
-pub mod mock_user;
+mod mock_notebook;
+mod mock_user;
 
 use axum::Router;
 use axum::body::Body;
@@ -10,6 +10,8 @@ use senra_server::config::Config;
 use senra_server::db::Database;
 use senra_server::routes::create_router;
 use senra_server::state::AppState;
+
+pub use mock_notebook::NotebookOptions;
 
 pub struct MockServer {
     pub app: Router,
@@ -31,5 +33,9 @@ impl MockServer {
 
     pub fn into_service(&self) -> RouterIntoService<Body> {
         self.app.clone().into_service()
+    }
+
+    pub fn get_db(&self) -> &Database {
+        &self.state.db
     }
 }

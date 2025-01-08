@@ -4,7 +4,7 @@ use axum::body::Body;
 use axum::http::{self, Request, StatusCode};
 use http_body_util::BodyExt;
 use serde_json::{Value, json};
-use server::MockServer;
+use server::{MockServer, NotebookOptions};
 use tower::{Service, ServiceExt};
 
 #[tokio::test]
@@ -13,9 +13,15 @@ async fn test_notebook_version_workflow() {
     let mut app = server.into_service();
 
     // Create test user and notebook
-    let user = server.create_test_user("test_user", "test_password").await;
-    let token = server.create_test_token(user.id).await;
-    let notebook = server.create_test_notebook(user.id).await;
+    let user = server
+        .create_user("test_user", "test_user@test.com", "test_password")
+        .await
+        .unwrap();
+    let token = server.create_token(user.id).await.unwrap();
+    let notebook = server
+        .create_notebook(user.id, NotebookOptions::new())
+        .await
+        .unwrap();
 
     // Test initial version
     let response = ServiceExt::<Request<Body>>::ready(&mut app)

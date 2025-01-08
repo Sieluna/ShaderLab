@@ -13,8 +13,11 @@ async fn test_user_workflow() {
 
     let mut app = server.into_service();
 
-    let user = server.create_test_user("test_user", "test_password").await;
-    let token = server.create_test_token(user.id).await;
+    let user = server
+        .create_user("test_user", "test_user@test.com", "test_password")
+        .await
+        .unwrap();
+    let token = server.create_token(user.id).await.unwrap();
 
     // Test get user info
     let response = ServiceExt::<Request<Body>>::ready(&mut app)

@@ -1,29 +1,29 @@
+use senra_server::errors::Result;
 use senra_server::models::{CreateUser, User};
 
 use crate::server::MockServer;
 
 impl MockServer {
-    pub async fn create_test_user(&mut self, username: &str, password: &str) -> User {
-        let email = format!("{}@example.com", username);
-
+    pub async fn create_user(
+        &mut self,
+        username: &str,
+        email: &str,
+        password: &str,
+    ) -> Result<User> {
         let user_service = self.state.services.user.clone();
 
         let new_user = CreateUser {
             username: username.to_string(),
-            email,
+            email: email.to_string(),
             password: password.to_string(),
         };
 
-        let user = user_service.create_user(new_user).await.unwrap();
-
-        user
+        user_service.create_user(new_user).await
     }
 
-    pub async fn create_test_token(&mut self, user_id: i64) -> String {
+    pub async fn create_token(&mut self, user_id: i64) -> Result<String> {
         let auth_service = self.state.services.auth.clone();
 
-        let token = auth_service.generate_token(user_id).await.unwrap();
-
-        token
+        auth_service.generate_token(user_id).await
     }
 }
