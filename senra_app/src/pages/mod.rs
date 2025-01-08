@@ -1,29 +1,33 @@
 mod auth;
 mod home;
 mod notebook;
+mod user;
 
 use iced::advanced::image::Handle;
 use iced::widget::{button, center, column, container, image, row, text, text_input};
 use iced::{Alignment, Element, Length, Renderer, Task, Theme};
-use senra_api::{Request, Response, UserResponse};
+use senra_api::{Request, Response, UserInfoResponse};
 use tracing::{debug, info};
 
 use auth::{AuthPage, Message as AuthMessage};
 use home::{HomePage, Message as HomeMessage};
 use notebook::{Message as NotebookMessage, NotebookPage};
+use user::{Message as UserMessage, UserPage};
 
 use crate::widgets::menu::{Item, Menu, MenuBar};
 use crate::{Protocol, StorageMessage};
 
 #[derive(Debug, Clone)]
 pub struct User {
+    id: u64,
     username: String,
     avatar: Vec<u8>,
 }
 
-impl From<UserResponse> for User {
-    fn from(message: UserResponse) -> Self {
+impl From<UserInfoResponse> for User {
+    fn from(message: UserInfoResponse) -> Self {
         User {
+            id: message.id as u64,
             username: message.username,
             avatar: message.avatar,
         }
@@ -35,6 +39,7 @@ pub enum Message {
     ShowAuthRequest,
     ShowHomeRequest,
     ShowNotebookRequest(Option<u64>),
+    ShowUserRequest(Option<u64>),
 
     LogoutRespond,
     Noop,
@@ -48,13 +53,14 @@ pub enum Message {
     Auth(AuthMessage),
     Home(HomeMessage),
     Notebook(NotebookMessage),
+    User(UserMessage),
 }
 
 pub enum PageState {
     Login(AuthPage),
     Home(HomePage),
     Notebook(NotebookPage),
-    UserProfile(String),
+    User(UserPage),
 }
 
 pub struct Page {
@@ -93,6 +99,15 @@ impl Page {
                 self.state = PageState::Notebook(page);
                 task.map(Message::Notebook)
             }
+            Message::ShowUserRequest(id) => {
+                if let Some(id) = id.or(self.current_user.as_ref().map(|user| user.id.clone())) {
+                    let (page, task) = UserPage::new(id);
+                    self.state = PageState::User(page);
+                    task.map(Message::User)
+                } else {
+                    Task::none()
+                }
+            }
             Message::LogoutRespond => {
                 self.current_user = None;
                 let (page, task) = HomePage::new();
@@ -110,6 +125,10 @@ impl Page {
                     }
                     _ => Task::none(),
                 }
+            }
+            Message::SearchInputChanged(value) => {
+                self.search_input = value;
+                Task::none()
             }
             Message::Auth(message) => match &mut self.state {
                 PageState::Login(page) => Task::batch([
@@ -129,12 +148,24 @@ impl Page {
                 _ => Task::none(),
             },
             Message::Home(message) => match &mut self.state {
-                PageState::Home(page) => page.update(message).map(Message::Home),
+                PageState::Home(page) => Task::batch([
+                    match &message {
+                        HomeMessage::OpenNotebook(id) => {
+                            Task::done(Message::ShowNotebookRequest(Some(*id)))
+                        }
+                        _ => Task::none(),
+                    },
+                    page.update(message).map(Message::Home),
+                ]),
                 _ => Task::none(),
             },
             Message::Notebook(message) => match &mut self.state {
                 PageState::Notebook(page) => Task::batch([
                     match &message {
+                        NotebookMessage::GetNotebookRespond(id) => {
+                            let request = Request::GetNotebook(*id);
+                            Task::done(Message::Send(Protocol::Http, request))
+                        }
                         NotebookMessage::SaveNotebookRespond(request) => {
                             let request = Request::CreateNotebook(request.to_owned());
                             Task::done(Message::Send(Protocol::Http, request))
@@ -145,10 +176,19 @@ impl Page {
                 ]),
                 _ => Task::none(),
             },
-            Message::SearchInputChanged(value) => {
-                self.search_input = value;
-                Task::none()
-            }
+            Message::User(message) => match &mut self.state {
+                PageState::User(page) => Task::batch([
+                    match &message {
+                        UserMessage::GetUserRespond(id) => {
+                            let request = Request::GetUser(*id);
+                            Task::done(Message::Send(Protocol::Http, request))
+                        }
+                        _ => Task::none(),
+                    },
+                    page.update(message).map(Message::User),
+                ]),
+                _ => Task::none(),
+            },
             _ => Task::none(),
         }
     }
@@ -262,7 +302,7 @@ impl Page {
             PageState::Login(page) => page.view().map(Message::Auth),
             PageState::Home(page) => page.view().map(Message::Home),
             PageState::Notebook(page) => page.view().map(Message::Notebook),
-            PageState::UserProfile(_) => text("User Profile").into(),
+            PageState::User(page) => page.view().map(Message::User),
         };
 
         column![menu_bar, center(content)].into()

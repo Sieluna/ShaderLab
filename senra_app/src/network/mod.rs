@@ -6,6 +6,7 @@ mod web;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use http::{HeaderValue, header};
 use iced::futures::channel::mpsc;
 use iced::futures::{SinkExt, Stream};
 use iced::{Subscription, Task};
@@ -122,29 +123,34 @@ impl Network {
 
         Task::perform(
             async move {
-                let endpoint: Endpoint = request.to_owned().into();
-                let url = format!("{}{}", url, endpoint.path);
-                let mut headers = http::HeaderMap::new();
+                let endpoint: Endpoint = request.try_into()?;
+                let path = endpoint.build_url();
+                let url = format!("{}{}", url, path);
+
+                let mut headers = header::HeaderMap::new();
                 headers.insert(
-                    http::header::CONTENT_TYPE,
-                    "application/json".parse().unwrap(),
+                    header::CONTENT_TYPE,
+                    HeaderValue::from_static("application/json"),
                 );
                 if let Some(token) = token {
                     headers.insert(
-                        http::header::AUTHORIZATION,
+                        header::AUTHORIZATION,
                         format!("Bearer {}", token).parse().unwrap(),
                     );
                 }
-                let response = client
-                    .request(endpoint.method, &url)
-                    .headers(headers)
-                    .json(&request.serialize_for_http())
-                    .send()
-                    .await?;
+
+                let mut request_builder = client
+                    .request(endpoint.method.clone(), &url)
+                    .headers(headers);
+                if let Some(body) = &endpoint.body {
+                    request_builder = request_builder.json(body);
+                }
+
+                let response = request_builder.send().await?;
 
                 if response.status().is_success() {
                     let value: serde_json::Value = response.json().await?;
-                    let response = Response::deserialize_from_http(value)?;
+                    let response = Response::from_body(&endpoint, value)?;
                     Ok(Message::MessageRespond(response))
                 } else {
                     let error = response.text().await?;

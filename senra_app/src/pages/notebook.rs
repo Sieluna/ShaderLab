@@ -2,9 +2,7 @@ use std::collections::HashMap;
 
 use iced::widget::{button, center, column, container, mouse_area, row, scrollable, text};
 use iced::{Element, Length, Task};
-use senra_api::{
-    CreateNotebookRequest, EditNotebookRequest, NotebookResponse, NotebookStatsResponse,
-};
+use senra_api::{CreateNotebookRequest, EditNotebookRequest, NotebookResponse};
 use serde_json::json;
 
 use crate::widgets::{Cell, CellMessage, CellType};
@@ -12,7 +10,7 @@ use crate::widgets::{Cell, CellMessage, CellType};
 #[derive(Debug, Clone)]
 pub enum Message {
     ErrorRequest(String),
-    GetNotebookRequest(NotebookStatsResponse),
+    GetNotebookRequest(NotebookResponse),
 
     GetNotebookRespond(u64),
     SaveNotebookRespond(CreateNotebookRequest),
@@ -30,7 +28,7 @@ pub enum Message {
 pub enum NotebookPage {
     Loading,
     Page {
-        id: Option<i64>,
+        id: Option<u64>,
         title: String,
         description: Option<String>,
         cells: HashMap<u32, Cell>,
@@ -76,9 +74,9 @@ impl NotebookPage {
             },
             Message::GetNotebookRequest(response) => {
                 *self = Self::Page {
-                    id: Some(response.notebook.id),
-                    title: response.notebook.title,
-                    description: response.notebook.description,
+                    id: Some(response.inner.id as u64),
+                    title: response.inner.title,
+                    description: response.inner.description,
                     cells: HashMap::new(),
                     cell_order: Vec::new(),
                     next_id: 0,
