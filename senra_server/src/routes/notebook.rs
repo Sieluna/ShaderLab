@@ -38,38 +38,30 @@ pub fn router(state: AppState) -> Router {
 
 async fn list_notebooks(
     State(state): State<AppState>,
-    auth_user: AuthUser,
+    auth_user: Option<AuthUser>,
     Query(pagination): Query<PaginationParams>,
 ) -> Result<Json<NotebookListResponse>> {
     let page = pagination.page.unwrap_or(1);
     let per_page = pagination.per_page.unwrap_or(10);
 
-    let (notebooks, total) = state
-        .services
-        .notebook
-        .list_notebooks(auth_user.user_id, page, per_page)
-        .await?;
+    let notebook_service = state.services.notebook;
+    let (notebook_data, total) = notebook_service.list_notebooks(page, per_page).await?;
 
-    let mut result = Vec::new();
-    for notebook in notebooks {
-        let stats = state
-            .services
-            .notebook
-            .get_notebook_stats(notebook.id)
-            .await?;
-        let tags = state
-            .services
-            .notebook
-            .get_notebook_tags(notebook.id)
-            .await?;
-        let is_liked = state
-            .services
-            .notebook
-            .is_notebook_liked(auth_user.user_id, notebook.id)
-            .await?;
+    let mut notebooks = Vec::new();
+    for notebook in notebook_data {
+        let stats = notebook_service.get_notebook_stats(notebook.id).await?;
+        let tags = notebook_service.get_notebook_tags(notebook.id).await?;
+        let is_liked = match auth_user.as_ref().map(|user| user.user_id) {
+            Some(user_id) => {
+                notebook_service
+                    .is_notebook_liked(user_id, notebook.id)
+                    .await?
+            }
+            None => false,
+        };
         let user = state.services.user.get_user(notebook.user_id).await?;
 
-        result.push(NotebookPreviewResponse {
+        notebooks.push(NotebookPreviewResponse {
             inner: NotebookInfo {
                 id: notebook.id,
                 title: notebook.title,
@@ -93,10 +85,7 @@ async fn list_notebooks(
         });
     }
 
-    Ok(Json(NotebookListResponse {
-        notebooks: result,
-        total,
-    }))
+    Ok(Json(NotebookListResponse { notebooks, total }))
 }
 
 async fn get_notebook(

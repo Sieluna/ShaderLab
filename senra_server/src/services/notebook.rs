@@ -61,7 +61,60 @@ impl NotebookService {
     }
 
     /// Lists notebooks for a user with pagination
-    pub async fn list_notebooks(
+    pub async fn list_notebooks(&self, page: i64, per_page: i64) -> Result<(Vec<Notebook>, i64)> {
+        let offset = (page - 1) * per_page;
+
+        // Get recommended notebooks using Bilibili-like recommendation algorithm
+        let notebooks: Vec<Notebook> = sqlx::query_as(
+                r#"
+                WITH notebook_scores AS (
+                    SELECT 
+                        n.*,
+                        -- Base popularity score (weights: views 0.3, likes 0.3, favorites 0.2, comments 0.2)
+                        (s.view_count * 0.3 + s.like_count * 0.3 + s.favorite_count * 0.2 + s.comment_count * 0.2) as base_score,
+                        -- Time decay factor (higher weight for content within 24 hours)
+                        CASE 
+                            WHEN datetime(n.updated_at) > datetime('now', '-24 hours') THEN 1.5
+                            WHEN datetime(n.updated_at) > datetime('now', '-7 days') THEN 1.2
+                            ELSE 1.0
+                        END as time_factor,
+                        -- Content quality factor (based on engagement rate)
+                        CASE 
+                            WHEN s.view_count > 0 THEN 
+                                (s.like_count + s.favorite_count + s.comment_count) * 1.0 / s.view_count
+                            ELSE 0
+                        END as quality_factor
+                    FROM notebooks n
+                    JOIN notebook_stats s ON n.id = s.notebook_id
+                    WHERE n.visibility = 'public'
+                )
+                SELECT * FROM notebook_scores
+                ORDER BY 
+                    (base_score * time_factor * (1 + quality_factor)) DESC,
+                    updated_at DESC
+                LIMIT $1 OFFSET $2
+                "#,
+            )
+            .bind(per_page)
+            .bind(offset)
+            .fetch_all(&self.pool)
+            .await?;
+
+        // Get total count
+        let total = sqlx::query_scalar(
+            r#"
+                SELECT COUNT(*) FROM notebooks
+                WHERE visibility = 'public'
+                "#,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok((notebooks, total))
+    }
+
+    /// Lists notebooks for a user with pagination
+    pub async fn list_notebooks_by_user(
         &self,
         user_id: i64,
         page: i64,

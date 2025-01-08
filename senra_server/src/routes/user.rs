@@ -39,7 +39,9 @@ async fn get_user(
     let user = state.services.user.get_user(id).await?;
 
     let notebook_service = state.services.notebook;
-    let (notebook_data, total) = notebook_service.list_notebooks(id, page, per_page).await?;
+    let (notebook_data, total) = notebook_service
+        .list_notebooks_by_user(id, page, per_page)
+        .await?;
 
     let mut notebooks = Vec::new();
     for notebook in notebook_data {

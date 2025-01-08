@@ -8,7 +8,7 @@ use server::MockServer;
 use tower::{Service, ServiceExt};
 
 #[tokio::test]
-async fn test_notebook_comment_routes() {
+async fn test_notebook_comment_workflow() {
     let mut server = MockServer::new().await;
     let mut app = server.into_service();
 

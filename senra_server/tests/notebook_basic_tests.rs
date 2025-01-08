@@ -54,8 +54,7 @@ async fn test_notebook_workflow() {
         .call(
             Request::builder()
                 .method(http::Method::GET)
-                .uri("/notebooks")
-                .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
+                .uri(format!("/user/{}", user.id))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -66,8 +65,8 @@ async fn test_notebook_workflow() {
 
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let body: Value = serde_json::from_slice(&body).unwrap();
-    assert_eq!(body["notebooks"].as_array().unwrap().len(), 1);
-    assert_eq!(body["total"], 1);
+    assert_eq!(body["notebooks"]["notebooks"].as_array().unwrap().len(), 1);
+    assert_eq!(body["notebooks"]["total"], 1);
 
     let response = ServiceExt::<Request<Body>>::ready(&mut app)
         .await
