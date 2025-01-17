@@ -6,6 +6,8 @@ use web_sys::{Storage, window};
 
 use super::{StorageError, StorageInner};
 
+use crate::config::Config;
+
 impl From<JsValue> for StorageError {
     fn from(error: JsValue) -> Self {
         let error = Error::new(ErrorKind::Other, format!("{:?}", error));
@@ -21,7 +23,7 @@ unsafe impl Send for WebStorage {}
 unsafe impl Sync for WebStorage {}
 
 impl WebStorage {
-    pub fn new() -> Self {
+    pub fn new(config: &Config) -> Self {
         let storage = window()
             .unwrap()
             .local_storage()

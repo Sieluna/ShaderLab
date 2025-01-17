@@ -1,3 +1,4 @@
+mod config;
 mod global;
 mod network;
 mod pages;
@@ -5,6 +6,7 @@ mod storage;
 mod styles;
 mod widgets;
 
+use config::Config;
 use iced::widget::center;
 use iced::{Element, Subscription, Task, Theme};
 use senra_api::Response;
@@ -36,8 +38,10 @@ struct ShaderLab {
 
 impl ShaderLab {
     fn new() -> (Self, Task<Message>) {
-        let mut storage = Storage::new();
-        let network = Network::new(String::from("http://localhost:3000"));
+        let config = Config::default();
+
+        let mut storage = Storage::new(&config);
+        let network = Network::new(&config);
         let (page, page_task) = Page::new();
 
         (

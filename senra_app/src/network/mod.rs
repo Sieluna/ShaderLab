@@ -12,6 +12,8 @@ use iced::futures::{SinkExt, Stream};
 use iced::{Subscription, Task};
 use senra_api::{Endpoint, Request, Response};
 
+use crate::config::Config;
+
 #[derive(Debug, thiserror::Error)]
 pub enum NetworkError {
     #[error("I/O error: {0}")]
@@ -61,7 +63,7 @@ pub struct Network {
 }
 
 impl Network {
-    pub fn new(base_url: String) -> Self {
+    pub fn new(config: &Config) -> Self {
         let network = {
             #[cfg(not(target_arch = "wasm32"))]
             {
@@ -77,7 +79,7 @@ impl Network {
             inner: Arc::new(network),
             client: reqwest::Client::new(),
             sender: None,
-            base_url,
+            base_url: config.url.clone(),
             auth_token: None,
         }
     }
