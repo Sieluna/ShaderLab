@@ -5,6 +5,9 @@ mod ws;
 
 use axum::Router;
 use axum::http::Method;
+use axum::response::Json;
+use axum::routing::get;
+use serde_json::json;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
@@ -16,6 +19,7 @@ pub fn create_router(state: AppState) -> Router {
         .merge(notebook::router(state.clone()))
         .merge(user::router(state.clone()))
         .merge(ws::router(state.clone()))
+        .route("/health", get(health_check))
         .layer(TraceLayer::new_for_http())
         .layer(
             CorsLayer::new()
@@ -23,4 +27,12 @@ pub fn create_router(state: AppState) -> Router {
                 .allow_headers(Any)
                 .allow_origin(Any),
         )
+}
+
+async fn health_check() -> Json<serde_json::Value> {
+    Json(json!({
+        "status": "ok",
+        "version": env!("CARGO_PKG_VERSION"),
+        "timestamp": time::OffsetDateTime::now_utc().to_string()
+    }))
 }
