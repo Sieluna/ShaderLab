@@ -3,6 +3,7 @@ use serde_json::Value;
 
 use crate::user::UserPreviewResponse;
 
+#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateNotebookRequest {
     pub title: String,
@@ -13,6 +14,7 @@ pub struct CreateNotebookRequest {
     pub visibility: String,
 }
 
+#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EditNotebookRequest {
     pub title: Option<String>,
@@ -23,11 +25,13 @@ pub struct EditNotebookRequest {
     pub visibility: Option<String>,
 }
 
+#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateNotebookCommentRequest {
     pub content: String,
 }
 
+#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NotebookStats {
     pub view_count: i64,
@@ -36,6 +40,7 @@ pub struct NotebookStats {
     pub is_liked: bool,
 }
 
+#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NotebookInfo {
     pub id: i64,
@@ -46,6 +51,7 @@ pub struct NotebookInfo {
     pub updated_at: String,
 }
 
+#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NotebookPreviewResponse {
     #[serde(flatten)]
@@ -55,6 +61,7 @@ pub struct NotebookPreviewResponse {
     pub preview: Option<Vec<u8>>,
 }
 
+#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NotebookResponse {
     #[serde(flatten)]
@@ -66,12 +73,14 @@ pub struct NotebookResponse {
     pub version: i32,
 }
 
+#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NotebookListResponse {
     pub notebooks: Vec<NotebookPreviewResponse>,
     pub total: i64,
 }
 
+#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NotebookVersionResponse {
     pub id: i64,
@@ -81,12 +90,14 @@ pub struct NotebookVersionResponse {
     pub created_at: String,
 }
 
+#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NotebookVersionListResponse {
     pub versions: Vec<NotebookVersionResponse>,
     pub total: i64,
 }
 
+#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NotebookCommentItem {
     pub id: i64,
@@ -99,6 +110,7 @@ pub struct NotebookCommentItem {
     pub author_avatar: Option<Vec<u8>>,
 }
 
+#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NotebookCommentListResponse {
     pub comments: Vec<NotebookCommentItem>,

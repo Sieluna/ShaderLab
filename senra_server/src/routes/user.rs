@@ -9,7 +9,7 @@ use crate::middleware::AuthUser;
 use crate::models::EditUser;
 use crate::state::AppState;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct PaginationParams {
     page: Option<i64>,
     per_page: Option<i64>,
@@ -89,6 +89,17 @@ async fn get_user(
     }))
 }
 
+#[utoipa::path(
+    patch,
+    path = "/user",
+    tag = "user",
+    request_body = EditUserRequest,
+    responses(
+        (status = 200, description = "Successfully updated user information", body = UserInfoResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 400, description = "Invalid request data")
+    )
+)]
 async fn edit_user(
     State(state): State<AppState>,
     auth_user: AuthUser,

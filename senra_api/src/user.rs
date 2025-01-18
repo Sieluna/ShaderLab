@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::notebook::NotebookListResponse;
 
+#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EditUserRequest {
     pub username: Option<String>,
@@ -10,6 +11,7 @@ pub struct EditUserRequest {
     pub avatar: Option<Vec<u8>>,
 }
 
+#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserPreviewResponse {
     pub id: i64,
@@ -17,6 +19,7 @@ pub struct UserPreviewResponse {
     pub avatar: Option<Vec<u8>>,
 }
 
+#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserInfoResponse {
     pub id: i64,
@@ -25,6 +28,7 @@ pub struct UserInfoResponse {
     pub avatar: Vec<u8>,
 }
 
+#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserResponse {
     pub id: i64,

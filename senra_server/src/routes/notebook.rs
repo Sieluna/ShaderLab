@@ -9,7 +9,7 @@ use crate::middleware::AuthUser;
 use crate::models::{CreateNotebook, UpdateNotebook};
 use crate::state::AppState;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct PaginationParams {
     page: Option<i64>,
     per_page: Option<i64>,
@@ -36,6 +36,16 @@ pub fn router(state: AppState) -> Router {
         .with_state(state)
 }
 
+#[utoipa::path(
+    get,
+    path = "/notebooks",
+    tag = "notebook",
+    params(PaginationParams),
+    responses(
+        (status = 200, description = "Successfully retrieved notebook list", body = NotebookListResponse),
+        (status = 401, description = "Unauthorized")
+    )
+)]
 async fn list_notebooks(
     State(state): State<AppState>,
     auth_user: Option<AuthUser>,
@@ -88,6 +98,19 @@ async fn list_notebooks(
     Ok(Json(NotebookListResponse { notebooks, total }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/notebooks/{id}",
+    tag = "notebook",
+    params(
+        ("id" = i64, Path, description = "Notebook ID")
+    ),
+    responses(
+        (status = 200, description = "Successfully retrieved notebook details", body = NotebookResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Notebook not found")
+    )
+)]
 async fn get_notebook(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -133,6 +156,17 @@ async fn get_notebook(
     }))
 }
 
+#[utoipa::path(
+    post,
+    path = "/notebooks",
+    tag = "notebook",
+    request_body = CreateNotebookRequest,
+    responses(
+        (status = 200, description = "Successfully created notebook", body = NotebookResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 400, description = "Invalid request data")
+    )
+)]
 async fn create_notebook(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -186,6 +220,20 @@ async fn create_notebook(
     }))
 }
 
+#[utoipa::path(
+    patch,
+    path = "/notebooks/{id}",
+    tag = "notebook",
+    params(
+        ("id" = i64, Path, description = "Notebook ID")
+    ),
+    request_body = EditNotebookRequest,
+    responses(
+        (status = 200, description = "Successfully updated notebook", body = NotebookResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Notebook not found")
+    )
+)]
 async fn update_notebook(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -241,6 +289,19 @@ async fn update_notebook(
     }))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/notebooks/{id}",
+    tag = "notebook",
+    params(
+        ("id" = i64, Path, description = "Notebook ID")
+    ),
+    responses(
+        (status = 200, description = "Successfully deleted notebook"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Notebook not found")
+    )
+)]
 async fn delete_notebook(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -253,6 +314,20 @@ async fn delete_notebook(
         .await
 }
 
+#[utoipa::path(
+    get,
+    path = "/notebooks/{id}/versions",
+    tag = "notebook",
+    params(
+        ("id" = i64, Path, description = "Notebook ID"),
+        PaginationParams
+    ),
+    responses(
+        (status = 200, description = "Successfully retrieved notebook versions", body = NotebookVersionListResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Notebook not found")
+    )
+)]
 async fn list_versions(
     State(state): State<AppState>,
     _auth_user: AuthUser,
@@ -283,6 +358,20 @@ async fn list_versions(
     }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/notebooks/{id}/comments",
+    tag = "notebook",
+    params(
+        ("id" = i64, Path, description = "Notebook ID"),
+        PaginationParams
+    ),
+    responses(
+        (status = 200, description = "Successfully retrieved comments", body = NotebookCommentListResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Notebook not found")
+    )
+)]
 async fn list_comments(
     State(state): State<AppState>,
     Path(id): Path<i64>,
@@ -315,6 +404,20 @@ async fn list_comments(
     Ok(Json(NotebookCommentListResponse { comments, total }))
 }
 
+#[utoipa::path(
+    post,
+    path = "/notebooks/{id}/comments",
+    tag = "notebook",
+    params(
+        ("id" = i64, Path, description = "Notebook ID")
+    ),
+    request_body = CreateNotebookCommentRequest,
+    responses(
+        (status = 200, description = "Successfully created comment", body = NotebookCommentItem),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Notebook not found")
+    )
+)]
 async fn create_comment(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -341,6 +444,20 @@ async fn create_comment(
     }))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/notebooks/{id}/comments/{comment_id}",
+    tag = "notebook",
+    params(
+        ("id" = i64, Path, description = "Notebook ID"),
+        ("comment_id" = i64, Path, description = "Comment ID")
+    ),
+    responses(
+        (status = 200, description = "Successfully deleted comment"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Comment not found")
+    )
+)]
 async fn delete_comment(
     State(state): State<AppState>,
     auth_user: AuthUser,

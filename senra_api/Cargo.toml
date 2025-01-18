@@ -7,3 +7,8 @@ edition = "2024"
 http.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+utoipa = { workspace = true, optional = true }
+
+[features]
+default = []
+docs = ["dep:utoipa"]
