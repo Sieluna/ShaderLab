@@ -1,5 +1,4 @@
-use senra_server::errors::Result;
-use senra_server::models::{CreateUser, User};
+use senra_server::{CreateUser, Result, User};
 
 use crate::server::MockServer;
 

@@ -1,9 +1,7 @@
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
-use senra_server::{
-    config::Config, db::Database, errors::Result, routes::create_router, state::AppState,
-};
+use senra_server::{AppState, Config, Database, Result, create_router};
 
 #[tokio::main]
 async fn main() -> Result<()> {

@@ -6,10 +6,7 @@ mod mock_user;
 use axum::Router;
 use axum::body::Body;
 use axum::routing::RouterIntoService;
-use senra_server::config::Config;
-use senra_server::db::Database;
-use senra_server::routes::create_router;
-use senra_server::state::AppState;
+use senra_server::{AppState, Config, Database, create_router};
 
 pub use mock_notebook::NotebookOptions;
 

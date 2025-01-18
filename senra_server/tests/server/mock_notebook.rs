@@ -1,5 +1,4 @@
-use senra_server::errors::Result;
-use senra_server::models::{CreateNotebook, Notebook};
+use senra_server::{CreateNotebook, Notebook, Result};
 use time::OffsetDateTime;
 
 use crate::server::MockServer;

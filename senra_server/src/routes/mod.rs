@@ -5,7 +5,7 @@ mod ws;
 
 use axum::Router;
 use axum::http::Method;
-use axum::response::{Html,Json};
+use axum::response::{Html, Json};
 use axum::routing::get;
 use serde_json::json;
 use tower_http::cors::{Any, CorsLayer};
@@ -39,6 +39,8 @@ fn openapi() -> Router {
             auth::verify_token,
             auth::login,
             auth::register,
+            user::get_self,
+            user::get_user,
             user::edit_user,
             notebook::list_notebooks,
             notebook::get_notebook,
