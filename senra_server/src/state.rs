@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::config::Config;
 use crate::db::Database;
-use crate::services::{AuthService, NotebookService, UserService};
+use crate::services::*;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -15,6 +15,8 @@ pub struct AppState {
 pub struct Services {
     pub auth: AuthService,
     pub notebook: NotebookService,
+    pub resource: ResourceService,
+    pub shader: ShaderService,
     pub user: UserService,
 }
 
@@ -26,6 +28,8 @@ impl AppState {
         let services = Services {
             auth: AuthService::new(db.pool(), &config.auth.jwt_secret),
             notebook: NotebookService::new(db.pool()),
+            resource: ResourceService::new(db.pool()),
+            shader: ShaderService::new(db.pool()),
             user: UserService::new(db.pool()),
         };
 

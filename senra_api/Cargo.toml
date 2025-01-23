@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 http.workspace = true
-serde.workspace = true
+serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 utoipa = { workspace = true, optional = true }
 

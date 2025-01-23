@@ -9,6 +9,9 @@ use time::OffsetDateTime;
 use crate::errors::{AppError, AuthError, Result};
 use crate::models::{LoginUser, User};
 
+const TOKEN_EXPIRATION: i64 = 3600 * 24; // 24 hours
+const REFRESH_THRESHOLD: i64 = 3600; // 1 hour
+
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
     sub: i64,
@@ -32,11 +35,11 @@ impl AuthService {
 
     pub async fn login(&self, login_user: LoginUser) -> Result<(User, String)> {
         if login_user.username.is_empty() {
-            Err(AuthError::InvalidUsername)?;
+            return Err(AuthError::InvalidUsername.into());
         }
 
         if login_user.password.is_empty() {
-            Err(AuthError::InvalidPassword)?;
+            return Err(AuthError::InvalidPassword.into());
         }
 
         let user: Option<User> = sqlx::query_as(
@@ -56,7 +59,7 @@ impl AuthService {
         if !verify(login_user.password, &password_hash)
             .map_err(|_| AppError::InternalError("Failed to verify password".to_string()))?
         {
-            Err(AuthError::InvalidCredentials)?;
+            return Err(AuthError::InvalidCredentials.into());
         }
 
         let token = self.generate_token(user.id).await?;
@@ -86,10 +89,10 @@ impl AuthService {
         let now = OffsetDateTime::now_utc().unix_timestamp();
         let expires_in = token_data.claims.exp - now;
 
-        if expires_in < 1800 {
+        if expires_in < REFRESH_THRESHOLD {
             let claims = Claims {
                 sub: token_data.claims.sub,
-                exp: now + 3600 * 24,
+                exp: now + TOKEN_EXPIRATION,
                 iat: now,
             };
             let token = encode(
@@ -110,7 +113,7 @@ impl AuthService {
 
         let claims = Claims {
             sub: user_id,
-            exp: now + 3600 * 24,
+            exp: now + TOKEN_EXPIRATION,
             iat: now,
         };
         let token = encode(

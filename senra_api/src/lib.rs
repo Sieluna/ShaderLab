@@ -1,12 +1,17 @@
 mod auth;
 mod notebook;
+mod resource;
+mod shader;
 mod user;
 
-pub use auth::*;
 use http::Method;
-pub use notebook::*;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{Value, json};
+
+pub use auth::*;
+pub use notebook::*;
+pub use resource::*;
+pub use shader::*;
 pub use user::*;
 
 #[derive(Debug, Clone)]

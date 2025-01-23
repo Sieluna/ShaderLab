@@ -16,6 +16,9 @@ pub enum ShaderError {
 
     #[error("Invalid shader data: {0}")]
     InvalidData(String),
+
+    #[error("No changes provided")]
+    NoChanges,
 }
 
 impl ErrorResponse for ShaderError {
@@ -25,6 +28,7 @@ impl ErrorResponse for ShaderError {
             ShaderError::PermissionDenied => StatusCode::FORBIDDEN,
             ShaderError::CompilationError(_) => StatusCode::BAD_REQUEST,
             ShaderError::InvalidData(_) => StatusCode::BAD_REQUEST,
+            ShaderError::NoChanges => StatusCode::BAD_REQUEST,
         }
     }
 

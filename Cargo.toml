@@ -10,7 +10,7 @@ resolver = "2"
 http = "1"
 iced = "0.13"
 senra_api = { path = "senra_api" }
-serde = { version = "1", features = ["derive"] }
+serde = "1"
 serde_json = "1"
 thiserror = "2"
 tokio = { version = "1", features = ["full"] }

@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::resource::{CreateResourceRequest, ResourceResponse};
+use crate::shader::{CreateShaderRequest, ShaderResponse};
 use crate::user::UserPreviewResponse;
 
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
@@ -9,6 +11,8 @@ pub struct CreateNotebookRequest {
     pub title: String,
     pub description: Option<String>,
     pub content: Value,
+    pub resources: Vec<CreateResourceRequest>,
+    pub shaders: Vec<CreateShaderRequest>,
     pub tags: Vec<String>,
     pub preview: Option<Vec<u8>>,
     pub visibility: String,
@@ -69,6 +73,8 @@ pub struct NotebookResponse {
     pub author: UserPreviewResponse,
     pub stats: NotebookStats,
     pub content: Value,
+    pub resources: Vec<ResourceResponse>,
+    pub shaders: Vec<ShaderResponse>,
     pub visibility: String,
     pub version: i32,
 }

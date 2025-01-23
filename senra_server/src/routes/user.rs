@@ -4,7 +4,7 @@ use axum::{Json, Router};
 use senra_api::*;
 use serde::Deserialize;
 
-use crate::errors::{Result, UserError};
+use crate::errors::Result;
 use crate::middleware::AuthUser;
 use crate::models::EditUser;
 use crate::state::AppState;

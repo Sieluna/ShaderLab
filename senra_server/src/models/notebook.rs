@@ -3,6 +3,9 @@ use serde_json::Value;
 use sqlx::FromRow;
 use time::OffsetDateTime;
 
+use super::resource::CreateResource;
+use super::shader::CreateShader;
+
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct Notebook {
     pub id: i64,
@@ -67,6 +70,8 @@ pub struct CreateNotebook {
     pub title: String,
     pub description: Option<String>,
     pub content: Value,
+    pub resources: Vec<CreateResource>,
+    pub shaders: Vec<CreateShader>,
     pub tags: Vec<String>,
     pub preview: Option<Vec<u8>>,
     pub visibility: String,

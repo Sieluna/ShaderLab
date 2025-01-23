@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 use crate::errors::Result;
 use crate::middleware::AuthUser;
-use crate::models::{CreateNotebook, UpdateNotebook};
+use crate::models::{CreateNotebook, CreateResource, CreateShader, UpdateNotebook};
 use crate::state::AppState;
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
@@ -116,19 +116,43 @@ async fn get_notebook(
     auth_user: AuthUser,
     Path(id): Path<i64>,
 ) -> Result<Json<NotebookResponse>> {
-    let notebook = state
-        .services
-        .notebook
-        .get_notebook(auth_user.user_id, id)
-        .await?;
-    let stats = state.services.notebook.get_notebook_stats(id).await?;
-    let tags = state.services.notebook.get_notebook_tags(id).await?;
-    let is_liked = state
-        .services
-        .notebook
+    let notebook_service = state.services.notebook;
+    let notebook = notebook_service.get_notebook(auth_user.user_id, id).await?;
+    let stats = notebook_service.get_notebook_stats(id).await?;
+    let tags = notebook_service.get_notebook_tags(id).await?;
+    let is_liked = notebook_service
         .is_notebook_liked(auth_user.user_id, id)
         .await?;
+
+    let resources = state.services.resource.get_resources(id).await?;
+    let shaders = state.services.shader.get_shaders(id).await?;
     let user = state.services.user.get_user(notebook.user_id).await?;
+
+    let resource_responses: Vec<ResourceResponse> = resources
+        .into_iter()
+        .map(|r| ResourceResponse {
+            id: r.id,
+            notebook_id: r.notebook_id,
+            name: r.name,
+            resource_type: r.resource_type,
+            data: r.data,
+            metadata: r.metadata,
+            created_at: r.created_at.to_string(),
+        })
+        .collect();
+
+    let shader_responses: Vec<ShaderResponse> = shaders
+        .into_iter()
+        .map(|s| ShaderResponse {
+            id: s.id,
+            notebook_id: s.notebook_id,
+            name: s.name,
+            shader_type: s.shader_type,
+            code: s.code,
+            created_at: s.created_at.to_string(),
+            updated_at: s.updated_at.to_string(),
+        })
+        .collect();
 
     Ok(Json(NotebookResponse {
         inner: NotebookInfo {
@@ -151,6 +175,8 @@ async fn get_notebook(
             is_liked,
         },
         content: notebook.content,
+        resources: resource_responses,
+        shaders: shader_responses,
         visibility: notebook.visibility,
         version: notebook.version,
     }))
@@ -172,6 +198,29 @@ async fn create_notebook(
     auth_user: AuthUser,
     Json(payload): Json<CreateNotebookRequest>,
 ) -> Result<Json<NotebookResponse>> {
+    let resources: Vec<CreateResource> = payload
+        .resources
+        .into_iter()
+        .map(|r| CreateResource {
+            notebook_id: 0,
+            name: r.name,
+            resource_type: r.resource_type,
+            data: r.data,
+            metadata: r.metadata,
+        })
+        .collect();
+
+    let shaders: Vec<CreateShader> = payload
+        .shaders
+        .into_iter()
+        .map(|s| CreateShader {
+            notebook_id: 0,
+            name: s.name,
+            shader_type: s.shader_type,
+            code: s.code,
+        })
+        .collect();
+
     let notebook = state
         .services
         .notebook
@@ -181,6 +230,8 @@ async fn create_notebook(
                 title: payload.title,
                 description: payload.description,
                 content: payload.content,
+                resources,
+                shaders,
                 tags: payload.tags.clone(),
                 preview: payload.preview,
                 visibility: payload.visibility,
@@ -193,6 +244,35 @@ async fn create_notebook(
     let notebook_service = state.services.notebook;
     let stats = notebook_service.get_notebook_stats(notebook.id).await?;
     let tags = notebook_service.get_notebook_tags(notebook.id).await?;
+
+    let resources = state.services.resource.get_resources(notebook.id).await?;
+    let shaders = state.services.shader.get_shaders(notebook.id).await?;
+
+    let resource_responses: Vec<ResourceResponse> = resources
+        .into_iter()
+        .map(|r| ResourceResponse {
+            id: r.id,
+            notebook_id: r.notebook_id,
+            name: r.name,
+            resource_type: r.resource_type,
+            data: r.data,
+            metadata: r.metadata,
+            created_at: r.created_at.to_string(),
+        })
+        .collect();
+
+    let shader_responses: Vec<ShaderResponse> = shaders
+        .into_iter()
+        .map(|s| ShaderResponse {
+            id: s.id,
+            notebook_id: s.notebook_id,
+            name: s.name,
+            shader_type: s.shader_type,
+            code: s.code,
+            created_at: s.created_at.to_string(),
+            updated_at: s.updated_at.to_string(),
+        })
+        .collect();
 
     Ok(Json(NotebookResponse {
         inner: NotebookInfo {
@@ -215,6 +295,8 @@ async fn create_notebook(
             is_liked: false,
         },
         content: notebook.content,
+        resources: resource_responses,
+        shaders: shader_responses,
         visibility: notebook.visibility,
         version: notebook.version,
     }))
@@ -263,6 +345,35 @@ async fn update_notebook(
     let tags = notebook_service.get_notebook_tags(id).await?;
     let is_liked = notebook_service.is_notebook_liked(user.id, id).await?;
 
+    let resources = state.services.resource.get_resources(id).await?;
+    let shaders = state.services.shader.get_shaders(id).await?;
+
+    let resource_responses: Vec<ResourceResponse> = resources
+        .into_iter()
+        .map(|r| ResourceResponse {
+            id: r.id,
+            notebook_id: r.notebook_id,
+            name: r.name,
+            resource_type: r.resource_type,
+            data: r.data,
+            metadata: r.metadata,
+            created_at: r.created_at.to_string(),
+        })
+        .collect();
+
+    let shader_responses: Vec<ShaderResponse> = shaders
+        .into_iter()
+        .map(|s| ShaderResponse {
+            id: s.id,
+            notebook_id: s.notebook_id,
+            name: s.name,
+            shader_type: s.shader_type,
+            code: s.code,
+            created_at: s.created_at.to_string(),
+            updated_at: s.updated_at.to_string(),
+        })
+        .collect();
+
     Ok(Json(NotebookResponse {
         inner: NotebookInfo {
             id: notebook.id,
@@ -284,6 +395,8 @@ async fn update_notebook(
             is_liked,
         },
         content: notebook.content,
+        resources: resource_responses,
+        shaders: shader_responses,
         visibility: notebook.visibility,
         version: notebook.version,
     }))

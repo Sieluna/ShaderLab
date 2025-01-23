@@ -148,8 +148,8 @@ impl NotebookService {
     pub async fn get_notebook(&self, user_id: i64, id: i64) -> Result<Notebook> {
         let notebook: Notebook = sqlx::query_as(
             r#"
-            SELECT * FROM notebooks
-            WHERE id = $1 AND user_id = $2
+            SELECT n.* FROM notebooks n
+            WHERE n.id = $1 AND (n.user_id = $2 OR n.visibility = 'public')
             "#,
         )
         .bind(id)
@@ -191,6 +191,39 @@ impl NotebookService {
         .fetch_one(&mut *tx)
         .await?;
 
+        // Create resources
+        for resource in create_notebook.resources {
+            sqlx::query(
+                r#"
+                INSERT INTO resources (notebook_id, name, resource_type, data, metadata)
+                VALUES ($1, $2, $3, $4, $5)
+                "#,
+            )
+            .bind(notebook.id)
+            .bind(resource.name)
+            .bind(resource.resource_type)
+            .bind(resource.data)
+            .bind(resource.metadata)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        // Create shaders
+        for shader in create_notebook.shaders {
+            sqlx::query(
+                r#"
+                INSERT INTO shaders (notebook_id, name, shader_type, code)
+                VALUES ($1, $2, $3, $4)
+                "#,
+            )
+            .bind(notebook.id)
+            .bind(shader.name)
+            .bind(shader.shader_type)
+            .bind(shader.code)
+            .execute(&mut *tx)
+            .await?;
+        }
+
         // Create initial version
         sqlx::query(
             r#"
@@ -230,10 +263,11 @@ impl NotebookService {
         }
 
         tx.commit().await?;
+
         Ok(notebook)
     }
 
-    /// Updates a notebook and its related data in a transaction
+    /// Updates a notebook content and its related data in a transaction
     /// Handles:
     /// - Notebook updates
     /// - Version tracking
@@ -526,7 +560,7 @@ impl NotebookService {
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(NotebookError::NotFound.into());
+            Err(NotebookError::NotFound)?;
         }
 
         Ok(())

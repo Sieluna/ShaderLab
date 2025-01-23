@@ -102,14 +102,3 @@ CREATE TABLE IF NOT EXISTS shaders (
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE
 );
-
--- Create shadergraph table
-CREATE TABLE IF NOT EXISTS shadergraphs (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    notebook_id     INTEGER NOT NULL,
-    name            TEXT NOT NULL,
-    graph_data      JSON NOT NULL,
-    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE
-);

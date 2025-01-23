@@ -34,15 +34,15 @@ impl UserService {
 
     pub async fn create_user(&self, create_user: CreateUser) -> Result<User> {
         if create_user.username.is_empty() {
-            Err(UserError::InvalidUsername)?;
+            return Err(UserError::InvalidUsername.into());
         }
 
         if create_user.email.is_empty() {
-            Err(UserError::InvalidEmail)?;
+            return Err(UserError::InvalidEmail.into());
         }
 
         if create_user.password.is_empty() {
-            Err(UserError::InvalidPassword)?;
+            return Err(UserError::InvalidPassword.into());
         }
 
         let existing_user = sqlx::query("SELECT id FROM users WHERE username = $1 OR email = $2")
@@ -52,7 +52,7 @@ impl UserService {
             .await?;
 
         if existing_user.is_some() {
-            Err(UserError::UserExists)?;
+            return Err(UserError::UserExists.into());
         }
 
         let password_hash = hash(create_user.password, DEFAULT_COST)
@@ -119,7 +119,7 @@ impl UserService {
 
         if let Some(username) = &edit_user.username {
             if username.is_empty() {
-                Err(UserError::InvalidUsername)?;
+                return Err(UserError::InvalidUsername.into());
             }
             query_builder.push("username = ").push_bind(username);
             has_changes = true;
@@ -127,7 +127,7 @@ impl UserService {
 
         if let Some(email) = &edit_user.email {
             if email.is_empty() {
-                Err(UserError::InvalidEmail)?;
+                return Err(UserError::InvalidEmail.into());
             }
             if has_changes {
                 query_builder.push(", ");
@@ -138,7 +138,7 @@ impl UserService {
 
         if let Some(password) = &edit_user.password {
             if password.is_empty() {
-                Err(UserError::InvalidPassword)?;
+                return Err(UserError::InvalidPassword.into());
             }
             let password_hash = hash(password, DEFAULT_COST)
                 .map_err(|_| AppError::InternalError("Failed to hash password".to_string()))?;
@@ -158,7 +158,7 @@ impl UserService {
         }
 
         if !has_changes {
-            Err(UserError::NoChanges)?;
+            return Err(UserError::NoChanges.into());
         }
 
         query_builder
