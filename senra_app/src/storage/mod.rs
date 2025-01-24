@@ -8,6 +8,8 @@ use std::sync::Arc;
 use iced::Task;
 use serde_json::Value;
 
+use crate::config::Config;
+
 #[derive(Debug, thiserror::Error)]
 pub enum StorageError {
     #[error("I/O error: {0}")]
@@ -44,15 +46,15 @@ pub struct Storage {
 }
 
 impl Storage {
-    pub fn new() -> Self {
+    pub fn new(config: &Config) -> Self {
         let storage = {
             #[cfg(not(target_arch = "wasm32"))]
             {
-                native::FileStorage::new()
+                native::FileStorage::new(config)
             }
             #[cfg(target_arch = "wasm32")]
             {
-                web::WebStorage::new()
+                web::WebStorage::new(config)
             }
         };
 

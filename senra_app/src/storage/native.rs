@@ -5,6 +5,8 @@ use std::path::PathBuf;
 use serde_json::Value;
 use tokio::fs;
 
+use crate::config::Config;
+
 use super::{StorageError, StorageInner};
 
 pub struct FileStorage {
@@ -12,9 +14,16 @@ pub struct FileStorage {
 }
 
 impl FileStorage {
-    pub fn new() -> Self {
-        let exe_path = env::current_exe().unwrap();
-        let path = exe_path.parent().unwrap().join("data.json");
+    pub fn new(config: &Config) -> Self {
+        let path = {
+            let path_buf = PathBuf::from(&config.storage_path).canonicalize().unwrap();
+            if path_buf.is_relative() {
+                let exe_path = env::current_exe().unwrap();
+                exe_path.parent().unwrap().join(path_buf)
+            } else {
+                path_buf
+            }
+        };
 
         Self { path }
     }

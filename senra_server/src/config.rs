@@ -24,8 +24,8 @@ pub struct AuthConfig {
     pub jwt_secret: String,
 }
 
-impl Config {
-    pub fn new() -> Self {
+impl Default for Config {
+    fn default() -> Self {
         Self {
             server: ServerConfig {
                 host: env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string()),
