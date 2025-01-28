@@ -9,8 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "three": "latest",
-    "axios": "latest"
+    "axios": "latest",
+    "three": "latest"
   },
   "devDependencies": {
     "vite": "latest"
