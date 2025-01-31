@@ -1,7 +1,7 @@
 use sqlx::{QueryBuilder, SqlitePool};
 
 use crate::errors::{NotebookError, Result, ShaderError};
-use crate::models::{CreateShader, Shader, UpdateShader};
+use crate::models::{CreateShader, Shader, ShaderVersion, UpdateShader};
 
 #[derive(Clone)]
 pub struct ShaderService {
@@ -14,6 +14,8 @@ impl ShaderService {
     }
 
     pub async fn create_shader(&self, user_id: i64, create_shader: CreateShader) -> Result<Shader> {
+        let mut tx = self.pool.begin().await?;
+
         // Verify notebook ownership
         let notebook_exists: bool = sqlx::query_scalar(
             r#"
@@ -25,7 +27,7 @@ impl ShaderService {
         )
         .bind(create_shader.notebook_id)
         .bind(user_id)
-        .fetch_one(&self.pool)
+        .fetch_one(&mut *tx)
         .await?;
 
         if !notebook_exists {
@@ -42,8 +44,20 @@ impl ShaderService {
         .bind(create_shader.notebook_id)
         .bind(create_shader.name)
         .bind(create_shader.shader_type)
+        .bind(create_shader.code.clone())
+        .fetch_one(&mut *tx)
+        .await?;
+
+        // Create initial version
+        sqlx::query(
+            r#"
+            INSERT INTO shader_versions (shader_id, version, code)
+            VALUES ($1, 1, $2)
+            "#,
+        )
+        .bind(shader.id)
         .bind(create_shader.code)
-        .fetch_one(&self.pool)
+        .execute(&mut *tx)
         .await?;
 
         Ok(shader)
@@ -85,6 +99,8 @@ impl ShaderService {
         id: i64,
         update_shader: UpdateShader,
     ) -> Result<Shader> {
+        let mut tx = self.pool.begin().await?;
+
         let mut query_builder = QueryBuilder::new("UPDATE shaders SET ");
         let mut has_changes = false;
 
@@ -105,7 +121,37 @@ impl ShaderService {
             if has_changes {
                 query_builder.push(", ");
             }
-            query_builder.push("code = ").push_bind(code);
+
+            // Get current version and increment
+            let current_version: i64 = sqlx::query_scalar(
+                r#"
+                SELECT COALESCE(MAX(version), 0) FROM shader_versions
+                WHERE shader_id = $1
+                "#,
+            )
+            .bind(id)
+            .fetch_one(&mut *tx)
+            .await?;
+
+            let update_version = current_version + 1;
+
+            sqlx::query(
+                r#"
+                INSERT INTO shader_versions (shader_id, version, code)
+                VALUES ($1, $2, $3)
+                "#,
+            )
+            .bind(id)
+            .bind(update_version)
+            .bind(code)
+            .execute(&mut *tx)
+            .await?;
+
+            query_builder
+                .push("code = ")
+                .push_bind(code)
+                .push(", version = ")
+                .push_bind(update_version);
             has_changes = true;
         }
 
@@ -126,7 +172,7 @@ impl ShaderService {
             .build_query_as::<Shader>()
             .bind(id)
             .bind(user_id)
-            .fetch_optional(&self.pool)
+            .fetch_optional(&mut *tx)
             .await?;
 
         Ok(shader.ok_or(ShaderError::NotFound)?)
@@ -151,5 +197,57 @@ impl ShaderService {
         }
 
         Ok(())
+    }
+
+    pub async fn list_versions(
+        &self,
+        shader_id: i64,
+        page: i64,
+        per_page: i64,
+    ) -> Result<(Vec<ShaderVersion>, i64)> {
+        // Check if shader exists
+        let exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM shaders
+                WHERE id = $1
+            )
+            "#,
+        )
+        .bind(shader_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        if !exists {
+            Err(NotebookError::NotFound)?;
+        }
+
+        let offset = (page - 1) * per_page;
+
+        let versions = sqlx::query_as(
+            r#"
+            SELECT * FROM shader_versions
+            WHERE shader_id = $1
+            ORDER BY version DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(shader_id)
+        .bind(per_page)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let total = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*) FROM shader_versions
+            WHERE shader_id = $1
+            "#,
+        )
+        .bind(shader_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok((versions, total))
     }
 }

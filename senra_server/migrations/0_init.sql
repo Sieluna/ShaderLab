@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS shaders (
     name            TEXT NOT NULL,
     shader_type     TEXT NOT NULL,
     code            TEXT NOT NULL,
+    version         INTEGER NOT NULL DEFAULT 1,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE
