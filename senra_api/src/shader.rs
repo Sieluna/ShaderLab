@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
