@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, unused_imports)]
 
 mod mock_notebook;
 mod mock_user;
@@ -17,7 +17,7 @@ pub struct MockServer {
 
 impl MockServer {
     pub async fn new() -> Self {
-        let config = Config::new();
+        let config = Config::default();
 
         let db = Database::new(&config).await.unwrap();
         db.run_migrations().await.unwrap();

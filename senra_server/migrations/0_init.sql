@@ -102,3 +102,13 @@ CREATE TABLE IF NOT EXISTS shaders (
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE
 );
+
+-- Create shader_versions table
+CREATE TABLE IF NOT EXISTS shader_versions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    shader_id       INTEGER NOT NULL,
+    version         INTEGER NOT NULL,
+    code            TEXT NOT NULL,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (shader_id) REFERENCES shaders(id) ON DELETE CASCADE
+);

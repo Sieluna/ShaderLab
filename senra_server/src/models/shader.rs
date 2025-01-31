@@ -9,8 +9,18 @@ pub struct Shader {
     pub name: String,
     pub shader_type: String,
     pub code: String,
+    pub version: i32,
     pub created_at: OffsetDateTime,
     pub updated_at: OffsetDateTime,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct ShaderVersion {
+    pub id: i64,
+    pub shader_id: i64,
+    pub version: i32,
+    pub code: String,
+    pub created_at: OffsetDateTime,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

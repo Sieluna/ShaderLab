@@ -188,8 +188,6 @@ impl NotebookPage {
                             title: None,
                             description: None,
                             content: None,
-                            resources: None,
-                            shaders: None,
                             tags: None,
                             preview: None,
                             visibility: None,
