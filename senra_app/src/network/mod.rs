@@ -10,7 +10,7 @@ use http::{HeaderValue, header};
 use iced::futures::channel::mpsc;
 use iced::futures::{SinkExt, Stream};
 use iced::{Subscription, Task};
-use senra_api::{Endpoint, Request, Response};
+use senra_api::{Request, Response, build_endpoint, resolve_response};
 
 use crate::config::Config;
 
@@ -125,7 +125,7 @@ impl Network {
 
         Task::perform(
             async move {
-                let endpoint: Endpoint = request.try_into()?;
+                let endpoint = build_endpoint(request)?;
                 let path = endpoint.build_url();
                 let url = format!("{}{}", url, path);
 
@@ -152,7 +152,7 @@ impl Network {
 
                 if response.status().is_success() {
                     let value: serde_json::Value = response.json().await?;
-                    let response = Response::from_body(&endpoint, value)?;
+                    let response = resolve_response(&endpoint, value)?;
                     Ok(Message::MessageRespond(response))
                 } else {
                     let error = response.text().await?;
