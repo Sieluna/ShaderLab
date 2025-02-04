@@ -9,10 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "axios": "latest",
     "three": "latest"
   },
   "devDependencies": {
+    "postcss-nesting": "latest",
     "vite": "latest"
   }
 }

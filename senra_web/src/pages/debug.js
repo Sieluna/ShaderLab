@@ -1,145 +1,316 @@
-import './debug.css';
-import { appState, authState, uiState } from '../state.js';
-import { notebookState } from '../services/notebook.js';
-import { login, register, checkAuthStatus } from '../services/auth.js';
-import { loadTrendingNotebooks, loadNotebookDetails, loadComments } from '../services/notebook.js';
+import styles from './debug.module.css';
+import { appState } from '../state.js';
+import { notebook, auth, user } from '../services/index.js';
 
-// 基础测试组件
+const deepDiff = (prev, curr, path = '') => {
+    const diffs = [];
+    if (typeof prev !== 'object' || typeof curr !== 'object' || prev === null || curr === null) {
+        if (prev !== curr) {
+            diffs.push({ path, prev, curr });
+        }
+        return diffs;
+    }
+    if (Array.isArray(prev) || Array.isArray(curr)) {
+        if (JSON.stringify(prev) !== JSON.stringify(curr)) {
+            diffs.push({ path, prev, curr });
+        }
+        return diffs;
+    }
+    const allKeys = new Set([...Object.keys(prev), ...Object.keys(curr)]);
+    for (const key of allKeys) {
+        const currentPath = path ? `${path}.${key}` : key;
+        const prevVal = prev.hasOwnProperty(key) ? prev[key] : undefined;
+        const currVal = curr.hasOwnProperty(key) ? curr[key] : undefined;
+        diffs.push(...deepDiff(prevVal, currVal, currentPath));
+    }
+    return diffs;
+};
+
+const highlightChanges = (element, diffs) => {
+    const text = element.textContent;
+    const highlighted = diffs.reduce((acc, diff) => {
+        const marker = `<span class="${styles.diffMarker}">${JSON.stringify(diff.curr)}</span>`;
+        return acc.replace(new RegExp(`"${diff.path}":.*`, 'g'), (match) =>
+            match.replace(JSON.stringify(diff.curr), marker),
+        );
+    }, text);
+    element.innerHTML = highlighted;
+};
+
+const createStateDisplay = (id, state) => {
+    const display = document.createElement('div');
+    display.id = id;
+    display.className = styles.stateDisplay;
+
+    const toggle = document.createElement('button');
+    toggle.className = styles.stateToggle;
+    toggle.textContent = '▼';
+
+    const timestamp = document.createElement('div');
+    timestamp.className = styles.stateTimestamp;
+
+    const content = document.createElement('pre');
+    let previousState = state.getState();
+
+    const updateContent = (newState) => {
+        const diffs = deepDiff(previousState, newState);
+        previousState = newState;
+        content.textContent = JSON.stringify(newState, null, 2);
+        highlightChanges(content, diffs);
+        timestamp.textContent = `Last Update: ${new Date().toLocaleTimeString()}`;
+    };
+
+    toggle.addEventListener('click', () => {
+        content.style.display = content.style.display === 'none' ? 'block' : 'none';
+        toggle.textContent = content.style.display === 'none' ? '▶' : '▼';
+    });
+
+    state.subscribe(updateContent);
+    updateContent(state.getState());
+
+    display.append(toggle, timestamp, content);
+    return display;
+};
+
+const updateTestResult = (elementId, result) => {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.classList.add(styles.updated);
+        setTimeout(() => element.classList.remove(styles.updated), 500);
+
+        const statusColor = result?.error ? '#ff4444' : '#44ff44';
+        element.style.borderLeft = `4px solid ${statusColor}`;
+
+        element.innerHTML = `
+            <div class="${styles.resultMeta}">
+                <span>${new Date().toLocaleTimeString()}</span>
+                ${result?.duration ? `<span>Duration: ${result.duration}ms</span>` : ''}
+            </div>
+            <pre>${JSON.stringify(result, null, 2)}</pre>
+        `;
+        element.scrollIntoView({ behavior: 'smooth' });
+    }
+};
+
+const createInputForm = (id, fields, submitAction) => {
+    const form = document.createElement('form');
+    form.id = id;
+    form.className = styles.inputForm;
+
+    fields.forEach((field) => {
+        const fieldContainer = document.createElement('div');
+        fieldContainer.className = styles.formField;
+
+        const label = document.createElement('label');
+        label.htmlFor = `${id}-${field.name}`;
+        label.textContent = field.label;
+
+        const input = document.createElement('input');
+        input.type = field.type || 'text';
+        input.id = `${id}-${field.name}`;
+        input.name = field.name;
+        input.required = field.required || false;
+        input.placeholder = field.placeholder || '';
+
+        fieldContainer.append(label, input);
+        form.appendChild(fieldContainer);
+    });
+
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'submit';
+    submitBtn.textContent = 'Submit';
+    form.appendChild(submitBtn);
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = {};
+        fields.forEach((field) => {
+            formData[field.name] = form.querySelector(`#${id}-${field.name}`).value;
+        });
+        return submitAction(formData);
+    });
+
+    return form;
+};
+
+const createHistoryPanel = () => {
+    const panel = document.createElement('div');
+    panel.className = styles.historyPanel;
+    panel.innerHTML = `
+        <h2>Operation History <button id="clear-history">Clear</button></h2>
+        <div class="${styles.historyItems}"></div>
+    `;
+
+    const container = panel.querySelector(`.${styles.historyItems}`);
+    const clearBtn = panel.querySelector('#clear-history');
+    clearBtn.addEventListener('click', () => (container.innerHTML = ''));
+
+    return {
+        element: panel,
+        addEntry: (action, result) => {
+            const entry = document.createElement('div');
+            entry.className = styles.historyEntry;
+            entry.innerHTML = `
+                <div class="${styles.historyTime}">${new Date().toLocaleTimeString()}</div>
+                <div class="${styles.historyAction}">${action}</div>
+                <div class="${styles.historyStatus}">${result?.error ? '❌' : '✅'}</div>
+            `;
+            entry.addEventListener('click', () => {
+                const detailWindow = window.open('', '_blank');
+                detailWindow.document.write(`<pre>${JSON.stringify(result, null, 2)}</pre>`);
+            });
+            container.prepend(entry);
+        },
+    };
+};
+
 const createTestSection = (title, tests) => {
     const section = document.createElement('div');
-    section.className = 'test-section';
+    section.className = styles.testSection;
+    const resultId = `${title.toLowerCase().replace(/\s+/g, '-')}-result`;
 
     const controls = tests
-        .map(
-            (test) => `
-        <button id="${test.id}">${test.label}</button>
-    `,
-        )
+        .filter((test) => !test.formFields)
+        .map((test) => `<button id="${test.id}">${test.label}</button>`)
         .join('');
 
     section.innerHTML = `
         <h2>${title}</h2>
-        <div class="test-controls">
-            ${controls}
-        </div>
-        <div id="${title.toLowerCase().replace(/\s+/g, '-')}-result" class="test-result"></div>
+        <div class="${styles.testControls}">${controls}</div>
+        <div id="${resultId}" class="${styles.testResult}"></div>
     `;
 
     tests.forEach((test) => {
-        section.querySelector(`#${test.id}`).addEventListener('click', async () => {
-            const result = await test.action();
-            updateTestResult(`${title.toLowerCase().replace(/\s+/g, '-')}-result`, result);
-        });
+        if (test.formFields) {
+            const form = createInputForm(`${test.id}-form`, test.formFields, test.action);
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const start = performance.now();
+                try {
+                    const result = await test.action(Object.fromEntries(new FormData(e.target)));
+                    updateTestResult(resultId, { ...result, duration: performance.now() - start });
+                } catch (error) {
+                    updateTestResult(resultId, { error: error.message });
+                }
+            });
+            section.querySelector(`.${styles.testControls}`).appendChild(form);
+        } else {
+            section.querySelector(`#${test.id}`).addEventListener('click', async () => {
+                const start = performance.now();
+                try {
+                    const result = await test.action();
+                    updateTestResult(resultId, { ...result, duration: performance.now() - start });
+                } catch (error) {
+                    updateTestResult(resultId, { error: error.message });
+                }
+            });
+        }
     });
 
     return section;
 };
 
-// 状态显示组件
-const createStateDisplay = (id, state) => {
-    const display = document.createElement('div');
-    display.id = id;
-    display.className = 'state-display';
-
-    // 初始状态显示
-    display.textContent = JSON.stringify(state.getState(), null, 2);
-
-    // 订阅状态更新
-    state.subscribe((newState) => {
-        display.textContent = JSON.stringify(newState, null, 2);
-    });
-
-    return display;
-};
-
-// 状态监控组件
-const createStateMonitor = () => {
-    const section = document.createElement('div');
-    section.className = 'state-monitor';
-
-    section.innerHTML = '<h2>State Monitor</h2>';
-
-    // 创建状态显示组件
-    const states = [
-        { id: 'app-state', state: appState },
-        { id: 'auth-state', state: authState },
-        { id: 'ui-state', state: uiState },
-        { id: 'notebook-state', state: notebookState },
-    ];
-
-    states.forEach(({ id, state }) => {
-        section.appendChild(createStateDisplay(id, state));
-    });
-
-    return section;
-};
-
-// 辅助函数
-const updateTestResult = (elementId, result) => {
-    const element = document.getElementById(elementId);
-    if (element) {
-        element.textContent = JSON.stringify(result, null, 2);
-    }
-};
-
-// 主组件
 export function StateTest() {
     const container = document.createElement('div');
-    container.className = 'state-test';
+    container.className = styles.stateTest;
 
-    // 认证测试配置
-    const authTests = [
-        {
-            id: 'test-login',
-            label: 'Test Login',
-            action: () => login('testuser', 'password123'),
-        },
-        {
-            id: 'test-register',
-            label: 'Test Register',
-            action: () => register('testuser', 'test@example.com', 'password123'),
-        },
-        {
-            id: 'test-check-auth',
-            label: 'Check Auth Status',
-            action: checkAuthStatus,
-        },
-    ];
+    const historyPanel = createHistoryPanel();
 
-    // 笔记本测试配置
-    const notebookTests = [
-        {
-            id: 'test-trending',
-            label: 'Load Trending',
-            action: loadTrendingNotebooks,
-        },
-        {
-            id: 'test-notebook',
-            label: 'Load Notebook Details',
-            action: () => loadNotebookDetails('1'),
-        },
-        {
-            id: 'test-comments',
-            label: 'Load Comments',
-            action: () => loadComments('1'),
-        },
-    ];
+    const stateMonitor = document.createElement('div');
+    stateMonitor.className = styles.stateMonitor;
+    stateMonitor.innerHTML = '<h2>Real-time State Monitor</h2>';
+    [
+        { id: 'app-state', state: appState },
+        { id: 'notebook-state', state: notebook.notebookState },
+    ].forEach(({ id, state }) => stateMonitor.appendChild(createStateDisplay(id, state)));
 
-    // 创建测试部分
-    const authSection = createTestSection('Authentication State Test', authTests);
-    const notebookSection = createTestSection('Notebook State Test', notebookTests);
-    const stateMonitor = createStateMonitor();
+    const testConfig = {
+        auth: [
+            {
+                id: 'test-login',
+                label: 'User Login',
+                formFields: [
+                    { name: 'username', label: 'Username', required: true },
+                    { name: 'password', label: 'Password', type: 'password', required: true },
+                ],
+                action: ({ username, password }) => auth.login(username, password),
+            },
+            {
+                id: 'test-register',
+                label: 'User Register',
+                formFields: [
+                    { name: 'username', label: 'Username', required: true },
+                    { name: 'email', label: 'Email', type: 'email', required: true },
+                    { name: 'password', label: 'Password', type: 'password', required: true },
+                ],
+                action: ({ username, email, password }) => auth.register(username, email, password),
+            },
+            {
+                id: 'test-check-auth',
+                label: 'Check Auth Status',
+                action: auth.checkAuthStatus,
+            },
+        ],
+        user: [
+            {
+                id: 'test-get-user',
+                label: 'Get User Profile',
+                formFields: [{ name: 'userId', label: 'User ID' }],
+                action: ({ userId }) => user.getUserProfile(userId),
+            },
+            {
+                id: 'test-update-profile',
+                label: 'Update Profile',
+                formFields: [
+                    { name: 'username', label: 'New Username' },
+                    { name: 'email', label: 'New Email', type: 'email' },
+                    { name: 'password', label: 'New Password', type: 'password' },
+                ],
+                action: (data) => user.updateUserProfile(data),
+            },
+        ],
+        notebook: [
+            {
+                id: 'test-create-notebook',
+                label: 'Create Notebook',
+                formFields: [
+                    { name: 'title', label: 'Title', required: true },
+                    { name: 'description', label: 'Description' },
+                    { name: 'visibility', label: 'Visibility', placeholder: 'public/private' },
+                ],
+                action: (data) =>
+                    notebook.createNotebook({
+                        ...data,
+                        content: JSON.stringify({ cells: [] }),
+                        tags: [],
+                        resources: [],
+                    }),
+            },
+            {
+                id: 'test-update-notebook',
+                label: 'Update Notebook',
+                formFields: [
+                    { name: 'id', label: 'Notebook ID', required: true },
+                    { name: 'title', label: 'New Title' },
+                    { name: 'description', label: 'New Description' },
+                ],
+                action: ({ id, ...data }) => notebook.updateNotebook(id, data),
+            },
+        ],
+    };
 
-    container.appendChild(authSection);
-    container.appendChild(notebookSection);
+    container.appendChild(createTestSection('Authentication', testConfig.auth));
+    container.appendChild(createTestSection('User Service', testConfig.user));
+    container.appendChild(createTestSection('Notebook Service', testConfig.notebook));
     container.appendChild(stateMonitor);
+    container.appendChild(historyPanel.element);
 
     return container;
 }
 
 export function debugPage() {
     const debugContainer = document.createElement('div');
-    const debugComponent = StateTest();
-    debugContainer.appendChild(debugComponent);
+    debugContainer.className = styles.debugContainer;
+    debugContainer.appendChild(StateTest());
     return debugContainer;
 }

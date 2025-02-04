@@ -1,27 +1,40 @@
 :root {
-    font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-    line-height: 1.5;
-    font-weight: 400;
-
     color-scheme: light dark;
-    color: rgba(255, 255, 255, 0.87);
-    background-color: #242424;
+    font-weight: 400;
+    line-height: 1.5;
+    font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
 
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+
+    --theme-bg-color: #242424;
+    --theme-text-color: #ffffff;
+    --theme-border-color: #2a2a2a;
+    --theme-hover-bg: #2a2a2a;
+    --theme-primary-color: #f0d8ee;
+    --theme-primary-hover: #db92bf;
 }
 
 body {
     margin: 0;
+    background-color: var(--theme-bg-color);
     min-width: 320px;
     min-height: 100vh;
+    color: var(--theme-text-color);
 }
 
 @media (prefers-color-scheme: light) {
     :root {
-        color: #213547;
-        background-color: #ffffff;
+        --theme-bg-color: #ffffff;
+        --theme-text-color: #213547;
+        --theme-border-color: #e0e0e0;
+        --theme-hover-bg: #f5f5f5;
+    }
+
+    body {
+        background-color: var(--theme-bg-color);
+        color: var(--theme-text-color);
     }
 }

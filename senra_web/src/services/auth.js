@@ -1,31 +1,29 @@
-import { appState, authState } from '../state.js';
+import { appState } from '../state.js';
 import { authApi } from '../api.js';
 
 export async function checkAuthStatus() {
     try {
-        const token = authState.getState().token;
+        const token = appState.getState().auth.token;
 
         if (!token) {
             logout(false);
             return false;
         }
 
-        const tokenResponse = await authApi.verifyToken(token);
+        const response = await authApi.verifyToken(token);
 
-        if (tokenResponse && tokenResponse.token) {
+        if (response?.token) {
             appState.setState((state) => ({
                 ...state,
                 auth: {
                     ...state.auth,
                     isAuthenticated: true,
-                    token: tokenResponse.token,
+                    token: response.token,
                 },
             }));
-            return true;
         }
 
-        logout(false);
-        return false;
+        return true;
     } catch (error) {
         console.error('Failed to check authentication status:', error);
         logout(false);
@@ -145,7 +143,7 @@ export async function register(username, email, password) {
 }
 
 export function logout(redirect = true) {
-    api.setToken(null);
+    localStorage.removeItem('token');
 
     appState.setState((state) => ({
         ...state,
@@ -157,6 +155,6 @@ export function logout(redirect = true) {
     }));
 
     if (redirect) {
-        window.location.href = '/';
+        window.location.reload();
     }
 }

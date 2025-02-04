@@ -1,2 +1,2 @@
-export * from './navbar.js';
-export * from './router.js';
+export { navbar } from './navbar.js';
+export { router } from './router.js';

@@ -1,0 +1,74 @@
+.container {
+    display: flex;
+    align-items: center;
+}
+
+.btn {
+    transition: all 0.3s;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    color: var(--theme-text-color);
+}
+
+.btn-login {
+    border: 1px solid var(--theme-primary-color);
+    background-color: transparent;
+    color: var(--theme-primary-color);
+
+    &:hover {
+        background-color: var(--theme-primary-color);
+        color: var(--theme-bg-color);
+    }
+}
+
+.avatar {
+    position: relative;
+
+    & > img {
+        transition: border-color 0.3s;
+        cursor: pointer;
+        border: 2px solid var(--theme-border-color);
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+
+        &:hover {
+            border-color: var(--theme-primary-color);
+        }
+    }
+}
+
+.dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 1000;
+    box-shadow: var(--theme-border-color);
+    border: 1px solid var(--theme-border-color);
+    border-radius: 4px;
+    background-color: var(--theme-bg-color);
+    padding: 0.5rem;
+    min-width: 150px;
+
+    & button {
+        display: block;
+        transition: all 0.3s;
+        outline: none;
+        border: none;
+        border-radius: 4px;
+        padding: 0.5rem;
+        width: 100%;
+        color: var(--theme-text-color);
+        text-decoration: none;
+
+        &:hover {
+            background-color: var(--theme-hover-bg);
+            color: var(--theme-primary-color);
+        }
+    }
+}
+
+.avatar:hover .dropdown {
+    display: block;
+}
