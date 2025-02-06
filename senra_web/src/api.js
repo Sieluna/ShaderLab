@@ -78,7 +78,9 @@ export const notebookApi = {
         return response.json();
     },
     getNotebook: async (id) => {
-        const response = await fetch(new URL(`/notebooks/${id}`, API_URL));
+        const response = await fetch(new URL(`/notebooks/${id}`, API_URL), {
+            headers: { Authorization: `Bearer ${authState.getState().token || ''}` },
+        });
         if (!response.ok) throw new Error(`Get notebook failed: ${response.status}`);
         return response.json();
     },

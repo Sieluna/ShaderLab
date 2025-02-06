@@ -5,10 +5,10 @@ export function createAvatar({ onLoginClick, onLogoutClick, onProfileClick, onSe
     const container = document.createElement('div');
     container.className = styles.container;
 
-    const loginButton = container.appendChild(document.createElement('button'));
-    loginButton.className = `${styles.btn} ${styles.btnLogin}`;
-    loginButton.textContent = 'Login';
-    loginButton.style.display = 'none';
+    const loginBtn = container.appendChild(document.createElement('button'));
+    loginBtn.className = `${styles.btn} ${styles.btnLogin}`;
+    loginBtn.textContent = 'Login';
+    loginBtn.style.display = 'none';
 
     const userAvatar = container.appendChild(document.createElement('div'));
     userAvatar.className = styles.avatar;
@@ -51,11 +51,31 @@ export function createAvatar({ onLoginClick, onLogoutClick, onProfileClick, onSe
         callback?.(button);
     });
 
+    avatarImg.addEventListener('click', (e) => {
+        if (window.innerWidth <= 480) {
+            e.preventDefault();
+            e.stopPropagation();
+            userAvatar.classList.toggle('active');
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (window.innerWidth <= 480) {
+            if (!userAvatar.contains(e.target)) {
+                userAvatar.classList.remove('active');
+            }
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        userAvatar.classList.remove('active');
+    });
+
     const updateAuthState = (state) => {
         const isAuthenticated = state.auth?.isAuthenticated || false;
         const userData = state.auth?.user || null;
 
-        loginButton.style.display = isAuthenticated ? 'none' : 'block';
+        loginBtn.style.display = isAuthenticated ? 'none' : 'block';
         userAvatar.style.display = isAuthenticated ? 'block' : 'none';
 
         if (isAuthenticated && userData?.avatar) {
@@ -79,7 +99,7 @@ export function createAvatar({ onLoginClick, onLogoutClick, onProfileClick, onSe
     updateAuthState(appState.getState().auth);
     appState.subscribe(updateAuthState);
 
-    loginButton.addEventListener('click', (e) => onLoginClick?.(e));
+    loginBtn.addEventListener('click', (e) => onLoginClick?.(e));
 
     return container;
 }

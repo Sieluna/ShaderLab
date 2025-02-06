@@ -109,6 +109,7 @@ const createInputForm = (id, fields, submitAction) => {
         input.type = field.type || 'text';
         input.id = `${id}-${field.name}`;
         input.name = field.name;
+        input.value = field.value || '';
         input.required = field.required || false;
         input.placeholder = field.placeholder || '';
 
@@ -183,6 +184,16 @@ const createTestSection = (title, tests) => {
     tests.forEach((test) => {
         if (test.formFields) {
             const form = createInputForm(`${test.id}-form`, test.formFields, test.action);
+            const formContainer = document.createElement('div');
+            formContainer.className = styles.formContainer;
+
+            const formTitle = document.createElement('div');
+            formTitle.className = styles.formTitle;
+            formTitle.textContent = test.label;
+
+            formContainer.appendChild(formTitle);
+            formContainer.appendChild(form);
+
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const start = performance.now();
@@ -193,7 +204,7 @@ const createTestSection = (title, tests) => {
                     updateTestResult(resultId, { error: error.message });
                 }
             });
-            section.querySelector(`.${styles.testControls}`).appendChild(form);
+            section.querySelector(`.${styles.testControls}`).appendChild(formContainer);
         } else {
             section.querySelector(`#${test.id}`).addEventListener('click', async () => {
                 const start = performance.now();
@@ -230,24 +241,24 @@ export function StateTest() {
                 id: 'test-login',
                 label: 'User Login',
                 formFields: [
-                    { name: 'username', label: 'Username', required: true },
-                    { name: 'password', label: 'Password', type: 'password', required: true },
+                    { name: 'username', label: 'Username', value: 'test_user', required: true },
+                    { name: 'password', label: 'Password', type: 'password', value: 'test_password', required: true },
                 ],
                 action: ({ username, password }) => auth.login(username, password),
             },
             {
                 id: 'test-register',
-                label: 'User Register',
+                label: 'User Registration',
                 formFields: [
-                    { name: 'username', label: 'Username', required: true },
-                    { name: 'email', label: 'Email', type: 'email', required: true },
-                    { name: 'password', label: 'Password', type: 'password', required: true },
+                    { name: 'username', label: 'Username', value: 'test_user', required: true },
+                    { name: 'email', label: 'Email', type: 'email', value: 'test_email@test.com', required: true },
+                    { name: 'password', label: 'Password', type: 'password', value: 'test_password', required: true },
                 ],
                 action: ({ username, email, password }) => auth.register(username, email, password),
             },
             {
                 id: 'test-check-auth',
-                label: 'Check Auth Status',
+                label: 'Check Authentication Status',
                 action: auth.checkAuthStatus,
             },
         ],
@@ -262,9 +273,9 @@ export function StateTest() {
                 id: 'test-update-profile',
                 label: 'Update Profile',
                 formFields: [
-                    { name: 'username', label: 'New Username' },
-                    { name: 'email', label: 'New Email', type: 'email' },
-                    { name: 'password', label: 'New Password', type: 'password' },
+                    { name: 'username', label: 'New Username', value: 'test_user_updated' },
+                    { name: 'email', label: 'New Email', type: 'email', value: 'test_email_updated@test.com' },
+                    { name: 'password', label: 'New Password', type: 'password', value: 'test_password_updated' },
                 ],
                 action: (data) => user.updateUserProfile(data),
             },
@@ -274,27 +285,76 @@ export function StateTest() {
                 id: 'test-create-notebook',
                 label: 'Create Notebook',
                 formFields: [
-                    { name: 'title', label: 'Title', required: true },
-                    { name: 'description', label: 'Description' },
-                    { name: 'visibility', label: 'Visibility', placeholder: 'public/private' },
+                    { name: 'title', label: 'Title', value: 'Test Notebook', required: true },
+                    { name: 'description', label: 'Description', value: 'This is a test notebook' },
+                    { name: 'visibility', label: 'Visibility', value: 'public', placeholder: 'public/private' },
                 ],
                 action: (data) =>
                     notebook.createNotebook({
                         ...data,
                         content: JSON.stringify({ cells: [] }),
-                        tags: [],
+                        tags: ['Test', 'Example'],
                         resources: [],
+                        shaders: [],
                     }),
             },
             {
                 id: 'test-update-notebook',
                 label: 'Update Notebook',
                 formFields: [
-                    { name: 'id', label: 'Notebook ID', required: true },
-                    { name: 'title', label: 'New Title' },
-                    { name: 'description', label: 'New Description' },
+                    { name: 'id', label: 'Notebook ID', value: '', required: true },
+                    { name: 'title', label: 'New Title', value: 'Updated Test Notebook' },
+                    { name: 'description', label: 'New Description', value: 'This is an updated test notebook' },
+                    { name: 'visibility', label: 'New Visibility', value: 'private' },
                 ],
                 action: ({ id, ...data }) => notebook.updateNotebook(id, data),
+            },
+            {
+                id: 'test-delete-notebook',
+                label: 'Delete Notebook',
+                formFields: [{ name: 'id', label: 'Notebook ID', value: '', required: true }],
+                action: ({ id }) => notebook.deleteNotebook(id),
+            },
+            {
+                id: 'test-get-notebook',
+                label: 'Get Notebook Details',
+                formFields: [{ name: 'id', label: 'Notebook ID', value: '', required: true }],
+                action: ({ id }) => notebook.loadNotebookDetails(id),
+            },
+            {
+                id: 'test-get-trending',
+                label: 'Get Trending Notebooks',
+                action: () => notebook.loadTrendingNotebooks(),
+            },
+            {
+                id: 'test-get-versions',
+                label: 'Get Notebook Versions',
+                formFields: [{ name: 'id', label: 'Notebook ID', value: '', required: true }],
+                action: ({ id }) => notebook.loadVersions(id),
+            },
+            {
+                id: 'test-create-comment',
+                label: 'Add Comment',
+                formFields: [
+                    { name: 'notebookId', label: 'Notebook ID', value: '', required: true },
+                    { name: 'content', label: 'Comment Content', value: 'This is a test comment', required: true },
+                ],
+                action: ({ notebookId, content }) => notebook.createComment(notebookId, content),
+            },
+            {
+                id: 'test-get-comments',
+                label: 'Get Comments',
+                formFields: [{ name: 'notebookId', label: 'Notebook ID', value: '', required: true }],
+                action: ({ notebookId }) => notebook.loadComments(notebookId),
+            },
+            {
+                id: 'test-delete-comment',
+                label: 'Delete Comment',
+                formFields: [
+                    { name: 'notebookId', label: 'Notebook ID', value: '', required: true },
+                    { name: 'commentId', label: 'Comment ID', value: '', required: true },
+                ],
+                action: ({ notebookId, commentId }) => notebook.deleteComment(notebookId, commentId),
             },
         ],
     };

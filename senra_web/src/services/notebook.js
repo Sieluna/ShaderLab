@@ -217,7 +217,7 @@ export async function loadComments(notebookId, page = 1, perPage = 10) {
 
 export async function createComment(notebookId, content) {
     try {
-        const response = await notebookApi.createComment(notebookId, { content });
+        const response = await notebookApi.createComment(notebookId, content);
 
         notebookState.setState((state) => ({
             ...state,
