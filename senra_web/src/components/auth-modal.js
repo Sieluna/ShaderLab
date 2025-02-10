@@ -1,4 +1,5 @@
 import styles from './auth-modal.module.css';
+import closeIcon from '../assets/close.svg?raw';
 
 export function createAuthModal({ onLogin, onRegister }) {
     const modal = document.createElement('div');
@@ -10,7 +11,7 @@ export function createAuthModal({ onLogin, onRegister }) {
             <div class="${styles.tabs}">
                 <button class="${styles.tabBtn} ${styles.active}" data-tab="login">Login</button>
                 <button class="${styles.tabBtn}" data-tab="register">Register</button>
-                <button class="${styles.closeBtn}">×</button>
+                <button class="${styles.closeBtn}">${closeIcon}</button>
             </div>
             
             <form id="loginForm" class="${styles.form}" style="display: block;">

@@ -1,4 +1,5 @@
 import styles from './navbar.module.css';
+import closeIcon from '../assets/close.svg?raw';
 import { appState } from '../state.js';
 import { createAvatar } from './avatar.js';
 import { createAuthModal } from './auth-modal.js';
@@ -21,12 +22,7 @@ function createSearchBox() {
     input.placeholder = 'Search Notebook...';
 
     const button = container.appendChild(document.createElement('button'));
-    button.innerHTML = `
-    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <line x1="4" y1="4" x2="20" y2="20" stroke="black" stroke-width="2"/>
-        <line x1="20" y1="4" x2="4" y2="20" stroke="black" stroke-width="2"/>
-    </svg>
-    `;
+    button.innerHTML = closeIcon;
 
     return container;
 }

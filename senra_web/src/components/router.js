@@ -1,7 +1,9 @@
+import styles from './router.module.css';
 import { appState } from '../state.js';
 
 export function router(routes = {}) {
     const routerContainer = document.createElement('div');
+    routerContainer.className = styles.container;
 
     const renderRoute = (path) => {
         routerContainer.innerHTML = '';

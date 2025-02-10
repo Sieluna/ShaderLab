@@ -59,7 +59,7 @@
 .closeBtn {
     display: flex;
     position: absolute;
-    top: 8px;
+    top: 12px;
     right: 10px;
     justify-content: center;
     align-items: center;
@@ -70,10 +70,8 @@
     border: none;
     background: none;
     padding: 0;
-    width: 30px;
-    height: 30px;
-    color: var(--theme-text-color);
-    font-size: 24px;
+    width: 1.2rem;
+    height: 1.2rem;
 }
 
 .closeBtn:hover {
