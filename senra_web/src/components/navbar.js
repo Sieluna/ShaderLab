@@ -37,10 +37,10 @@ function createMenuToggle() {
     toggle.setAttribute('aria-label', 'Menu');
 
     toggle.innerHTML = `
-    <svg viewBox="0 0 100 100" width="30" height="30" xmlns="http://www.w3.org/2000/svg">
-        <path class="${styles.line1}" d="M20,30 H80" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-        <path class="${styles.line2}" d="M20,50 H80" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-        <path class="${styles.line3}" d="M20,70 H80" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <svg viewBox="0 0 24 24" width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <path class="${styles.line1}" d="M4 6H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path class="${styles.line2}" d="M4 12H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path class="${styles.line3}" d="M4 18H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
     </svg>
     `;
 

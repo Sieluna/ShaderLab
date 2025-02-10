@@ -97,7 +97,8 @@
 .line2,
 .line3 {
     transform-origin: center;
-    transition: all 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.2s ease;
 }
 
 @media (max-width: 1400px) {
@@ -143,7 +144,7 @@
     }
 
     .menuOpen .menu-toggle .line1 {
-        transform: rotate(45deg) translate(12px, 12px);
+        transform: translateY(4px) rotate(45deg);
     }
 
     .menuOpen .menu-toggle .line2 {
@@ -151,7 +152,7 @@
     }
 
     .menuOpen .menu-toggle .line3 {
-        transform: rotate(-45deg) translate(-8px, 8px);
+        transform: translateY(-4px) rotate(-45deg);
     }
 
     .search-box {
