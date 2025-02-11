@@ -59,19 +59,20 @@
 .closeBtn {
     display: flex;
     position: absolute;
-    top: 12px;
-    right: 10px;
+    top: 1px;
+    right: 1px;
     justify-content: center;
     align-items: center;
     opacity: 0.7;
     z-index: 1;
     transition: opacity 0.3s;
     cursor: pointer;
-    border: none;
+    border: var(--theme-border-color) 1px solid;
+    border-radius: 50%;
     background: none;
     padding: 0;
-    width: 1.2rem;
-    height: 1.2rem;
+    width: 1.5rem;
+    height: 1.5rem;
 }
 
 .closeBtn:hover {
