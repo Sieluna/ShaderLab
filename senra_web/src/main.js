@@ -4,6 +4,8 @@ import { appState } from './state.js';
 import './style.css';
 
 function initializeApp() {
+    const mode = globalThis.__APP_ENV__;
+
     const app = document.querySelector('#app');
     if (!app) return;
 
@@ -13,6 +15,9 @@ function initializeApp() {
         { label: 'Home', path: '/' },
         { label: 'Explore', path: '/explore' },
         { label: 'Create', path: '/create' },
+        ...(mode === 'development'
+            ? [{ label: 'Debug', path: '/debug' }]
+            : []),
     ];
 
     app.appendChild(navbar(navbarItems));
@@ -29,7 +34,7 @@ function initializeApp() {
             div.textContent = 'Create Page - Under Development';
             return div;
         },
-        '/debug': debugPage,
+        ...(mode === 'development' && { '/debug': debugPage }),
     };
 
     appState.subscribe((state) => {

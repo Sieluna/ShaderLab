@@ -112,8 +112,8 @@
                                 gap: 0.25rem;
 
                                 i {
-                                    font-size: 0.9em;
                                     color: rgba(255, 255, 255, 0.7);
+                                    font-size: 0.9em;
                                 }
                             }
                         }

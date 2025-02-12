@@ -17,7 +17,7 @@
             gap: 1rem;
             margin: 1rem 0;
 
-            &>button {
+            & > button {
                 transition: background 0.2s;
                 cursor: pointer;
                 margin: 1rem 0;
@@ -163,7 +163,7 @@
         background: #f8f9fa;
         padding: 1rem;
 
-        &>button {
+        & > button {
             transition: background 0.2s;
             cursor: pointer;
             margin: 0.5rem 0;
@@ -182,13 +182,13 @@
         .form-field {
             margin-bottom: 1rem;
 
-            &>label {
+            & > label {
                 display: block;
                 margin-bottom: 0.5rem;
                 color: #333;
             }
 
-            &>input {
+            & > input {
                 box-sizing: border-box;
                 border: 1px solid #ddd;
                 border-radius: 4px;

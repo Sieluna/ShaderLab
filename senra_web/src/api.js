@@ -1,6 +1,6 @@
 import { authState } from './state';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+const API_URL = globalThis.__APP_API_URL__;
 
 console.info('Current API server', API_URL);
 
