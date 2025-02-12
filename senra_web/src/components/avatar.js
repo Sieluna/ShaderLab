@@ -27,28 +27,28 @@ export function createAvatar({ onLoginClick, onLogoutClick, onProfileClick, onSe
     const menuItems = [
         {
             text: 'Profile',
-            callback: (button) => {
+            action: (button) => {
                 button.addEventListener('click', () => onProfileClick?.());
             },
         },
         {
             text: 'Settings',
-            callback: (button) => {
+            action: (button) => {
                 button.addEventListener('click', () => onSettingsClick?.());
             },
         },
         {
             text: 'Logout',
-            callback: (button) => {
+            action: (button) => {
                 button.addEventListener('click', () => onLogoutClick?.());
             },
         },
     ];
 
-    menuItems.forEach(({ text, callback }) => {
+    menuItems.forEach(({ text, action }) => {
         const button = dropdownMenu.appendChild(document.createElement('button'));
         button.textContent = text;
-        callback?.(button);
+        action?.(button);
     });
 
     avatarImg.addEventListener('click', (e) => {

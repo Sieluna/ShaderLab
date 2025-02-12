@@ -92,7 +92,7 @@ const updateTestResult = (elementId, result) => {
     }
 };
 
-const createInputForm = (id, fields, submitAction) => {
+const createInputForm = (id, fields, resultId, submitAction) => {
     const form = document.createElement('form');
     form.id = id;
     form.className = styles.inputForm;
@@ -124,11 +124,17 @@ const createInputForm = (id, fields, submitAction) => {
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const formData = {};
-        fields.forEach((field) => {
-            formData[field.name] = form.querySelector(`#${id}-${field.name}`).value;
-        });
-        return submitAction(formData);
+        const start = performance.now();
+        try {
+            const formData = {};
+            fields.forEach((field) => {
+                formData[field.name] = form.querySelector(`#${id}-${field.name}`).value;
+            });
+            const result = await submitAction(formData);
+            updateTestResult(resultId, { ...result, duration: performance.now() - start });
+        } catch (error) {
+            updateTestResult(resultId, { error: error.message });
+        }
     });
 
     return form;
@@ -183,7 +189,7 @@ const createTestSection = (title, tests) => {
 
     tests.forEach((test) => {
         if (test.formFields) {
-            const form = createInputForm(`${test.id}-form`, test.formFields, test.action);
+            const form = createInputForm(`${test.id}-form`, test.formFields, resultId, test.action);
             const formContainer = document.createElement('div');
             formContainer.className = styles.formContainer;
 
@@ -194,16 +200,6 @@ const createTestSection = (title, tests) => {
             formContainer.appendChild(formTitle);
             formContainer.appendChild(form);
 
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const start = performance.now();
-                try {
-                    const result = await test.action(Object.fromEntries(new FormData(e.target)));
-                    updateTestResult(resultId, { ...result, duration: performance.now() - start });
-                } catch (error) {
-                    updateTestResult(resultId, { error: error.message });
-                }
-            });
             section.querySelector(`.${styles.testControls}`).appendChild(formContainer);
         } else {
             section.querySelector(`#${test.id}`).addEventListener('click', async () => {
