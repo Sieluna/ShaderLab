@@ -1,6 +1,6 @@
 import { router, navbar } from './components/index.js';
 import { homePage, notebookPage, debugPage } from './pages/index.js';
-import { appState } from './state.js';
+import { appState, normalizePath, addBasePath } from './state.js';
 import './style.css';
 
 function initializeApp() {
@@ -47,7 +47,7 @@ function initializeApp() {
     });
 
     const handleRouteChange = () => {
-        let path = window.location.pathname;
+        let path = normalizePath(window.location.pathname);
         if (path === '/index.html') path = '/';
 
         if (path.match(/^\/notebook\/\d+$/)) {
@@ -72,10 +72,11 @@ function initializeApp() {
 
     document.addEventListener('click', (e) => {
         const link = e.target.closest('a');
-        if (link && link.getAttribute('href').startsWith('/')) {
+        if (link && link.getAttribute('href')?.startsWith('/')) {
             e.preventDefault();
-            const path = link.getAttribute('href');
-            window.history.pushState({}, '', path);
+            const rawPath = link.getAttribute('href');
+            const fullPath = addBasePath(rawPath);
+            window.history.pushState({}, '', fullPath);
             handleRouteChange();
         }
     });

@@ -105,7 +105,7 @@ pub struct NotebookVersionListResponse {
 
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NotebookCommentItem {
+pub struct NotebookCommentResponse {
     pub id: i64,
     pub notebook_id: i64,
     pub user_id: i64,
@@ -119,6 +119,6 @@ pub struct NotebookCommentItem {
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NotebookCommentListResponse {
-    pub comments: Vec<NotebookCommentItem>,
+    pub comments: Vec<NotebookCommentResponse>,
     pub total: i64,
 }

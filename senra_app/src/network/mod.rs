@@ -6,11 +6,10 @@ mod web;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use http::{HeaderValue, header};
 use iced::futures::channel::mpsc;
 use iced::futures::{SinkExt, Stream};
 use iced::{Subscription, Task};
-use senra_api::{Request, Response, build_endpoint, resolve_response};
+use senra_api::{Client, Request, Response, ApiError};
 
 use crate::config::Config;
 
@@ -22,6 +21,8 @@ pub enum NetworkError {
     Serialization(#[from] serde_json::Error),
     #[error("HTTP error: {0}")]
     Http(#[from] reqwest::Error),
+    #[error("API error: {0}")]
+    Api(#[from] ApiError),
     #[error("WebSocket error: {0}")]
     WebSocket(String),
 }
@@ -56,10 +57,8 @@ pub trait NetworkInner: Send + Sync {
 #[derive(Clone)]
 pub struct Network {
     inner: Arc<dyn NetworkInner>,
-    client: reqwest::Client,
     sender: Option<mpsc::Sender<String>>,
-    base_url: String,
-    auth_token: Option<String>,
+    client: Client,
 }
 
 impl Network {
@@ -77,10 +76,8 @@ impl Network {
 
         Self {
             inner: Arc::new(network),
-            client: reqwest::Client::new(),
+            client: Client::new(config.url.clone()),
             sender: None,
-            base_url: config.url.clone(),
-            auth_token: None,
         }
     }
 
@@ -93,11 +90,11 @@ impl Network {
             Message::ConnectRequest(token) => {
                 let url = format!(
                     "{}/ws?token={}",
-                    self.base_url.replace("http", "ws"),
+                    self.client.url().replace("http", "ws"),
                     &token
                 );
                 let inner = self.inner.clone();
-                self.auth_token = Some(token);
+                self.client.set_token(token);
                 Task::perform(async move { inner.connect(url.as_ref()).await }, |result| {
                     result.unwrap_or_else(|e| Message::Error(e.to_string()))
                 })
@@ -120,43 +117,12 @@ impl Network {
 
     fn handle_http(&self, request: Request) -> Task<Message> {
         let client = self.client.clone();
-        let url = self.base_url.clone();
-        let token = self.auth_token.clone();
 
         Task::perform(
             async move {
-                let endpoint = build_endpoint(request)?;
-                let path = endpoint.build_url();
-                let url = format!("{}{}", url, path);
-
-                let mut headers = header::HeaderMap::new();
-                headers.insert(
-                    header::CONTENT_TYPE,
-                    HeaderValue::from_static("application/json"),
-                );
-                if let Some(token) = token {
-                    headers.insert(
-                        header::AUTHORIZATION,
-                        format!("Bearer {}", token).parse().unwrap(),
-                    );
-                }
-
-                let mut request_builder = client
-                    .request(endpoint.method.clone(), &url)
-                    .headers(headers);
-                if let Some(body) = &endpoint.body {
-                    request_builder = request_builder.json(body);
-                }
-
-                let response = request_builder.send().await?;
-
-                if response.status().is_success() {
-                    let value: serde_json::Value = response.json().await?;
-                    let response = resolve_response(&endpoint, value)?;
-                    Ok(Message::MessageRespond(response))
-                } else {
-                    let error = response.text().await?;
-                    Ok(Message::Error(error))
+                match client.request(request).await {
+                    Ok(response) => Ok(Message::MessageRespond(response)),
+                    Err(e) => Err(NetworkError::Api(e)),
                 }
             },
             |result| result.unwrap_or_else(|e: NetworkError| Message::Error(e.to_string())),

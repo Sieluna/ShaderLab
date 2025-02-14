@@ -3,6 +3,7 @@ import eyeIcon from '../assets/eye.svg?raw';
 import heartIcon from '../assets/heart.svg?raw';
 import commentIcon from '../assets/chat.svg?raw';
 import { notebook } from '../services/index.js';
+import { addBasePath } from '../state.js';
 import { notebookCard } from '../components/index.js';
 
 export function homePage() {
@@ -93,7 +94,7 @@ export function homePage() {
 
             card.addEventListener('click', (e) => {
                 if (!e.target.matches(`.${styles.cardLink}`)) {
-                    window.location.href = `/notebook/${notebook.id}`;
+                    window.location.href = addBasePath(`/notebook/${notebook.id}`);
                 }
             });
         });

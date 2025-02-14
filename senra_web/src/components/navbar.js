@@ -1,6 +1,6 @@
 import styles from './navbar.module.css';
 import searchIcon from '../assets/search.svg?raw';
-import { appState } from '../state.js';
+import { appState, addBasePath } from '../state.js';
 import { createAvatar } from './avatar.js';
 import { createAuthModal } from './auth-modal.js';
 import { auth, user } from '../services/index.js';
@@ -114,6 +114,8 @@ export function navbar(items) {
                     currentPath: path,
                 },
             }));
+
+            window.history.pushState({}, '', addBasePath(path));
 
             if (window.innerWidth <= 768) {
                 navbar.classList.remove(styles.menuOpen);

@@ -68,7 +68,7 @@ fn openapi() -> Router {
                 senra_api::NotebookVersionListResponse,
                 senra_api::NotebookCommentListResponse,
                 senra_api::CreateNotebookCommentRequest,
-                senra_api::NotebookCommentItem
+                senra_api::NotebookCommentResponse
             )
         ),
         tags(

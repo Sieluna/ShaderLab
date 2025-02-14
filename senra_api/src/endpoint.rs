@@ -41,24 +41,4 @@ impl Endpoint {
         self.body = Some(serde_json::to_value(body)?);
         Ok(self)
     }
-
-    pub fn build_url(&self) -> String {
-        let mut path = self.path.clone();
-
-        for (key, value) in &self.params {
-            path = path.replace(&format!("{{{}}}", key), value);
-        }
-
-        if !self.query.is_empty() {
-            let query_string = self
-                .query
-                .iter()
-                .map(|(k, v)| format!("{}={}", k, v))
-                .collect::<Vec<_>>()
-                .join("&");
-            path = format!("{}?{}", path, query_string);
-        }
-
-        path
-    }
 }

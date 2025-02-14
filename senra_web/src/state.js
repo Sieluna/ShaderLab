@@ -22,6 +22,24 @@ export function createState(initialState = {}) {
     };
 }
 
+export function normalizePath(path) {
+    const basePath = import.meta.env?.BASE_URL || '/';
+    if (path.startsWith(basePath) && basePath !== '/') {
+        return path.substring(basePath.length - 1);
+    }
+    return path;
+}
+
+export function addBasePath(path) {
+    const basePath = import.meta.env?.BASE_URL || '/';
+    if (path.startsWith(basePath) || path.startsWith('http') || basePath === '/') {
+        return path;
+    }
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    const cleanBase = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+    return `${cleanBase}${cleanPath}`;
+}
+
 export const appState = createState({
     auth: {
         isAuthenticated: false,
@@ -29,6 +47,7 @@ export const appState = createState({
         token: localStorage.getItem('token'),
     },
     ui: {
+        currentPath: '/',
         isLoading: false,
         error: null,
     },
