@@ -8,14 +8,15 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 http.workspace = true
+reqwest = { version = "0.12", features = ["json"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 thiserror.workspace = true
 utoipa = { workspace = true, optional = true }
-reqwest = { version = "0.12", features = ["json"] }
 
-[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+serde-wasm-bindgen = "0.6"
+wasm-bindgen = "0.2"
 
 [features]
 default = []

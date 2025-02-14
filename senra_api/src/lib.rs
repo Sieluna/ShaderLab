@@ -1,5 +1,7 @@
 mod auth;
 mod client;
+#[cfg(target_arch = "wasm32")]
+mod client_wasm;
 mod endpoint;
 mod notebook;
 mod resource;
@@ -12,6 +14,8 @@ use serde_json::json;
 
 pub use auth::*;
 pub use client::*;
+#[cfg(target_arch = "wasm32")]
+pub use client_wasm::*;
 pub use endpoint::*;
 pub use notebook::*;
 pub use resource::*;
@@ -49,6 +53,7 @@ pub enum Request {
     GetUser(u64),
     EditUser(EditUserRequest),
 
+    CreateNotebook(CreateNotebookRequest),
     GetNotebookList {
         page: Option<u32>,
         limit: Option<u32>,
@@ -56,7 +61,6 @@ pub enum Request {
         search: Option<String>,
     },
     GetNotebook(u64),
-    CreateNotebook(CreateNotebookRequest),
     EditNotebook(u64, EditNotebookRequest),
     RemoveNotebook(u64),
 
@@ -75,11 +79,11 @@ pub enum Request {
     LikeNotebook(u64),
     UnlikeNotebook(u64),
 
+    CreateComment(u64, String),
     GetCommentList {
         page: Option<u32>,
         limit: Option<u32>,
     },
-    CreateComment(u64, String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -116,6 +120,9 @@ impl TryFrom<Request> for Endpoint {
                 .with_method(Method::PATCH)
                 .with_body(req)?,
 
+            Request::CreateNotebook(req) => Endpoint::new("/notebooks")
+                .with_method(Method::POST)
+                .with_body(req)?,
             Request::GetNotebookList {
                 page,
                 limit,
@@ -138,9 +145,6 @@ impl TryFrom<Request> for Endpoint {
                 endpoint
             }
             Request::GetNotebook(id) => Endpoint::new("/notebooks/{id}").with_param("id", id),
-            Request::CreateNotebook(req) => Endpoint::new("/notebooks")
-                .with_method(Method::POST)
-                .with_body(req)?,
             Request::EditNotebook(id, req) => Endpoint::new("/notebooks/{id}")
                 .with_method(Method::PATCH)
                 .with_body(req)?
@@ -156,6 +160,10 @@ impl TryFrom<Request> for Endpoint {
                 .with_method(Method::POST)
                 .with_param("id", id),
 
+            Request::CreateComment(id, content) => Endpoint::new("/notebooks/{id}/comments")
+                .with_method(Method::POST)
+                .with_body(json!({ "comment": content }))?
+                .with_param("id", id),
             Request::GetCommentList { page, limit } => {
                 let mut endpoint = Endpoint::new("/notebooks/{id}/comments");
                 if let Some(page) = page {
@@ -166,10 +174,6 @@ impl TryFrom<Request> for Endpoint {
                 }
                 endpoint
             }
-            Request::CreateComment(id, content) => Endpoint::new("/notebooks/{id}/comments")
-                .with_method(Method::POST)
-                .with_body(json!({ "comment": content }))?
-                .with_param("id", id),
 
             _ => Err(ApiError::UnknownError("Invalid Http Endpoint".to_string()))?,
         })
