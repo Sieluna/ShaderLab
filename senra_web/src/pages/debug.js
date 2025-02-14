@@ -26,16 +26,28 @@ const deepDiff = (prev, curr, path = '') => {
     return diffs;
 };
 
-const highlightChanges = (element, diffs) => {
-    const text = element.textContent;
-    const highlighted = diffs.reduce((acc, diff) => {
-        const marker = `<span class="${styles.diffMarker}">${JSON.stringify(diff.curr)}</span>`;
-        return acc.replace(new RegExp(`"${diff.path}":.*`, 'g'), (match) =>
-            match.replace(JSON.stringify(diff.curr), marker),
-        );
-    }, text);
-    element.innerHTML = highlighted;
-};
+function formatContent(content, diffs = []) {
+    const json = JSON.stringify(
+        content,
+        (_, value) => {
+            if (Array.isArray(value) && value.length > 5) {
+                return {
+                    __collapsed: true,
+                    length: value.length,
+                    preview: value.slice(0, 5),
+                };
+            }
+            return value;
+        },
+        2,
+    );
+
+    return json.replace(
+        /{\s*"__collapsed":\s*true,\s*"length":\s*(\d+),\s*"preview":\s*(\[[\s\S]*?\])\s*}/g,
+        (_match, len, preview) =>
+            `<span class="collapsed-array" data-len="${len}" data-preview='${preview}'>[${preview.slice(1, -1)} … <em>${len} items</em>]</span>`,
+    );
+}
 
 const createStateDisplay = (id, state) => {
     const display = document.createElement('div');
@@ -55,8 +67,7 @@ const createStateDisplay = (id, state) => {
     const updateContent = (newState) => {
         const diffs = deepDiff(previousState, newState);
         previousState = newState;
-        content.textContent = JSON.stringify(newState, null, 2);
-        highlightChanges(content, diffs);
+        content.innerHTML = formatContent(newState, diffs);
         timestamp.textContent = `Last Update: ${new Date().toLocaleTimeString()}`;
     };
 
@@ -86,7 +97,7 @@ const updateTestResult = (elementId, result) => {
                 <span>${new Date().toLocaleTimeString()}</span>
                 ${result?.duration ? `<span>Duration: ${result.duration}ms</span>` : ''}
             </div>
-            <pre>${JSON.stringify(result, null, 2)}</pre>
+            <pre>${formatContent(result)}</pre>
         `;
         element.scrollIntoView({ behavior: 'smooth' });
     }

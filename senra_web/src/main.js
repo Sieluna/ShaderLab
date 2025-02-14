@@ -15,9 +15,7 @@ function initializeApp() {
         { label: 'Home', path: '/' },
         { label: 'Explore', path: '/explore' },
         { label: 'Create', path: '/create' },
-        ...(mode === 'development'
-            ? [{ label: 'Debug', path: '/debug' }]
-            : []),
+        ...(mode === 'development' ? [{ label: 'Debug', path: '/debug' }] : []),
     ];
 
     app.appendChild(navbar(navbarItems));

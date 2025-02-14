@@ -2,6 +2,9 @@ import { appState } from '../state.js';
 import { userApi } from '../api.js';
 
 export async function getUserProfile(userId = null) {
+    const state = appState.getState();
+    if (state.ui.isLoading) return state;
+
     appState.setState((state) => ({
         ...state,
         ui: { ...state.ui, isLoading: true, error: null },
@@ -42,6 +45,9 @@ export async function getUserProfile(userId = null) {
 }
 
 export async function updateUserProfile(data) {
+    const state = appState.getState();
+    if (state.ui.isLoading) return state;
+
     if (!data) {
         return { success: false, error: 'No update data provided' };
     }
