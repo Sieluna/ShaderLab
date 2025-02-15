@@ -1,6 +1,54 @@
 use wasm_bindgen::prelude::*;
-use client::{Client, ApiError};
-use serde::{Serialize, Deserialize};
+use js_sys::Promise;
+
+use super::*;
+
+impl From<ApiError> for JsValue {
+    fn from(error: ApiError) -> Self {
+        js_sys::Error::new(&error.to_string()).into()
+    }
+}
+
+#[wasm_bindgen]
+pub struct JsAuthResponse {
+    inner: AuthResponse,
+}
+
+#[wasm_bindgen]
+impl JsAuthResponse {
+    #[wasm_bindgen(getter)]
+    pub fn token(&self) -> String {
+        self.inner.token.clone()
+    }
+    
+    #[wasm_bindgen(getter)]
+    pub fn user_id(&self) -> i64 {
+        self.inner.user.id
+    }
+    
+    #[wasm_bindgen(getter)]
+    pub fn username(&self) -> String {
+        self.inner.user.username.clone()
+    }
+    
+    #[wasm_bindgen(getter)]
+    pub fn email(&self) -> String {
+        self.inner.user.email.clone()
+    }
+}
+
+#[wasm_bindgen]
+pub struct JsTokenResponse {
+    inner: TokenResponse,
+}
+
+#[wasm_bindgen]
+impl JsTokenResponse {
+    #[wasm_bindgen(getter)]
+    pub fn token(&self) -> Option<String> {
+        self.inner.token.clone()
+    }
+}
 
 #[wasm_bindgen]
 pub struct JsClient {
@@ -22,115 +70,59 @@ impl JsClient {
     }
 
     #[wasm_bindgen]
-    pub async fn login(
-        &mut self,
-        username: String,
-        password: String,
-    ) -> Result<AuthResponse, ApiError> {
-        let request = Request::Login(LoginRequest { username, password });
-        self.inner.request_with::<AuthResponse>(request).await.map(|auth| {
-            self.inner.set_token(auth.token.clone());
-            auth
-        })
-    }
-
-    #[wasm_bindgen]
-    pub async fn register(
-        &mut self,
-        username: String,
-        email: String,
-        password: String,
-    ) -> Result<AuthResponse, ApiError> {
-        let request = Request::Register(RegisterRequest {
-            username,
-            email,
-            password,
-        });
-        self.inner.request_with::<AuthResponse>(request).await.map(|auth| {
-            self.set_token(auth.token.clone());
-            auth
-        })
-    }
-
-    #[wasm_bindgen]
-    pub async fn verify_token(&mut self, token: String) -> Result<TokenResponse, ApiError> {
-        let request = Request::Auth(AuthRequest { token });
-        self.inner.request_with::<TokenResponse>(request).await.map(|token| {
-            if let Some(token) = token.token.clone() {
-                self.inner.set_token(token);
+    pub fn login(&mut self, username: String, password: String) -> Promise {
+        let client = self.inner.clone();
+        wasm_bindgen_futures::future_to_promise(async move {
+            let request = Request::Login(LoginRequest { username, password });
+            let result = client.request_with::<AuthResponse>(request).await;
+            match result {
+                Ok(auth) => {
+                    let js_auth = JsAuthResponse { inner: auth };
+                    Ok(JsValue::from(js_auth))
+                }
+                Err(err) => Err(err.into()),
             }
-            token
+        })
+    }
+
+    #[wasm_bindgen]
+    pub fn register(&mut self, username: String, email: String, password: String) -> Promise {
+        let client = self.inner.clone();
+        wasm_bindgen_futures::future_to_promise(async move {
+            let request = Request::Register(RegisterRequest {
+                username,
+                email,
+                password,
+            });
+            let result = client.request_with::<AuthResponse>(request).await;
+            match result {
+                Ok(auth) => {
+                    let js_auth = JsAuthResponse { inner: auth };
+                    Ok(JsValue::from(js_auth))
+                }
+                Err(err) => Err(err.into()),
+            }
+        })
+    }
+
+    #[wasm_bindgen]
+    pub fn verify_token(&mut self, token: String) -> Promise {
+        let client = self.inner.clone();
+        wasm_bindgen_futures::future_to_promise(async move {
+            let request = Request::Auth(AuthRequest { token });
+            let result = client.request_with::<TokenResponse>(request).await;
+            match result {
+                Ok(token_resp) => {
+                    let js_token = JsTokenResponse { inner: token_resp };
+                    Ok(JsValue::from(js_token))
+                }
+                Err(err) => Err(err.into()),
+            }
         })
     }
 
     #[wasm_bindgen]
     pub fn logout(&mut self) {
         self.inner.clear_token();
-    }
-
-    #[wasm_bindgen]
-    pub async fn get_self(&self) -> Result<UserResponse, ApiError> {
-        let request = Request::GetSelf;
-        self.inner.request_with::<UserResponse>(request).await
-    }
-
-    #[wasm_bindgen]
-    pub async fn get_user(&self, id: u64) -> Result<UserResponse, ApiError> {
-        let request = Request::GetUser(id);
-        self.inner.request_with::<UserResponse>(request).await
-    }
-
-    #[wasm_bindgen]
-    pub async fn update_user(&self, data: EditUserRequest) -> Result<UserResponse, ApiError> {
-        let request = Request::EditUser(data);
-        self.inner.request_with::<UserResponse>(request).await
-    }
-
-    #[wasm_bindgen]
-    pub async fn list_notebooks(
-        &self,
-        page: Option<u32>,
-        limit: Option<u32>,
-        category: Option<String>,
-        search: Option<String>,
-    ) -> Result<NotebookListResponse, ApiError> {
-        let request = Request::GetNotebookList {
-            page,
-            limit,
-            category,
-            search,
-        };
-        self.inner.request_with::<NotebookListResponse>(request).await
-    }
-
-    #[wasm_bindgen]
-    pub async fn get_notebook(&self, id: u64) -> Result<NotebookResponse, ApiError> {
-        let request = Request::GetNotebook(id);
-        self.inner.request_with::<NotebookResponse>(request).await
-    }
-
-    #[wasm_bindgen]
-    pub async fn create_notebook(
-        &self,
-        data: CreateNotebookRequest,
-    ) -> Result<NotebookResponse, ApiError> {
-        let request = Request::CreateNotebook(data);
-        self.inner.request_with::<NotebookResponse>(request).await
-    }
-
-    #[wasm_bindgen]
-    pub async fn update_notebook(
-        &self,
-        id: u64,
-        data: EditNotebookRequest,
-    ) -> Result<NotebookResponse, ApiError> {
-        let request = Request::EditNotebook(id, data);
-        self.inner.request_with::<NotebookResponse>(request).await
-    }
-
-    #[wasm_bindgen]
-    pub async fn delete_notebook(&self, id: u64) -> Result<(), ApiError> {
-        let request = Request::RemoveNotebook(id);
-        self.inner.request_with::<()>(request).await
     }
 }
