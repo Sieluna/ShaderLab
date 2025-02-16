@@ -1,36 +1,29 @@
-import { authState } from './state';
+import init, { JsClient } from "senra_api";
 
 const API_URL = globalThis.__APP_API_URL__;
 
 console.info('Current API server', API_URL);
 
+let client = null;
+
+init().then(() => client = new JsClient(API_URL));
+
 export const authApi = {
     login: async (username, password) => {
-        const response = await fetch(new URL('/auth/login', API_URL), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password }),
-        });
-        if (!response.ok) throw new Error(`Login failed: ${response.status}`);
-        return response.json();
+        if (!client) throw new Error('WASM client not initialized');
+        return await client.login(username, password);
     },
     register: async (username, email, password) => {
-        const response = await fetch(new URL('/auth/register', API_URL), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, email, password }),
-        });
-        if (!response.ok) throw new Error(`Register failed: ${response.status}`);
-        return response.json();
+        if (!client) throw new Error('WASM client not initialized');
+        return await client.register(username, email, password);
     },
-    verifyToken: async (token) => {
-        const response = await fetch(new URL('/auth/verify', API_URL), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token }),
-        });
-        if (!response.ok) throw new Error(`Verify token failed: ${response.status}`);
-        return response.json();
+    verifyToken: async () => {
+        if (!client) throw new Error('WASM client not initialized');
+        return await client.verify_token();
+    },
+    logout: async () => {
+        if (!client) throw new Error('WASM client not initialized');
+        return await client.logout();
     },
 };
 
@@ -40,7 +33,7 @@ export const userApi = {
         url.search = new URLSearchParams({ page, per_page: perPage });
 
         const response = await fetch(url, {
-            headers: { Authorization: `Bearer ${authState.getState().token || ''}` },
+            headers: { Authorization: `Bearer ${client?.token ?? ''}` },
         });
         if (!response.ok) throw new Error(`Get self failed: ${response.status}`);
         return response.json();
@@ -50,7 +43,7 @@ export const userApi = {
         url.search = new URLSearchParams({ page, per_page: perPage });
 
         const response = await fetch(url, {
-            headers: { Authorization: `Bearer ${authState.getState().token || ''}` },
+            headers: { Authorization: `Bearer ${client?.token ?? ''}` },
         });
         if (!response.ok) throw new Error(`Get user failed: ${response.status}`);
         return response.json();
@@ -60,7 +53,7 @@ export const userApi = {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${authState.getState().token || ''}`,
+                Authorization: `Bearer ${client?.token ?? ''}`,
             },
             body: JSON.stringify(data),
         });
@@ -79,7 +72,7 @@ export const notebookApi = {
     },
     getNotebook: async (id) => {
         const response = await fetch(new URL(`/notebooks/${id}`, API_URL), {
-            headers: { Authorization: `Bearer ${authState.getState().token || ''}` },
+            headers: { Authorization: `Bearer ${client?.token ?? ''}` },
         });
         if (!response.ok) throw new Error(`Get notebook failed: ${response.status}`);
         return response.json();
@@ -89,7 +82,7 @@ export const notebookApi = {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${authState.getState().token || ''}`,
+                Authorization: `Bearer ${client?.token ?? ''}`,
             },
             body: JSON.stringify(data),
         });
@@ -101,7 +94,7 @@ export const notebookApi = {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${authState.getState().token || ''}`,
+                Authorization: `Bearer ${client?.token ?? ''}`,
             },
             body: JSON.stringify(data),
         });
@@ -111,7 +104,7 @@ export const notebookApi = {
     deleteNotebook: async (id) => {
         const response = await fetch(new URL(`/notebooks/${id}`, API_URL), {
             method: 'DELETE',
-            headers: { Authorization: `Bearer ${authState.getState().token || ''}` },
+            headers: { Authorization: `Bearer ${client?.token ?? ''}` },
         });
         if (!response.ok) throw new Error(`Delete notebook failed: ${response.status}`);
         return response.json();
@@ -120,7 +113,7 @@ export const notebookApi = {
         const url = new URL(`/notebooks/${id}/comments`, API_URL);
         url.search = new URLSearchParams({ page, per_page: perPage });
         const response = await fetch(url, {
-            headers: { Authorization: `Bearer ${authState.getState().token || ''}` },
+            headers: { Authorization: `Bearer ${client?.token ?? ''}` },
         });
         if (!response.ok) throw new Error(`List comments failed: ${response.status}`);
         return response.json();
@@ -130,7 +123,7 @@ export const notebookApi = {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${authState.getState().token || ''}`,
+                Authorization: `Bearer ${client?.token ?? ''}`,
             },
             body: JSON.stringify({ content }),
         });
@@ -140,7 +133,7 @@ export const notebookApi = {
     deleteComment: async (id, commentId) => {
         const response = await fetch(new URL(`/notebooks/${id}/comments/${commentId}`, API_URL), {
             method: 'DELETE',
-            headers: { Authorization: `Bearer ${authState.getState().token || ''}` },
+            headers: { Authorization: `Bearer ${client?.token ?? ''}` },
         });
         if (!response.ok) throw new Error(`Delete comment failed: ${response.status}`);
         return response.json();
@@ -149,7 +142,7 @@ export const notebookApi = {
         const url = new URL(`/notebooks/${id}/versions`, API_URL);
         url.search = new URLSearchParams({ page, per_page: perPage });
         const response = await fetch(url, {
-            headers: { Authorization: `Bearer ${authState.getState().token || ''}` },
+            headers: { Authorization: `Bearer ${client?.token ?? ''}` },
         });
         if (!response.ok) throw new Error(`List versions failed: ${response.status}`);
         return response.json();

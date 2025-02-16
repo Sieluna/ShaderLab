@@ -44,7 +44,6 @@ export const appState = createState({
     auth: {
         isAuthenticated: false,
         user: null,
-        token: localStorage.getItem('token'),
     },
     ui: {
         currentPath: '/',

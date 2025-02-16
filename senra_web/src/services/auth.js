@@ -3,27 +3,19 @@ import { authApi } from '../api.js';
 
 export async function checkAuthStatus() {
     try {
-        const token = appState.getState().auth.token;
-
-        if (!token) {
-            logout(false);
-            return false;
-        }
-
-        const response = await authApi.verifyToken(token);
-
-        if (response?.token) {
+        if (await authApi.verifyToken()) {
             appState.setState((state) => ({
                 ...state,
                 auth: {
                     ...state.auth,
                     isAuthenticated: true,
-                    token: response.token,
                 },
             }));
+            return true;
+        } else {
+            logout(false);
+            return false;
         }
-
-        return true;
     } catch (error) {
         console.error('Failed to check authentication status:', error);
         logout(false);
@@ -44,32 +36,25 @@ export async function login(username, password) {
     try {
         const response = await authApi.login(username, password);
 
-        if (response && response.token) {
-            localStorage.setItem('token', response.token);
-
-            appState.setState((state) => ({
-                ...state,
-                auth: {
-                    isAuthenticated: true,
-                    user: response.user,
-                    token: response.token,
+        appState.setState((state) => ({
+            ...state,
+            auth: {
+                isAuthenticated: true,
+                user: {
+                    id: response.id,
+                    username: response.username,
+                    email: response.email,
+                    avatar: response.avatar,
                 },
-                ui: { ...state.ui, isLoading: false, error: null },
-            }));
+            },
+            ui: {
+                ...state.ui,
+                isLoading: false,
+                error: null,
+            },
+        }));
 
-            return { success: true };
-        } else {
-            appState.setState((state) => ({
-                ...state,
-                ui: {
-                    ...state.ui,
-                    isLoading: false,
-                    error: 'Login failed, please check username and password',
-                },
-            }));
-
-            return { success: false, error: 'Login failed, please check username and password' };
-        }
+        return { success: true };
     } catch (error) {
         console.error('Login failed:', error);
 
@@ -104,32 +89,25 @@ export async function register(username, email, password) {
     try {
         const response = await authApi.register(username, email, password);
 
-        if (response && response.token) {
-            localStorage.setItem('token', response.token);
-
-            appState.setState((state) => ({
-                ...state,
-                auth: {
-                    isAuthenticated: true,
-                    user: response.user,
-                    token: response.token,
+        appState.setState((state) => ({
+            ...state,
+            auth: {
+                isAuthenticated: true,
+                user: {
+                    id: response.id,
+                    username: response.username,
+                    email: response.email,
+                    avatar: response.avatar,
                 },
-                ui: { ...state.ui, isLoading: false, error: null },
-            }));
+            },
+            ui: {
+                ...state.ui,
+                isLoading: false,
+                error: null,
+            },
+        }));
 
-            return { success: true };
-        } else {
-            appState.setState((state) => ({
-                ...state,
-                ui: {
-                    ...state.ui,
-                    isLoading: false,
-                    error: 'Registration failed, please try again later',
-                },
-            }));
-
-            return { success: false, error: 'Registration failed, please try again later' };
-        }
+        return { success: true };
     } catch (error) {
         console.error('Registration failed:', error);
 
@@ -142,19 +120,22 @@ export async function register(username, email, password) {
     }
 }
 
-export function logout(redirect = true) {
-    localStorage.removeItem('token');
+export async function logout(redirect = true) {
+    try {
+        await authApi.logout();
 
-    appState.setState((state) => ({
-        ...state,
-        auth: {
-            isAuthenticated: false,
-            user: null,
-            token: null,
-        },
-    }));
+        appState.setState((state) => ({
+            ...state,
+            auth: {
+                isAuthenticated: false,
+                user: null,
+            },
+        }));
 
-    if (redirect) {
-        window.location.reload();
+        if (redirect) {
+            window.location.reload();
+        }
+    } catch (error) {
+        console.error('Logout failed:', error);
     }
 }

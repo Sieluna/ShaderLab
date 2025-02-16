@@ -9,7 +9,7 @@ use std::sync::Arc;
 use iced::futures::channel::mpsc;
 use iced::futures::{SinkExt, Stream};
 use iced::{Subscription, Task};
-use senra_api::{Client, Request, Response, ApiError};
+use senra_api::{ApiError, Client, Request, Response};
 
 use crate::config::Config;
 

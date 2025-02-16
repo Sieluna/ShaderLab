@@ -1,4 +1,5 @@
 import process from "node:process";
+import path from "node:path";
 import { defineConfig, loadEnv } from 'vite';
 import postcssNesting from 'postcss-nesting';
 
@@ -19,6 +20,11 @@ export default defineConfig(({ mode }) => {
         define: {
             __APP_ENV__: JSON.stringify(env.APP_ENV ?? "development"),
             __APP_API_URL__: JSON.stringify(env.APP_API_URL ?? "http://localhost:3000"),
-        }
+        },
+        resolve: {
+            alias: {
+                'senra_api': path.resolve(__dirname, './pkg')
+            }
+        },
     }
 });

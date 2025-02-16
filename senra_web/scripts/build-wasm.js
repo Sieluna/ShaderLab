@@ -1,16 +1,13 @@
 #!/usr/bin/env node
-import { execSync } from 'child_process';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { execSync } from 'node:child_process';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const projectPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const workspacePath = path.resolve(projectPath, '..');
+const projectPath = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const workspacePath = resolve(projectPath, '..');
 
-console.log('projectPath', projectPath);
-console.log('workspacePath', workspacePath);
-
-const apiDir = path.join(workspacePath, 'senra_api');
-const pkgDir = path.join(projectPath, 'pkg');
+const apiDir = join(workspacePath, 'senra_api');
+const pkgDir = join(projectPath, 'pkg');
 
 console.log('Building Rust WASM library...');
 

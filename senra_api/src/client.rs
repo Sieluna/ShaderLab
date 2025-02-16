@@ -48,34 +48,41 @@ impl Client {
 
     pub async fn request(&self, request: Request) -> Result<Response, ApiError> {
         Ok(match &request {
-            Request::Auth(_) => {
-                self.request_with::<TokenResponse>(request).await.map(|token| Response::Token(token))?
-            },
-            Request::Login(_) | Request::Register(_) => {
-                self.request_with::<AuthResponse>(request).await.map(|auth| Response::Auth(auth))?
-            },
-            Request::GetSelf | Request::GetUser(_) | Request::EditUser(_) => {
-                self.request_with::<UserResponse>(request).await.map(|user| Response::User(user))?
-            }
-            Request::GetNotebookList { .. } => {
-                self.request_with::<NotebookListResponse>(request).await.map(|notebook_list| Response::NotebookList(notebook_list))?
-            }
-            Request::GetNotebook(_)
-            | Request::CreateNotebook(_)
+            Request::Auth(_) => self
+                .request_with::<TokenResponse>(request)
+                .await
+                .map(Response::Token)?,
+            Request::Login(_) | Request::Register(_) => self
+                .request_with::<AuthResponse>(request)
+                .await
+                .map(Response::Auth)?,
+            Request::GetSelf | Request::GetUser(_) | Request::EditUser(_) => self
+                .request_with::<UserResponse>(request)
+                .await
+                .map(Response::User)?,
+            Request::GetNotebookList { .. } => self
+                .request_with::<NotebookListResponse>(request)
+                .await
+                .map(Response::NotebookList)?,
+            Request::CreateNotebook(_)
+            | Request::GetNotebook(_)
             | Request::EditNotebook(_, _)
             | Request::RemoveNotebook(_)
             | Request::UpdateShader { .. }
             | Request::UpdateResource { .. }
             | Request::LikeNotebook(_)
-            | Request::UnlikeNotebook(_) => {
-                self.request_with::<NotebookResponse>(request).await.map(|notebook| Response::Notebook(notebook))?
-            }
-            Request::GetCommentList { .. } => {
-                self.request_with::<NotebookCommentListResponse>(request).await.map(|comment_list| Response::CommentList(comment_list))?
-            }
-            Request::CreateComment(_, _) => {
-                self.request_with::<NotebookCommentResponse>(request).await.map(|comment| Response::Comment(comment))?
-            },
+            | Request::UnlikeNotebook(_) => self
+                .request_with::<NotebookResponse>(request)
+                .await
+                .map(Response::Notebook)?,
+            Request::CreateComment(_, _) => self
+                .request_with::<NotebookCommentResponse>(request)
+                .await
+                .map(Response::Comment)?,
+            Request::GetCommentList { .. } => self
+                .request_with::<NotebookCommentListResponse>(request)
+                .await
+                .map(Response::CommentList)?,
         })
     }
 
