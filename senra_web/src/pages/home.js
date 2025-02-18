@@ -2,8 +2,8 @@ import styles from './home.module.css';
 import eyeIcon from '../assets/eye.svg?raw';
 import heartIcon from '../assets/heart.svg?raw';
 import commentIcon from '../assets/chat.svg?raw';
-import { notebook } from '../services/index.js';
-import { addBasePath } from '../state.js';
+import { notebookService } from '../services/index.js';
+import { appState, addBasePath } from '../state.js';
 import { notebookCard } from '../components/index.js';
 
 export function homePage() {
@@ -27,11 +27,11 @@ export function homePage() {
     container.appendChild(trendingSection);
 
     setTimeout(async () => {
-        const notebooks = await notebook.loadTrendingNotebooks();
+        const notebooks = await notebookService.loadTrendingNotebooks();
         renderNotebooks(notebooks);
     }, 0);
 
-    notebook.notebookState.subscribe((state) => {
+    notebookService.notebookState.subscribe((state) => {
         if (state.trending.notebooks.length > 0) {
             renderNotebooks(state.trending.notebooks);
         }
@@ -94,7 +94,19 @@ export function homePage() {
 
             card.addEventListener('click', (e) => {
                 if (!e.target.matches(`.${styles.cardLink}`)) {
-                    window.location.href = addBasePath(`/notebook/${notebook.id}`);
+                    e.preventDefault();
+                    const path = e.target.getAttribute('href');
+                    if (path) {
+                        appState.setState((prev) => ({
+                            ...prev,
+                            ui: {
+                                ...prev.ui,
+                                currentPath: path,
+                            },
+                        }));
+
+                        window.history.pushState({}, '', addBasePath(path));
+                    }
                 }
             });
         });

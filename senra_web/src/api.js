@@ -1,4 +1,5 @@
-import init, { JsClient } from "senra_api";
+import init, { JsClient } from 'senra_api';
+import { authService, userService } from './services/index.js';
 
 const API_URL = globalThis.__APP_API_URL__;
 
@@ -6,7 +7,12 @@ console.info('Current API server', API_URL);
 
 let client = null;
 
-init().then(() => client = new JsClient(API_URL));
+init().then(() => {
+    client = new JsClient(API_URL);
+    authService.checkAuthStatus().then(() => {
+        userService.getUserProfile();
+    });
+});
 
 export const authApi = {
     login: async (username, password) => {

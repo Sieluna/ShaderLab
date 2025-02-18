@@ -47,11 +47,7 @@ export async function login(username, password) {
                     avatar: response.avatar,
                 },
             },
-            ui: {
-                ...state.ui,
-                isLoading: false,
-                error: null,
-            },
+            ui: { ...state.ui, isLoading: false, error: null },
         }));
 
         return { success: true };
@@ -100,11 +96,7 @@ export async function register(username, email, password) {
                     avatar: response.avatar,
                 },
             },
-            ui: {
-                ...state.ui,
-                isLoading: false,
-                error: null,
-            },
+            ui: { ...state.ui, isLoading: false, error: null },
         }));
 
         return { success: true };

@@ -11,6 +11,7 @@ export const notebookState = createState({
             total: 0,
             page: 1,
             isLoading: false,
+            hasLoaded: false,
             error: null,
         },
         versions: {
@@ -94,7 +95,7 @@ export async function loadNotebookDetails(notebookId) {
             isLoading: true,
             error: null,
             ...(shouldReset && {
-                comments: { items: [], total: 0, page: 1, isLoading: false, error: null },
+                comments: { items: [], total: 0, page: 1, isLoading: false, hasLoaded: false, error: null },
                 versions: { items: [], total: 0, page: 1, isLoading: false, error: null },
             }),
         },
@@ -220,6 +221,7 @@ export async function loadComments(notebookId, page = 1, perPage = 10) {
                     total: total || 0,
                     page,
                     isLoading: false,
+                    hasLoaded: true,
                     error: null,
                 },
             },
@@ -236,6 +238,7 @@ export async function loadComments(notebookId, page = 1, perPage = 10) {
                 comments: {
                     ...state.current.comments,
                     isLoading: false,
+                    hasLoaded: true,
                     error: `Loading failed: ${error.message}`,
                 },
             },

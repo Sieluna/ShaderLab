@@ -3,7 +3,7 @@ import searchIcon from '../assets/search.svg?raw';
 import { appState, addBasePath } from '../state.js';
 import { createAvatar } from './avatar.js';
 import { createAuthModal } from './auth-modal.js';
-import { auth, user } from '../services/index.js';
+import { authService } from '../services/index.js';
 
 function createNavItem({ label, path, isActive }) {
     const item = document.createElement('a');
@@ -69,18 +69,15 @@ export function navbar(items) {
 
     container.appendChild(createSearchBox());
 
-    auth.checkAuthStatus();
-    user.getUserProfile();
-
     const authModal = createAuthModal({
         onLogin: ({ username, password }) => {
-            auth.login(username, password);
+            authService.login(username, password);
 
             authModal.hide();
             authModal.reset();
         },
         onRegister: ({ username, email, password }) => {
-            auth.register(username, email, password);
+            authService.register(username, email, password);
 
             authModal.hide();
             authModal.reset();
@@ -90,7 +87,7 @@ export function navbar(items) {
 
     const avatarContainer = createAvatar({
         onLoginClick: () => authModal.show(),
-        onLogoutClick: () => auth.logout(),
+        onLogoutClick: () => authService.logout(),
         onProfileClick: (userData) => {
             console.log('Profile clicked:', userData);
         },

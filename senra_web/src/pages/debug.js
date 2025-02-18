@@ -1,6 +1,6 @@
 import styles from './debug.module.css';
 import { appState } from '../state.js';
-import { notebook, auth, user } from '../services/index.js';
+import { notebookService, authService, userService } from '../services/index.js';
 
 const deepDiff = (prev, curr, path = '') => {
     const diffs = [];
@@ -239,7 +239,7 @@ export function StateTest() {
     stateMonitor.innerHTML = '<h2>Real-time State Monitor</h2>';
     [
         { id: 'app-state', state: appState },
-        { id: 'notebook-state', state: notebook.notebookState },
+        { id: 'notebook-state', state: notebookService.notebookState },
     ].forEach(({ id, state }) => stateMonitor.appendChild(createStateDisplay(id, state)));
 
     const testConfig = {
@@ -251,7 +251,7 @@ export function StateTest() {
                     { name: 'username', label: 'Username', value: 'test_user', required: true },
                     { name: 'password', label: 'Password', type: 'password', value: 'test_password', required: true },
                 ],
-                action: ({ username, password }) => auth.login(username, password),
+                action: ({ username, password }) => authService.login(username, password),
             },
             {
                 id: 'test-register',
@@ -261,12 +261,12 @@ export function StateTest() {
                     { name: 'email', label: 'Email', type: 'email', value: 'test_email@test.com', required: true },
                     { name: 'password', label: 'Password', type: 'password', value: 'test_password', required: true },
                 ],
-                action: ({ username, email, password }) => auth.register(username, email, password),
+                action: ({ username, email, password }) => authService.register(username, email, password),
             },
             {
                 id: 'test-check-auth',
                 label: 'Check Authentication Status',
-                action: auth.checkAuthStatus,
+                action: authService.checkAuthStatus,
             },
         ],
         user: [
@@ -274,7 +274,7 @@ export function StateTest() {
                 id: 'test-get-user',
                 label: 'Get User Profile',
                 formFields: [{ name: 'userId', label: 'User ID' }],
-                action: ({ userId }) => user.getUserProfile(userId),
+                action: ({ userId }) => userService.getUserProfile(userId),
             },
             {
                 id: 'test-update-profile',
@@ -284,7 +284,7 @@ export function StateTest() {
                     { name: 'email', label: 'New Email', type: 'email', value: 'test_email_updated@test.com' },
                     { name: 'password', label: 'New Password', type: 'password', value: 'test_password_updated' },
                 ],
-                action: (data) => user.updateUserProfile(data),
+                action: (data) => userService.updateUserProfile(data),
             },
         ],
         notebook: [
@@ -297,7 +297,7 @@ export function StateTest() {
                     { name: 'visibility', label: 'Visibility', value: 'public', placeholder: 'public/private' },
                 ],
                 action: (data) =>
-                    notebook.createNotebook({
+                    notebookService.createNotebook({
                         ...data,
                         content: JSON.stringify({ cells: [] }),
                         tags: ['Test', 'Example'],
@@ -314,30 +314,30 @@ export function StateTest() {
                     { name: 'description', label: 'New Description', value: 'This is an updated test notebook' },
                     { name: 'visibility', label: 'New Visibility', value: 'private' },
                 ],
-                action: ({ id, ...data }) => notebook.updateNotebook(id, data),
+                action: ({ id, ...data }) => notebookService.updateNotebook(id, data),
             },
             {
                 id: 'test-delete-notebook',
                 label: 'Delete Notebook',
                 formFields: [{ name: 'id', label: 'Notebook ID', value: '', required: true }],
-                action: ({ id }) => notebook.deleteNotebook(id),
+                action: ({ id }) => notebookService.deleteNotebook(id),
             },
             {
                 id: 'test-get-notebook',
                 label: 'Get Notebook Details',
                 formFields: [{ name: 'id', label: 'Notebook ID', value: '', required: true }],
-                action: ({ id }) => notebook.loadNotebookDetails(id),
+                action: ({ id }) => notebookService.loadNotebookDetails(id),
             },
             {
                 id: 'test-get-trending',
                 label: 'Get Trending Notebooks',
-                action: () => notebook.loadTrendingNotebooks(),
+                action: () => notebookService.loadTrendingNotebooks(),
             },
             {
                 id: 'test-get-versions',
                 label: 'Get Notebook Versions',
                 formFields: [{ name: 'id', label: 'Notebook ID', value: '', required: true }],
-                action: ({ id }) => notebook.loadVersions(id),
+                action: ({ id }) => notebookService.loadVersions(id),
             },
             {
                 id: 'test-create-comment',
@@ -346,13 +346,13 @@ export function StateTest() {
                     { name: 'notebookId', label: 'Notebook ID', value: '', required: true },
                     { name: 'content', label: 'Comment Content', value: 'This is a test comment', required: true },
                 ],
-                action: ({ notebookId, content }) => notebook.createComment(notebookId, content),
+                action: ({ notebookId, content }) => notebookService.createComment(notebookId, content),
             },
             {
                 id: 'test-get-comments',
                 label: 'Get Comments',
                 formFields: [{ name: 'notebookId', label: 'Notebook ID', value: '', required: true }],
-                action: ({ notebookId }) => notebook.loadComments(notebookId),
+                action: ({ notebookId }) => notebookService.loadComments(notebookId),
             },
             {
                 id: 'test-delete-comment',
@@ -361,7 +361,7 @@ export function StateTest() {
                     { name: 'notebookId', label: 'Notebook ID', value: '', required: true },
                     { name: 'commentId', label: 'Comment ID', value: '', required: true },
                 ],
-                action: ({ notebookId, commentId }) => notebook.deleteComment(notebookId, commentId),
+                action: ({ notebookId, commentId }) => notebookService.deleteComment(notebookId, commentId),
             },
         ],
     };
