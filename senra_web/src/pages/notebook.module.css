@@ -106,6 +106,7 @@
     margin-bottom: 2rem;
 
     & textarea {
+        box-sizing: border-box;
         margin-bottom: 1rem;
         border: 1px solid var(--theme-border-color);
         border-radius: 4px;
@@ -114,10 +115,9 @@
         width: 100%;
         min-height: 100px;
         max-height: 300px;
+        overflow-y: auto;
         resize: vertical;
         color: var(--theme-text-color);
-        box-sizing: border-box;
-        overflow-y: auto;
     }
 
     & button {

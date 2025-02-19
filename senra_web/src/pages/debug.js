@@ -351,7 +351,9 @@ export function StateTest() {
             {
                 id: 'test-get-comments',
                 label: 'Get Comments',
-                formFields: [{ name: 'notebookId', label: 'Notebook ID', value: '', required: true }],
+                formFields: [
+                    { name: 'notebookId', label: 'Notebook ID', value: '', required: true },
+                ],
                 action: ({ notebookId }) => notebookService.loadComments(notebookId),
             },
             {

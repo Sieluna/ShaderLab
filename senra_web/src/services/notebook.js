@@ -95,7 +95,14 @@ export async function loadNotebookDetails(notebookId) {
             isLoading: true,
             error: null,
             ...(shouldReset && {
-                comments: { items: [], total: 0, page: 1, isLoading: false, hasLoaded: false, error: null },
+                comments: {
+                    items: [],
+                    total: 0,
+                    page: 1,
+                    isLoading: false,
+                    hasLoaded: false,
+                    error: null,
+                },
                 versions: { items: [], total: 0, page: 1, isLoading: false, error: null },
             }),
         },
