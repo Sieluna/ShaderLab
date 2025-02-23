@@ -1,0 +1,19 @@
+{
+  "name": "senra_web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build:wasm && vite",
+    "build": "npm run build:wasm && vite build",
+    "build:wasm": "node scripts/build-wasm.js",
+    "preview": "npm run build:wasm && vite preview"
+  },
+  "dependencies": {
+    "three": "latest"
+  },
+  "devDependencies": {
+    "postcss-nesting": "latest",
+    "vite": "latest"
+  }
+}

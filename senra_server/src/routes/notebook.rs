@@ -505,7 +505,7 @@ async fn list_comments(
     let mut comments = Vec::new();
     for comment in comment_data {
         let author = state.services.user.get_user(comment.user_id).await?;
-        comments.push(NotebookCommentItem {
+        comments.push(NotebookCommentResponse {
             id: comment.id,
             notebook_id: comment.notebook_id,
             user_id: comment.user_id,
@@ -529,7 +529,7 @@ async fn list_comments(
     ),
     request_body = CreateNotebookCommentRequest,
     responses(
-        (status = 200, description = "Successfully created comment", body = NotebookCommentItem),
+        (status = 200, description = "Successfully created comment", body = NotebookCommentResponse),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Notebook not found")
     )
@@ -539,7 +539,7 @@ async fn create_comment(
     auth_user: AuthUser,
     Path(id): Path<i64>,
     Json(payload): Json<CreateNotebookCommentRequest>,
-) -> Result<Json<NotebookCommentItem>> {
+) -> Result<Json<NotebookCommentResponse>> {
     let comment = state
         .services
         .notebook
@@ -548,7 +548,7 @@ async fn create_comment(
 
     let user = state.services.user.get_user(auth_user.user_id).await?;
 
-    Ok(Json(NotebookCommentItem {
+    Ok(Json(NotebookCommentResponse {
         id: comment.id,
         notebook_id: comment.notebook_id,
         user_id: comment.user_id,

@@ -1,0 +1,12 @@
+{
+    "name": "shaderlab",
+    "private": true,
+    "workspaces": [
+        "senra_web"
+    ],
+    "scripts": {
+        "dev": "npm run dev -w=senra_web",
+        "preview": "npm run preview -w=senra_web",
+        "build": "npm run build -w=senra_web"
+    }
+}
