@@ -7,45 +7,45 @@ export function createAuthModal({ onLogin, onRegister }) {
     modal.style.display = 'none';
 
     modal.innerHTML = `
-        <div class="${styles.modalContent}">
+        <div class="${styles.content}">
             <div class="${styles.tabs}">
-                <button class="${styles.tabBtn} ${styles.active}" data-tab="login">Login</button>
-                <button class="${styles.tabBtn}" data-tab="register">Register</button>
-                <button class="${styles.closeBtn}">${closeIcon}</button>
+                <button class="${styles.tab} ${styles.active}" data-tab="login">Login</button>
+                <button class="${styles.tab}" data-tab="register">Register</button>
+                <button class="${styles.close}">${closeIcon}</button>
             </div>
             
             <form id="loginForm" class="${styles.form}" style="display: block;">
-                <div class="${styles.formGroup}">
+                <div class="${styles.group}">
                     <label for="loginUsername">Username</label>
                     <input type="text" id="loginUsername" name="username" required>
                 </div>
-                <div class="${styles.formGroup}">
+                <div class="${styles.group}">
                     <label for="loginPassword">Password</label>
                     <input type="password" id="loginPassword" name="password" required>
                 </div>
-                <button type="submit" class="${styles.submitBtn}">Login</button>
+                <button type="submit" class="${styles.submit}">Login</button>
             </form>
             
             <form id="registerForm" class="${styles.form}" style="display: none;">
-                <div class="${styles.formGroup}">
+                <div class="${styles.group}">
                     <label for="registerUsername">Username</label>
                     <input type="text" id="registerUsername" name="username" required>
                 </div>
-                <div class="${styles.formGroup}">
+                <div class="${styles.group}">
                     <label for="registerEmail">Email</label>
                     <input type="email" id="registerEmail" name="email" required>
                 </div>
-                <div class="${styles.formGroup}">
+                <div class="${styles.group}">
                     <label for="registerPassword">Password</label>
                     <input type="password" id="registerPassword" name="password" required>
                 </div>
-                <button type="submit" class="${styles.submitBtn}">Register</button>
+                <button type="submit" class="${styles.submit}">Register</button>
             </form>
         </div>
     `;
 
-    const closeBtn = modal.querySelector(`.${styles.closeBtn}`);
-    const tabBtns = modal.querySelectorAll(`.${styles.tabBtn}`);
+    const closeBtn = modal.querySelector(`.${styles.close}`);
+    const tabBtns = modal.querySelectorAll(`.${styles.tab}`);
     const loginForm = modal.querySelector('#loginForm');
     const registerForm = modal.querySelector('#registerForm');
 

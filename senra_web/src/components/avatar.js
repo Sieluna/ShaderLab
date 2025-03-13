@@ -6,7 +6,7 @@ export function createAvatar({ onLoginClick, onLogoutClick, onProfileClick, onSe
     container.className = styles.container;
 
     const loginBtn = container.appendChild(document.createElement('button'));
-    loginBtn.className = `${styles.btn} ${styles.btnLogin}`;
+    loginBtn.className = styles.btn;
     loginBtn.textContent = 'Login';
     loginBtn.style.display = 'none';
 
@@ -52,23 +52,19 @@ export function createAvatar({ onLoginClick, onLogoutClick, onProfileClick, onSe
     });
 
     avatarImg.addEventListener('click', (e) => {
-        if (window.innerWidth <= 480) {
-            e.preventDefault();
-            e.stopPropagation();
-            userAvatar.classList.toggle('active');
-        }
+        e.preventDefault();
+        e.stopPropagation();
+        userAvatar.classList.toggle(styles.active);
     });
 
     document.addEventListener('click', (e) => {
-        if (window.innerWidth <= 480) {
-            if (!userAvatar.contains(e.target)) {
-                userAvatar.classList.remove('active');
-            }
+        if (!userAvatar.contains(e.target)) {
+            userAvatar.classList.remove(styles.active);
         }
     });
 
     window.addEventListener('resize', () => {
-        userAvatar.classList.remove('active');
+        userAvatar.classList.remove(styles.active);
     });
 
     const updateAuthState = (state) => {
@@ -76,7 +72,7 @@ export function createAvatar({ onLoginClick, onLogoutClick, onProfileClick, onSe
         const userData = state.auth?.user || null;
 
         loginBtn.style.display = isAuthenticated ? 'none' : 'block';
-        userAvatar.style.display = isAuthenticated ? 'block' : 'none';
+        userAvatar.style.display = isAuthenticated ? 'flex' : 'none';
 
         if (isAuthenticated && userData?.avatar) {
             if (Array.isArray(userData.avatar)) {

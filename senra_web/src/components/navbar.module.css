@@ -136,6 +136,7 @@
 
     .navbar.menuOpen ul {
         right: 0;
+        padding: 0.5rem;
     }
 
     .menu-toggle {
@@ -165,6 +166,15 @@
     .container {
         padding: 0 0.5rem;
     }
+
+    .nav-link {
+        display: block;
+        margin: 0.25rem 0.5rem;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-weight: 500;
+        text-align: left;
+    }
 }
 
 @media (max-width: 480px) {
@@ -174,16 +184,5 @@
 
     .search-box {
         margin: 0 0.5rem;
-    }
-
-    .nav-link {
-        width: 100%;
-        text-align: center;
-    }
-}
-
-@media (min-width: 1800px) {
-    .container {
-        max-width: 1600px;
     }
 }
