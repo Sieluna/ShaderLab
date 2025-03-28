@@ -34,13 +34,6 @@ const withUIState = async (operation) => {
     }
 };
 
-/**
- * Helper to update auth state
- */
-const setAuthState = (isAuthenticated, user = null) => {
-    appState.set('auth', { isAuthenticated, user });
-};
-
 export async function checkAuthStatus() {
     try {
         const isValid = await authApi.verifyToken();
@@ -65,16 +58,13 @@ export async function login(username, password) {
     }
 
     return withUIState(async () => {
-        const response = await authApi.login(username, password);
-
-        setAuthState(true, {
-            id: response.id,
-            username: response.username,
-            email: response.email,
-            avatar: response.avatar,
+        const { user } = await authApi.login(username, password);
+        appState.set('auth', {
+            isAuthenticated: true,
+            user,
         });
 
-        return { data: response };
+        return { data: user };
     });
 }
 
@@ -92,23 +82,23 @@ export async function register(username, email, password) {
     }
 
     return withUIState(async () => {
-        const response = await authApi.register(username, email, password);
-
-        setAuthState(true, {
-            id: response.id,
-            username: response.username,
-            email: response.email,
-            avatar: response.avatar,
+        const { user } = await authApi.register(username, email, password);
+        appState.set('auth', {
+            isAuthenticated: true,
+            user,
         });
 
-        return { data: response };
+        return { data: user };
     });
 }
 
 export async function logout(redirect = true) {
     try {
         await authApi.logout();
-        setAuthState(false);
+        appState.set('auth', {
+            isAuthenticated: false,
+            user: null,
+        });
 
         redirect && window.location.reload();
     } catch (error) {
