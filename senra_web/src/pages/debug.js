@@ -228,7 +228,7 @@ const createTestSection = (title, tests) => {
     return section;
 };
 
-export function StateTest() {
+export function createStateTest() {
     const container = document.createElement('div');
     container.className = styles.stateTest;
 
@@ -380,6 +380,6 @@ export function StateTest() {
 export function debugPage() {
     const debugContainer = document.createElement('div');
     debugContainer.className = styles.debugContainer;
-    debugContainer.appendChild(StateTest());
+    debugContainer.appendChild(createStateTest());
     return debugContainer;
 }
