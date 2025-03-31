@@ -1,11 +1,9 @@
 export class ResourceManager {
-    constructor() {
-        this.shaders = new Map(); // Shader resources
-        this.textures = new Map(); // Texture resources
-        this.buffers = new Map(); // Buffer resources
-        this.samplers = new Map(); // Sampler resources
-        this.shaderModules = new Map(); // Shader modules
-    }
+    shaders = new Map(); // Shader resources
+    textures = new Map(); // Texture resources
+    buffers = new Map(); // Buffer resources
+    samplers = new Map(); // Sampler resources
+    shaderModules = new Map(); // Shader modules
 
     /**
      * Load resource
@@ -156,7 +154,7 @@ export class ResourceManager {
         this.buffers.set(resource.id, {
             buffer,
             size: resource.data.length,
-            type: resource.metadata?.type || 'raw',
+            type: resource.metadata?.type ?? 'raw',
         });
     }
 
@@ -268,7 +266,7 @@ export class ResourceManager {
      * @returns {Object|null} Shader module info
      */
     getShaderModule(id) {
-        return this.shaderModules.get(id) || null;
+        return this.shaderModules.get(id) ?? null;
     }
 
     /**
@@ -277,7 +275,7 @@ export class ResourceManager {
      * @returns {Object|null} Texture info
      */
     getTexture(id) {
-        return this.textures.get(id) || null;
+        return this.textures.get(id) ?? null;
     }
 
     /**
@@ -286,7 +284,7 @@ export class ResourceManager {
      * @returns {Object|null} Buffer info
      */
     getBuffer(id) {
-        return this.buffers.get(id) || null;
+        return this.buffers.get(id) ?? null;
     }
 
     /**
@@ -295,7 +293,7 @@ export class ResourceManager {
      * @returns {GPUSampler|null} Sampler
      */
     getSampler(id) {
-        return this.samplers.get(id) || null;
+        return this.samplers.get(id) ?? null;
     }
 
     /**
@@ -318,15 +316,15 @@ export class ResourceManager {
      */
     release(type, id) {
         switch (type) {
-            case 'shader':
+            case 'shader': {
                 const shaderModule = this.shaderModules.get(id);
                 if (shaderModule) {
                     this.shaderModules.delete(id);
                     this.shaders.delete(id);
                 }
                 break;
-
-            case 'texture':
+            }
+            case 'texture': {
                 const texture = this.textures.get(id);
                 if (texture) {
                     texture.texture.destroy();
@@ -335,19 +333,18 @@ export class ResourceManager {
                     this.samplers.delete(`${id}_default`);
                 }
                 break;
-
-            case 'buffer':
+            }
+            case 'buffer': {
                 const buffer = this.buffers.get(id);
                 if (buffer) {
                     buffer.buffer.destroy();
                     this.buffers.delete(id);
                 }
                 break;
-
+            }
             case 'sampler':
                 this.samplers.delete(id);
                 break;
-
             default:
                 console.warn(`Unknown resource type: ${type}`);
         }
@@ -358,13 +355,13 @@ export class ResourceManager {
      */
     releaseAll() {
         // Release textures
-        for (const [id, texture] of this.textures) {
+        for (const [, texture] of this.textures) {
             texture.texture.destroy();
         }
         this.textures.clear();
 
         // Release buffers
-        for (const [id, buffer] of this.buffers) {
+        for (const [, buffer] of this.buffers) {
             buffer.buffer.destroy();
         }
         this.buffers.clear();

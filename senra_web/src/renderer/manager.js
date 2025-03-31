@@ -2,17 +2,24 @@ import { ShaderRenderer } from './shader-renderer.js';
 import { ResourceManager } from './resource-manager.js';
 
 export class NotebookRendererManager {
+    // Class fields
+    container;
+    notebook;
+    options;
+    renderers = new Map();
+    resourceManager;
+    isRunning = false;
+    adapter = null;
+    device = null;
+    status = 'created';
+    resizeObserver = null;
+    _animationFrame = null;
+
     constructor(container, notebook, options = {}) {
         this.container = container;
         this.notebook = notebook;
         this.options = options;
-        this.renderers = new Map();
         this.resourceManager = new ResourceManager();
-        this.isRunning = false;
-        this.adapter = null;
-        this.device = null;
-        this.status = 'created';
-        this.resizeObserver = null;
     }
 
     async initialize() {
@@ -38,7 +45,7 @@ export class NotebookRendererManager {
 
     async _initWebGPU() {
         this.adapter = await navigator.gpu.requestAdapter({
-            powerPreference: this.options.powerPreference || 'high-performance',
+            powerPreference: this.options.powerPreference ?? 'high-performance',
         });
 
         if (!this.adapter) {
@@ -76,7 +83,7 @@ export class NotebookRendererManager {
                 ? JSON.parse(this.notebook.content)
                 : this.notebook.content;
 
-        if (!content || !content.cells) {
+        if (!content?.cells) {
             console.warn('Invalid notebook content format');
             return;
         }
@@ -88,8 +95,7 @@ export class NotebookRendererManager {
             return;
         }
 
-        for (let i = 0; i < renderCells.length; i++) {
-            const cell = renderCells[i];
+        for (const cell of renderCells) {
             const renderConfig = JSON.parse(cell.content);
 
             const renderContainer = document.createElement('div');
