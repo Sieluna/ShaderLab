@@ -1,5 +1,5 @@
 import styles from './avatar.module.css';
-import { appState } from '../state.js';
+import { appState } from '../../state.js';
 
 export function createAvatar({ onLoginClick, onLogoutClick, onProfileClick, onSettingsClick }) {
     const container = document.createElement('div');

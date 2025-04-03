@@ -2,7 +2,7 @@ import styles from './debug.module.css';
 import { appState } from '../state.js';
 import { notebookService, authService, userService } from '../services/index.js';
 
-const deepDiff = (prev, curr, path = '') => {
+function deepDiff(prev, curr, path = '') {
     const diffs = [];
     if (typeof prev !== 'object' || typeof curr !== 'object' || prev === null || curr === null) {
         if (prev !== curr) {
@@ -24,7 +24,7 @@ const deepDiff = (prev, curr, path = '') => {
         diffs.push(...deepDiff(prevVal, currVal, currentPath));
     }
     return diffs;
-};
+}
 
 function formatContent(content, diffs = []) {
     const json = JSON.stringify(
@@ -49,7 +49,7 @@ function formatContent(content, diffs = []) {
     );
 }
 
-const createStateDisplay = (id, state) => {
+function createStateDisplay(id, state) {
     const display = document.createElement('div');
     display.id = id;
     display.className = styles.stateDisplay;
@@ -81,9 +81,9 @@ const createStateDisplay = (id, state) => {
 
     display.append(toggle, timestamp, content);
     return display;
-};
+}
 
-const updateTestResult = (elementId, result) => {
+function updateTestResult(elementId, result) {
     const element = document.getElementById(elementId);
     if (element) {
         element.classList.add(styles.updated);
@@ -101,9 +101,9 @@ const updateTestResult = (elementId, result) => {
         `;
         element.scrollIntoView({ behavior: 'smooth' });
     }
-};
+}
 
-const createInputForm = (id, fields, resultId, submitAction) => {
+function createInputForm(id, fields, resultId, submitAction) {
     const form = document.createElement('form');
     form.id = id;
     form.className = styles.inputForm;
@@ -149,40 +149,9 @@ const createInputForm = (id, fields, resultId, submitAction) => {
     });
 
     return form;
-};
+}
 
-const createHistoryPanel = () => {
-    const panel = document.createElement('div');
-    panel.className = styles.historyPanel;
-    panel.innerHTML = `
-        <h2>Operation History <button id="clear-history">Clear</button></h2>
-        <div class="${styles.historyItems}"></div>
-    `;
-
-    const container = panel.querySelector(`.${styles.historyItems}`);
-    const clearBtn = panel.querySelector('#clear-history');
-    clearBtn.addEventListener('click', () => (container.innerHTML = ''));
-
-    return {
-        element: panel,
-        addEntry: (action, result) => {
-            const entry = document.createElement('div');
-            entry.className = styles.historyEntry;
-            entry.innerHTML = `
-                <div class="${styles.historyTime}">${new Date().toLocaleTimeString()}</div>
-                <div class="${styles.historyAction}">${action}</div>
-                <div class="${styles.historyStatus}">${result?.error ? '❌' : '✅'}</div>
-            `;
-            entry.addEventListener('click', () => {
-                const detailWindow = window.open('', '_blank');
-                detailWindow.document.write(`<pre>${JSON.stringify(result, null, 2)}</pre>`);
-            });
-            container.prepend(entry);
-        },
-    };
-};
-
-const createTestSection = (title, tests) => {
+function createTestSection(title, tests) {
     const section = document.createElement('div');
     section.className = styles.testSection;
     const resultId = `${title.toLowerCase().replace(/\s+/g, '-')}-result`;
@@ -226,13 +195,11 @@ const createTestSection = (title, tests) => {
     });
 
     return section;
-};
+}
 
-export function createStateTest() {
+function createStateTest() {
     const container = document.createElement('div');
     container.className = styles.stateTest;
-
-    const historyPanel = createHistoryPanel();
 
     const stateMonitor = document.createElement('div');
     stateMonitor.className = styles.stateMonitor;
@@ -372,7 +339,13 @@ export function createStateTest() {
     container.appendChild(createTestSection('User Service', testConfig.user));
     container.appendChild(createTestSection('Notebook Service', testConfig.notebook));
     container.appendChild(stateMonitor);
-    container.appendChild(historyPanel.element);
+
+    return container;
+}
+
+function createRendererTest() {
+    const container = document.createElement('div');
+    container.className = styles.rendererTest;
 
     return container;
 }
@@ -381,5 +354,6 @@ export function debugPage() {
     const debugContainer = document.createElement('div');
     debugContainer.className = styles.debugContainer;
     debugContainer.appendChild(createStateTest());
+    debugContainer.appendChild(createRendererTest());
     return debugContainer;
 }

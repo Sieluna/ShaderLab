@@ -4,7 +4,7 @@ import heartIcon from '../assets/heart.svg?raw';
 import commentIcon from '../assets/chat.svg?raw';
 import { appState } from '../state.js';
 import { notebookService } from '../services/index.js';
-import { createRenderer } from '../renderer/index.js';
+// import { createRenderer } from '../renderer/index.js';
 
 export function notebookPage(id) {
     const container = document.createElement('div');
@@ -140,7 +140,7 @@ export function notebookPage(id) {
         setTimeout(() => {
             const shaderContainer = document.getElementById('shader-container');
             if (shaderContainer) {
-                renderer = createRenderer('shader-container', notebook);
+                // renderer = createRenderer('shader-container', notebook);
             }
         }, 10);
 

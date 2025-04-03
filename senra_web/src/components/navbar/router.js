@@ -1,5 +1,5 @@
 import styles from './router.module.css';
-import { appState } from '../state.js';
+import { appState } from '../../state.js';
 
 export function router(routes = {}) {
     const routerContainer = document.createElement('div');
