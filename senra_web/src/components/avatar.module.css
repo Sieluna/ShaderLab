@@ -1,60 +1,60 @@
 .container {
     display: flex;
     align-items: center;
-}
 
-.btn {
-    transition: all 0.3s;
-    border: 1px solid var(--theme-primary-color);
-    border-radius: 4px;
-    background-color: transparent;
-    padding: 0.5rem 1rem;
-    color: var(--theme-text-color);
-    color: var(--theme-primary-color);
-    white-space: nowrap;
-
-    &:hover {
-        background-color: var(--theme-primary-color);
-        color: var(--theme-bg-color);
-    }
-}
-
-.avatar {
-    display: flex;
-    position: relative;
-    justify-content: center;
-    align-items: center;
-
-    & > img {
-        position: relative;
-        transform-origin: center center;
-        z-index: 1003;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        will-change: transform;
-        cursor: pointer;
-        outline: none;
-        border: 2px solid var(--theme-border-color);
-        border-radius: 50%;
-        background-color: white;
-        width: 2rem;
-        height: 2rem;
-        object-fit: cover;
+    & > .btn {
+        transition: all 0.3s;
+        border: 1px solid var(--theme-primary-color);
+        border-radius: 4px;
+        background-color: transparent;
+        padding: 0.5rem 1rem;
+        color: var(--theme-text-color);
+        color: var(--theme-primary-color);
+        white-space: nowrap;
 
         &:hover {
-            border-color: var(--theme-primary-color);
+            background-color: var(--theme-primary-color);
+            color: var(--theme-bg-color);
         }
     }
 
-    &.active {
+    & >.avatar {
+        display: flex;
+        position: relative;
+        justify-content: center;
+        align-items: center;
+
         & > img {
-            transform: translate(-16px, 32px) scale(2);
-        }
+            position: relative;
+            transform-origin: center center;
+            z-index: 1003;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+            cursor: pointer;
+            outline: none;
+            border: 2px solid var(--theme-border-color);
+            border-radius: 50%;
+            background-color: white;
+            width: 2rem;
+            height: 2rem;
+            object-fit: cover;
 
-        & .dropdown {
-            display: block;
-            animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            &:hover {
+                border-color: var(--theme-primary-color);
+            }
         }
-    }
+    
+        &.active {
+            & > img {
+                transform: translate(-16px, 32px) scale(2);
+            }
+
+            & .dropdown {
+                display: block;
+                animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+        }
+    }    
 }
 
 .dropdown {
