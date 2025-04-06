@@ -417,34 +417,29 @@ fn main(@location(0) uv: vec2f) -> @location(0) vec4f {
 function createRendererTest() {
     const container = document.createElement('div');
     container.className = styles.rendererTest;
-    
+
     // Add notebook viewer test section
     const header = document.createElement('h2');
     header.textContent = 'Notebook Viewer Test';
     container.appendChild(header);
-    
+
     // Controls section
     const controls = document.createElement('div');
     controls.className = styles.testControls;
     container.appendChild(controls);
-    
+
     // Add viewer container
     const viewerContainer = document.createElement('div');
-    viewerContainer.className = styles.notebookViewerContainer;
-    viewerContainer.style.height = '600px';
-    viewerContainer.style.border = '1px solid var(--theme-border-color)';
-    viewerContainer.style.margin = '20px 0';
     container.appendChild(viewerContainer);
-    
+
     // Result display
     const resultDisplay = document.createElement('div');
     resultDisplay.id = 'viewer-test-result';
-    resultDisplay.className = styles.testResult;
     container.appendChild(resultDisplay);
-    
+
     // Create notebook viewer instance
     let notebookViewer = null;
-    
+
     // Sample notebook data
     const sampleNotebook = {
         id: 'test-notebook-id',
@@ -457,114 +452,129 @@ function createRendererTest() {
             cells: [
                 {
                     id: 1,
-                    cell_type: "markdown",
-                    content: "# Shader Demo Notebook\n\n## This is a simplified notebook viewer demo\n\nThis demo implements notebook content rendering in a simplified way:\n\n* Markdown cells- parsed with **marked**\n* Code cells - show code\n* Render cells - run WebGPU shaders",
+                    cell_type: 'markdown',
+                    content:
+                        '# Shader Demo Notebook\n\n## This is a simplified notebook viewer demo\n\nThis demo implements notebook content rendering in a simplified way:\n\n* Markdown cells- parsed with **marked**\n* Code cells - show code\n* Render cells - run WebGPU shaders',
                     metadata: {
-                        collapsed: false
-                    }
+                        collapsed: false,
+                    },
                 },
                 {
                     id: 2,
-                    cell_type: "code",
+                    cell_type: 'code',
                     content: {
-                        shader_ids: [1, 2, 3, 4]
+                        shader_ids: [1, 2, 3, 4],
                     },
                     metadata: {
-                        collapsed: false
-                    }
+                        collapsed: false,
+                    },
                 },
                 {
                     id: 3,
-                    cell_type: "markdown",
-                    content: "## Render Cell\n\nBelow is a render cell that uses a WebGPU shader:"
+                    cell_type: 'markdown',
+                    content: '## Render Cell\n\nBelow is a render cell that uses a WebGPU shader:',
                 },
                 {
                     id: 4,
-                    cell_type: "render",
+                    cell_type: 'render',
                     content: {
-                        width: 100,
-                        height: 100,
+                        width: 800,
+                        height: 600,
                         shader_ids: [1, 2, 3, 4],
                         resource_ids: [],
                         pipeline: {
                             shader_bindings: [
                                 {
                                     shader_index: 0,
-                                    shader_stage: "vertex",
-                                    entry_point: "main"
+                                    shader_stage: 'vertex',
+                                    entry_point: 'main',
                                 },
                                 {
                                     shader_index: 1,
-                                    shader_stage: "fragment",
-                                    entry_point: "main"
+                                    shader_stage: 'fragment',
+                                    entry_point: 'main',
                                 },
                                 {
                                     shader_index: 2,
-                                    shader_stage: "vertex",
-                                    entry_point: "main"
+                                    shader_stage: 'vertex',
+                                    entry_point: 'main',
                                 },
                                 {
                                     shader_index: 3,
-                                    shader_stage: "fragment",
-                                    entry_point: "main"
-                                }
+                                    shader_stage: 'fragment',
+                                    entry_point: 'main',
+                                },
                             ],
                             vertex_attributes: [
                                 {
-                                    name: "position",
-                                    format: "float32x3",
+                                    name: 'position',
+                                    format: 'float32x3',
                                     offset: 0,
-                                    stride: 20
+                                    stride: 20,
                                 },
                                 {
-                                    name: "uv",
-                                    format: "float32x2",
+                                    name: 'uv',
+                                    format: 'float32x2',
                                     offset: 12,
-                                    stride: 20
-                                }
+                                    stride: 20,
+                                },
                             ],
                             resource_bindings: [],
                             render_passes: [
                                 {
-                                    id: "render_to_texture",
-                                    pass_type: "intermediate",
-                                    description: "Render to intermediate texture",
+                                    id: 'render_to_texture',
+                                    pass_type: 'intermediate',
+                                    description: 'Render to intermediate texture',
                                     shader_bindings: [0, 1],
                                     clear_color: [0.1, 0.1, 0.1, 1.0],
                                     depth_enabled: false,
                                     output_textures: [
                                         {
-                                            id: "main_output",
-                                            format: "rgba8unorm",
+                                            id: 'main_output',
+                                            format: 'rgba8unorm',
                                             width_scale: 1.0,
-                                            height_scale: 1.0
-                                        }
-                                    ]
+                                            height_scale: 1.0,
+                                        },
+                                    ],
                                 },
                                 {
-                                    id: "post_process",
-                                    pass_type: "main",
-                                    description: "Post-process pass",
+                                    id: 'post_process',
+                                    pass_type: 'main',
+                                    description: 'Post-process pass',
                                     shader_bindings: [2, 3],
                                     input_textures: [
                                         {
-                                            texture_id: "render_to_texture_main_output",
+                                            texture_id: 'render_to_texture_main_output',
                                             group: 1,
-                                            binding: 0
-                                        }
+                                            binding: 0,
+                                        },
                                     ],
                                     clear_color: [0.0, 0.0, 0.0, 1.0],
-                                    depth_enabled: false
-                                }
-                            ]
+                                    depth_enabled: false,
+                                },
+                            ],
                         },
+                        uniforms: [
+                            {
+                                name: "effects",
+                                label: "x: distortion strength, y: distortion frequency, z: wave strength, w: vignette strength",
+                                type: "vec4",
+                                default: [0.02, 10.0, 0.2, 1.3]
+                            },
+                            {
+                                name: "colorTint",
+                                label: "color-tint adjustment",
+                                type: "vec4",
+                                default: [1.0, 1.0, 1.0, 1.0]
+                            }
+                        ],
                         camera: {
                             position: [0, 0, 3],
                             target: [0, 0, 0],
                             up: [0, 1, 0],
                             fov: 45,
                             near: 0.1,
-                            far: 100
+                            far: 100,
                         },
                         performance: {
                             hardware_acceleration: true,
@@ -579,12 +589,13 @@ function createRendererTest() {
                     },
                 },
                 {
-                    cell_type: "markdown",
-                    content: "## Summary\n\nThe notebook viewer supports multiple types of cells and uses the marked library to parse Markdown content. It also supports an embedded WebGPU renderer, enabling interactive visualization.",
+                    cell_type: 'markdown',
+                    content:
+                        '## Summary\n\nThe notebook viewer supports multiple types of cells and uses the marked library to parse Markdown content. It also supports an embedded WebGPU renderer, enabling interactive visualization.',
                 },
             ],
         },
-        "resources": [
+        resources: [
             {
                 id: 1,
                 notebook_id: 1,
@@ -600,34 +611,34 @@ function createRendererTest() {
                 notebook_id: 1,
                 name: 'vertex-shader',
                 shader_type: 'vertex',
-                code: DEFAULT_VERTEX_SHADER
+                code: DEFAULT_VERTEX_SHADER,
             },
             {
                 id: 2,
                 notebook_id: 1,
                 name: 'fragment-shader',
                 shader_type: 'fragment',
-                code: DEFAULT_FRAGMENT_SHADER
+                code: DEFAULT_FRAGMENT_SHADER,
             },
             {
                 id: 3,
                 notebook_id: 1,
                 name: 'post-process-vertex',
                 shader_type: 'vertex',
-                code: POST_PROCESS_VERTEX_SHADER
+                code: POST_PROCESS_VERTEX_SHADER,
             },
             {
                 id: 4,
                 notebook_id: 1,
                 name: 'post-process-fragment',
                 shader_type: 'fragment',
-                code: POST_PROCESS_FRAGMENT_SHADER
-            }
+                code: POST_PROCESS_FRAGMENT_SHADER,
+            },
         ],
-        visibility: "public",
+        visibility: 'public',
         version: 1,
     };
-    
+
     // Create action buttons
     const createViewerButton = document.createElement('button');
     createViewerButton.textContent = 'Create Viewer';
@@ -638,30 +649,30 @@ function createRendererTest() {
                 notebookViewer.destroy();
                 notebookViewer = null;
             }
-            
+
             // Clear container
             viewerContainer.innerHTML = '';
-            
+
             // Create new viewer
             notebookViewer = createNotebookViewer(viewerContainer, {
-                autoRunShaders: false  // Disable auto-run to prevent unnecessary GPU usage
+                autoRunShaders: false, // Disable auto-run to prevent unnecessary GPU usage
             });
-            
+
             updateTestResult('viewer-test-result', {
                 action: 'Create Viewer',
                 status: 'success',
-                message: 'Notebook viewer created successfully'
+                message: 'Notebook viewer created successfully',
             });
         } catch (error) {
             updateTestResult('viewer-test-result', {
                 action: 'Create Viewer',
                 status: 'error',
-                error: error.message
+                error: error.message,
             });
         }
     });
     controls.appendChild(createViewerButton);
-    
+
     const loadNotebookButton = document.createElement('button');
     loadNotebookButton.textContent = 'Load Sample Notebook';
     loadNotebookButton.addEventListener('click', async () => {
@@ -669,31 +680,31 @@ function createRendererTest() {
             updateTestResult('viewer-test-result', {
                 action: 'Load Notebook',
                 status: 'error',
-                error: 'Create a viewer first'
+                error: 'Create a viewer first',
             });
             return;
         }
-        
+
         try {
             const start = performance.now();
             const result = await notebookViewer.loadNotebook(sampleNotebook);
-            
+
             updateTestResult('viewer-test-result', {
                 action: 'Load Notebook',
                 status: result ? 'success' : 'error',
                 message: result ? 'Notebook loaded successfully' : 'Failed to load notebook',
-                duration: performance.now() - start
+                duration: performance.now() - start,
             });
         } catch (error) {
             updateTestResult('viewer-test-result', {
                 action: 'Load Notebook',
                 status: 'error',
-                error: error.message
+                error: error.message,
             });
         }
     });
     controls.appendChild(loadNotebookButton);
-    
+
     const loadInvalidNotebookButton = document.createElement('button');
     loadInvalidNotebookButton.textContent = 'Load Invalid Notebook';
     loadInvalidNotebookButton.addEventListener('click', async () => {
@@ -701,38 +712,38 @@ function createRendererTest() {
             updateTestResult('viewer-test-result', {
                 action: 'Load Invalid Notebook',
                 status: 'error',
-                error: 'Create a viewer first'
+                error: 'Create a viewer first',
             });
             return;
         }
-        
+
         try {
             const start = performance.now();
             // Create an invalid notebook with missing required fields
             const invalidNotebook = {
                 title: 'Invalid Notebook',
-                content: '{"cells": [{"cell_type": "invalid"}]}'
+                content: '{"cells": [{"cell_type": "invalid"}]}',
             };
-            
+
             const result = await notebookViewer.loadNotebook(invalidNotebook);
-            
+
             updateTestResult('viewer-test-result', {
                 action: 'Load Invalid Notebook',
                 status: 'completed',
                 result: result,
                 message: 'Test completed',
-                duration: performance.now() - start
+                duration: performance.now() - start,
             });
         } catch (error) {
             updateTestResult('viewer-test-result', {
                 action: 'Load Invalid Notebook',
                 status: 'error',
-                error: error.message
+                error: error.message,
             });
         }
     });
     controls.appendChild(loadInvalidNotebookButton);
-    
+
     const destroyViewerButton = document.createElement('button');
     destroyViewerButton.textContent = 'Destroy Viewer';
     destroyViewerButton.addEventListener('click', () => {
@@ -740,30 +751,30 @@ function createRendererTest() {
             updateTestResult('viewer-test-result', {
                 action: 'Destroy Viewer',
                 status: 'error',
-                error: 'No active viewer to destroy'
+                error: 'No active viewer to destroy',
             });
             return;
         }
-        
+
         try {
             notebookViewer.destroy();
             notebookViewer = null;
-            
+
             updateTestResult('viewer-test-result', {
                 action: 'Destroy Viewer',
                 status: 'success',
-                message: 'Notebook viewer destroyed successfully'
+                message: 'Notebook viewer destroyed successfully',
             });
         } catch (error) {
             updateTestResult('viewer-test-result', {
                 action: 'Destroy Viewer',
                 status: 'error',
-                error: error.message
+                error: error.message,
             });
         }
     });
     controls.appendChild(destroyViewerButton);
-    
+
     return container;
 }
 

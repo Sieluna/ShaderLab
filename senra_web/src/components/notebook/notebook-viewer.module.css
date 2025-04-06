@@ -22,9 +22,9 @@
 }
 
 .notebookDescription {
+    opacity: 0.7;
     margin-bottom: 15px;
     color: var(--theme-text-color);
-    opacity: 0.7;
     font-size: 1.1em;
 }
 
@@ -32,8 +32,8 @@
     display: flex;
     flex-wrap: wrap;
     gap: 15px;
-    color: var(--theme-text-color);
     opacity: 0.6;
+    color: var(--theme-text-color);
     font-size: 0.9em;
 }
 
@@ -114,13 +114,13 @@
 }
 
 .cellCollapseButton {
+    opacity: 0.7;
     cursor: pointer;
     border: none;
     border-radius: 3px;
     background: none;
     padding: 2px 8px;
     color: var(--theme-text-color);
-    opacity: 0.7;
     font-size: 0.9em;
 
     &:hover {
@@ -243,9 +243,9 @@
 
 /* Loading Indicator */
 .notebookLoading {
+    opacity: 0.6;
     padding: 20px;
     color: var(--theme-text-color);
-    opacity: 0.6;
     text-align: center;
 }
 

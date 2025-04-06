@@ -97,7 +97,8 @@ class NotebookRendererManager {
         }
 
         for (const cell of renderCells) {
-            const renderConfig = typeof cell.content === 'string' ? JSON.parse(cell.content) : cell.content;
+            const renderConfig =
+                typeof cell.content === 'string' ? JSON.parse(cell.content) : cell.content;
 
             const renderContainer = document.createElement('div');
             renderContainer.className = 'renderer-container';
