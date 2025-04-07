@@ -556,17 +556,17 @@ function createRendererTest() {
                         },
                         uniforms: [
                             {
-                                name: "effects",
-                                label: "x: distortion strength, y: distortion frequency, z: wave strength, w: vignette strength",
-                                type: "vec4",
-                                default: [0.02, 10.0, 0.2, 1.3]
+                                name: 'effects',
+                                label: 'x: distortion strength, y: distortion frequency, z: wave strength, w: vignette strength',
+                                type: 'vec4',
+                                default: [0.02, 10.0, 0.2, 1.3],
                             },
                             {
-                                name: "colorTint",
-                                label: "color-tint adjustment",
-                                type: "vec4",
-                                default: [1.0, 1.0, 1.0, 1.0]
-                            }
+                                name: 'colorTint',
+                                label: 'color-tint adjustment',
+                                type: 'vec4',
+                                default: [1.0, 1.0, 1.0, 1.0],
+                            },
                         ],
                         camera: {
                             position: [0, 0, 3],

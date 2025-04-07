@@ -205,6 +205,195 @@
     }
 }
 
+.renderWrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.renderContainer {
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    background-color: var(--theme-hover-bg);
+    overflow: hidden;
+}
+
+.renderControlsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    background-color: var(--theme-hover-bg);
+    padding: 15px;
+    width: 100%;
+    max-width: 800px;
+}
+
+.renderControls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-bottom: 1px solid var(--theme-border-color);
+    padding-bottom: 15px;
+    width: 100%;
+}
+
+.renderControlsTitle {
+    margin: 0 0 10px 0;
+    color: var(--theme-text-color);
+    font-weight: 600;
+    font-size: 1em;
+}
+
+.resolutionSelector {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.resolutionSelect {
+    border: 1px solid var(--theme-border-color);
+    border-radius: 4px;
+    background-color: var(--theme-bg-color);
+    padding: 5px 10px;
+    min-width: 120px;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+}
+
+.customResolution {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.resolutionInput {
+    border: 1px solid var(--theme-border-color);
+    border-radius: 4px;
+    background-color: var(--theme-bg-color);
+    padding: 5px 8px;
+    width: 70px;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+}
+
+.resolutionSeparator {
+    opacity: 0.7;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+}
+
+.resolutionApply {
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--theme-primary-color);
+    padding: 5px 15px;
+    color: var(--theme-bg-color);
+    font-size: 0.9em;
+
+    &:hover {
+        background-color: var(--theme-primary-hover);
+    }
+}
+
+.uniformControls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+.uniformControlRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.uniformLabel {
+    min-width: 120px;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+}
+
+.uniformControl {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 8px;
+}
+
+.uniformValue {
+    width: 40px;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+    text-align: center;
+}
+
+.uniformButton {
+    cursor: pointer;
+    border: 1px solid var(--theme-border-color);
+    border-radius: 4px;
+    background-color: var(--theme-bg-color);
+    padding: 4px 12px;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+
+    &:hover {
+        background-color: var(--theme-hover-bg);
+    }
+}
+
+.timeControls {
+    display: flex;
+    gap: 8px;
+}
+
+.vecInput {
+    border: 1px solid var(--theme-border-color);
+    border-radius: 4px;
+    background-color: var(--theme-bg-color);
+    padding: 4px 8px;
+    width: 60px;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+}
+
+.vecLabel {
+    opacity: 0.7;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+}
+
+.vecContainer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.vec4Container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.vecRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .renderStartButton {
     position: absolute;
     top: 50%;
@@ -267,5 +456,24 @@
         & h2 {
             font-size: 1.3em;
         }
+    }
+
+    .renderControlsContainer {
+        padding: 10px;
+    }
+
+    .uniformControlRow {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .uniformLabel {
+        margin-bottom: 5px;
+        min-width: auto;
+    }
+
+    .resolutionSelector {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }

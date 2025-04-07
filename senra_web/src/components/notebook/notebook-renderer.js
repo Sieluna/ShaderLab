@@ -1,5 +1,5 @@
 import { ResourceManager } from './resource-manager.js';
-import { ShaderRenderer } from './shader-renderer.js';
+import { ShaderRendererFactory } from './shader-renderer-factory.js';
 
 const activeRenderers = new Map();
 
@@ -107,14 +107,12 @@ class NotebookRendererManager {
             renderContainer.style.height = `${renderConfig.height}px`;
             this.container.appendChild(renderContainer);
 
-            const renderer = new ShaderRenderer(
+            const renderer = ShaderRendererFactory.createRenderer(
                 renderContainer,
                 this.device,
                 renderConfig,
                 this.resourceManager,
             );
-
-            renderer.initialize();
 
             this.renderers.set(cell.id, renderer);
         }

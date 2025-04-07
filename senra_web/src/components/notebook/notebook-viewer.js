@@ -1,5 +1,5 @@
 import styles from './notebook-viewer.module.css';
-import { createCellElement } from './notebook-cell-renderer.js';
+import { createCellElement } from './notebook-cells.js';
 
 /**
  * Create notebook viewer
