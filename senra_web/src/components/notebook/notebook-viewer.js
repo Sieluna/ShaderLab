@@ -46,76 +46,12 @@ export function createNotebookViewer(container, options = {}) {
     };
 
     /**
-     * Create notebook header
-     * @private
-     */
-    const createHeader = () => {
-        const header = document.createElement('div');
-        header.className = styles.notebookHeader;
-
-        // Title
-        const title = document.createElement('h1');
-        title.className = styles.notebookTitle;
-        title.textContent = notebook.title || 'Untitled Notebook';
-        header.appendChild(title);
-
-        // Description
-        if (notebook.description) {
-            const description = document.createElement('div');
-            description.className = styles.notebookDescription;
-            description.textContent = notebook.description;
-            header.appendChild(description);
-        }
-
-        // Metadata
-        const meta = document.createElement('div');
-        meta.className = styles.notebookMeta;
-
-        // Author
-        if (notebook.author) {
-            const author = document.createElement('span');
-            author.className = styles.notebookAuthor;
-            author.textContent = `Author: ${notebook.author.username || 'Unknown'}`;
-            meta.appendChild(author);
-        }
-
-        // Update time
-        if (notebook.updated_at) {
-            const updated = document.createElement('span');
-            updated.className = styles.notebookUpdated;
-            updated.textContent = `Updated: ${new Date(notebook.updated_at).toLocaleString()}`;
-            meta.appendChild(updated);
-        }
-
-        // Tags
-        if (notebook.tags && notebook.tags.length > 0) {
-            const tags = document.createElement('div');
-            tags.className = styles.notebookTags;
-
-            for (const tag of notebook.tags) {
-                const tagElement = document.createElement('span');
-                tagElement.className = styles.notebookTag;
-                tagElement.textContent = tag;
-                tags.appendChild(tagElement);
-            }
-
-            meta.appendChild(tags);
-        }
-
-        header.appendChild(meta);
-        container.appendChild(header);
-    };
-
-    /**
      * Render notebook content
      * @private
      */
     const renderNotebook = async () => {
         // Clear container
         clearContainer();
-
-        // Create notebook title
-        createHeader();
 
         // Create notebook content container
         const contentContainer = document.createElement('div');

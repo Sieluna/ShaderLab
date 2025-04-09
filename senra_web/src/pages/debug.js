@@ -392,6 +392,8 @@ fn main(@location(0) position: vec3f, @location(1) uv: vec2f) -> VertexOutput {
 const POST_PROCESS_FRAGMENT_SHADER = `
 @group(0) @binding(0) var<uniform> time: vec4f;
 @group(0) @binding(1) var<uniform> resolution: vec4f;
+@group(0) @binding(2) var<uniform> effects: vec4f;
+@group(0) @binding(3) var<uniform> colorTint: vec4f;
 @group(1) @binding(0) var inputTexture: texture_2d<f32>;
 @group(1) @binding(1) var inputSampler: sampler;
 
@@ -399,17 +401,17 @@ const POST_PROCESS_FRAGMENT_SHADER = `
 fn main(@location(0) uv: vec2f) -> @location(0) vec4f {
     let originalColor = textureSample(inputTexture, inputSampler, uv);
 
-    let distortion = sin(time.x * 2.0 + uv.y * 10.0) * 0.02;
+    let distortion = sin(time.x * 2.0 + uv.y * effects.y) * effects.x;
     let distortedUV = vec2f(uv.x + distortion, uv.y);
 
     let distortedColor = textureSample(inputTexture, inputSampler, distortedUV);
 
-    let waveAmount = 0.3 + sin(time.x) * 0.2;
+    let waveAmount = 0.3 + sin(time.x) * effects.z;
     var color = mix(originalColor, distortedColor, waveAmount);
 
     let distance = length(uv - 0.5);
-    let vignette = 1.0 - distance * 1.3;
-    color = color * vignette;
+    let vignette = 1.0 - distance * effects.w;
+    color = color * vignette * colorTint;
 
     return color;
 }`;

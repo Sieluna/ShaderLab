@@ -1,5 +1,4 @@
-import { ResourceManager } from './resource-manager.js';
-import { ShaderRendererFactory } from './shader-renderer-factory.js';
+import { ResourceManager, ShaderRendererFactory } from './moya/index.js';
 
 const activeRenderers = new Map();
 

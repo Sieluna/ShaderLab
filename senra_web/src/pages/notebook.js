@@ -4,7 +4,7 @@ import heartIcon from '../assets/heart.svg?raw';
 import commentIcon from '../assets/chat.svg?raw';
 import { appState } from '../state.js';
 import { notebookService } from '../services/index.js';
-// import { createRenderer } from '../renderer/index.js';
+import { createNotebookViewer } from '../components/index.js';
 
 export function notebookPage(id) {
     const container = document.createElement('div');
@@ -25,7 +25,7 @@ export function notebookPage(id) {
     errorDisplay.style.display = 'none';
     container.appendChild(errorDisplay);
 
-    let renderer = null;
+    let notebookViewer = null;
 
     const unsubscribeNotebook = notebookService.notebookState.subscribe((state) => {
         if (state.current.isLoading) {
@@ -117,30 +117,36 @@ export function notebookPage(id) {
             </header>
             
             <div class="${styles.mainContent}">
-                <div class="${styles.shaderContainer}" id="shader-container"></div>
+                <div class="${styles.notebookViewerContainer}" id="notebook-viewer-container"></div>
                 
-                <div class="${styles.markdownContent}">
-                    ${notebook.description ? `<div class="${styles.description}">${notebook.description}</div>` : ''}
-                    <div class="${styles.notebookContent}">${JSON.stringify(notebook.content)}</div>
-                </div>
-            </div>
-            
-            <div class="${styles.commentsSection}">
-                <h2>Comments (${notebook.stats.comment_count})</h2>
-                <div class="${styles.commentForm}">
-                    <textarea placeholder="Add a comment..." id="comment-input"></textarea>
-                    <button id="submit-comment">Submit Comment</button>
-                </div>
-                <div class="${styles.commentsList}" id="comments-list">
-                    <div class="${styles.commentsLoader}">Loading comments...</div>
+                <div class="${styles.commentsSection}">
+                    <h2>Comments (${notebook.stats.comment_count})</h2>
+                    <div class="${styles.commentForm}">
+                        <textarea placeholder="Add a comment..." id="comment-input"></textarea>
+                        <button id="submit-comment">Submit Comment</button>
+                    </div>
+                    <div class="${styles.commentsList}" id="comments-list">
+                        <div class="${styles.commentsLoader}">Loading comments...</div>
+                    </div>
                 </div>
             </div>
         `;
 
         setTimeout(() => {
-            const shaderContainer = document.getElementById('shader-container');
-            if (shaderContainer) {
-                // renderer = createRenderer('shader-container', notebook);
+            const viewerContainer = document.getElementById('notebook-viewer-container');
+            if (viewerContainer) {
+                if (notebookViewer) {
+                    notebookViewer.destroy();
+                    notebookViewer = null;
+                }
+
+                notebookViewer = createNotebookViewer(viewerContainer, {
+                    renderMath: true,
+                    codeSyntaxHighlight: true,
+                    autoRunShaders: true
+                });
+
+                notebookViewer.loadNotebook(notebook);
             }
         }, 10);
 
@@ -167,9 +173,9 @@ export function notebookPage(id) {
     }
 
     const cleanup = () => {
-        if (renderer) {
-            renderer.destroy();
-            renderer = null;
+        if (notebookViewer) {
+            notebookViewer.destroy();
+            notebookViewer = null;
         }
 
         unsubscribeNotebook();

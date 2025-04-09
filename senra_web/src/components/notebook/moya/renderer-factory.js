@@ -1,4 +1,4 @@
-import { ShaderRenderer } from './shader-renderer.js';
+import { ShaderRenderer } from './renderer.js';
 import { PerformanceMonitor } from './performance-monitor.js';
 import { GeometryManager } from './geometry-manager.js';
 import { TextureManager } from './texture-manager.js';
