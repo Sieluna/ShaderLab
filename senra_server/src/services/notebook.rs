@@ -210,15 +210,28 @@ impl NotebookService {
 
         // Create shaders
         for shader in create_notebook.shaders {
-            sqlx::query(
+            let shader: Shader = sqlx::query_as(
                 r#"
                 INSERT INTO shaders (notebook_id, name, shader_type, code)
                 VALUES ($1, $2, $3, $4)
+                RETURNING *
                 "#,
             )
             .bind(notebook.id)
             .bind(shader.name)
             .bind(shader.shader_type)
+            .bind(shader.code.clone())
+            .fetch_one(&mut *tx)
+            .await?;
+
+            // Create initial shader version
+            sqlx::query(
+                r#"
+                INSERT INTO shader_versions (shader_id, version, code)
+                VALUES ($1, 1, $2)
+                "#,
+            )
+            .bind(shader.id)
             .bind(shader.code)
             .execute(&mut *tx)
             .await?;

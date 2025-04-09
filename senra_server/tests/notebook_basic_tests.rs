@@ -35,6 +35,8 @@ async fn test_notebook_workflow() {
                         "content": {
                             "cells": []
                         },
+                        "resources": [],
+                        "shaders": [],
                         "tags": ["test", "rust"],
                         "visibility": "public"
                     }))

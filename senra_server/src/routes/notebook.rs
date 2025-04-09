@@ -149,6 +149,7 @@ async fn get_notebook(
             name: s.name,
             shader_type: s.shader_type,
             code: s.code,
+            version: s.version,
             created_at: s.created_at.to_string(),
             updated_at: s.updated_at.to_string(),
         })
@@ -269,6 +270,7 @@ async fn create_notebook(
             name: s.name,
             shader_type: s.shader_type,
             code: s.code,
+            version: s.version,
             created_at: s.created_at.to_string(),
             updated_at: s.updated_at.to_string(),
         })
@@ -369,6 +371,7 @@ async fn update_notebook(
             name: s.name,
             shader_type: s.shader_type,
             code: s.code,
+            version: s.version,
             created_at: s.created_at.to_string(),
             updated_at: s.updated_at.to_string(),
         })

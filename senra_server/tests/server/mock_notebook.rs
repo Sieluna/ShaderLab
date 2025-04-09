@@ -61,6 +61,8 @@ impl MockServer {
             title: options.title,
             description: Some(options.description),
             content: options.content,
+            resources: vec![],
+            shaders: vec![],
             tags: options.tags,
             preview: None,
             visibility: options.visibility,
