@@ -18,7 +18,7 @@
         }
     }
 
-    & >.avatar {
+    & > .avatar {
         display: flex;
         position: relative;
         justify-content: center;
@@ -43,7 +43,7 @@
                 border-color: var(--theme-primary-color);
             }
         }
-    
+
         &.active {
             & > img {
                 transform: translate(-16px, 32px) scale(2);
@@ -54,7 +54,7 @@
                 animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             }
         }
-    }    
+    }
 }
 
 .dropdown {

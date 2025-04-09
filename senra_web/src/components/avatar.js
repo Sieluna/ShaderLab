@@ -1,7 +1,8 @@
 import styles from './avatar.module.css';
 import { appState } from '../state.js';
 
-const WHITE_AVATAR = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdj+P///38ACfsD/QVDRcoAAAAASUVORK5CYII=';
+const WHITE_AVATAR =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdj+P///38ACfsD/QVDRcoAAAAASUVORK5CYII=';
 
 function createLoginButton(onClick) {
     const button = document.createElement('button');
@@ -38,26 +39,28 @@ function createAvatarButton({ onProfileClick, onSettingsClick, onLogoutClick }) 
     const img = container.appendChild(document.createElement('img'));
     Object.assign(img, { src: WHITE_AVATAR, alt: 'Avatar' });
 
-    container.appendChild(createDropdownMenu([
-        {
-            text: 'Profile',
-            action: (button) => {
-                button.addEventListener('click', () => onProfileClick?.());
+    container.appendChild(
+        createDropdownMenu([
+            {
+                text: 'Profile',
+                action: (button) => {
+                    button.addEventListener('click', () => onProfileClick?.());
+                },
             },
-        },
-        {
-            text: 'Settings',
-            action: (button) => {
-                button.addEventListener('click', () => onSettingsClick?.());
+            {
+                text: 'Settings',
+                action: (button) => {
+                    button.addEventListener('click', () => onSettingsClick?.());
+                },
             },
-        },
-        {
-            text: 'Logout',
-            action: (button) => {
-                button.addEventListener('click', () => onLogoutClick?.());
+            {
+                text: 'Logout',
+                action: (button) => {
+                    button.addEventListener('click', () => onLogoutClick?.());
+                },
             },
-        },
-    ]));
+        ]),
+    );
 
     img.addEventListener('click', (e) => {
         e.preventDefault();
@@ -93,8 +96,8 @@ function createAvatarButton({ onProfileClick, onSettingsClick, onLogoutClick }) 
             } else {
                 img.src = avatar;
             }
-        }
-    }
+        },
+    };
 }
 
 export function createAvatar({ onLoginClick, onLogoutClick, onProfileClick, onSettingsClick }) {
@@ -113,9 +116,11 @@ export function createAvatar({ onLoginClick, onLogoutClick, onProfileClick, onSe
         isAuthenticated ? loginBtn.hide() : loginBtn.show();
         isAuthenticated ? avatarBtn.show() : avatarBtn.hide();
 
-        avatarBtn.setImage(isAuthenticated && userData?.avatar
-            ? { avatar: userData.avatar }
-            : { avatar: WHITE_AVATAR });
+        avatarBtn.setImage(
+            isAuthenticated && userData?.avatar
+                ? { avatar: userData.avatar }
+                : { avatar: WHITE_AVATAR },
+        );
     };
 
     updateAuthState(appState.getState());
