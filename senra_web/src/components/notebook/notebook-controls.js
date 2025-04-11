@@ -1,12 +1,33 @@
 import styles from './notebook-viewer.module.css';
 
+/** @typedef {import('./index.js').RenderConfig} RenderConfig */
+
+/**
+ * @typedef {Object} ResolutionControl
+ * @property {HTMLInputElement} widthInput - Width input element
+ * @property {HTMLInputElement} heightInput - Height input element
+ * @property {HTMLSelectElement} selectElement - Resolution select element
+ * @property {function(number, number): void} update - Update resolution
+ */
+
+/**
+ * @typedef {Object} UniformConfig
+ * @property {string} name - Uniform name
+ * @property {string} label - Uniform label
+ * @property {string} type - Uniform type
+ * @property {any} default - Default value
+ * @property {number} [min] - Minimum value
+ * @property {number} [max] - Maximum value
+ * @property {number} [step] - Step value
+ */
+
 /**
  * Create resolution controls
  * @param {HTMLElement} container - Control container
- * @param {Object} renderConfig - Rendering configuration
+ * @param {RenderConfig} renderConfig - Rendering configuration
  * @param {string} rendererId - Renderer ID
  * @param {Object} renderer - Renderer instance
- * @returns {Object} Resolution control settings
+ * @returns {ResolutionControl} Resolution control settings
  */
 export function createResolutionControls(container, renderConfig, rendererId, renderer) {
     const controlsWrapper = document.createElement('div');
@@ -114,7 +135,6 @@ export function createResolutionControls(container, renderConfig, rendererId, re
                 );
 
                 // Correctly use notebook-renderer API
-                // Originally used updateConfig, but API actually provides update method
                 renderer.update({
                     config: {
                         width: width,
@@ -171,7 +191,7 @@ export function createResolutionControls(container, renderConfig, rendererId, re
 /**
  * Create Uniform control panel
  * @param {HTMLElement} container - Control container
- * @param {Object} renderConfig - Rendering configuration
+ * @param {RenderConfig} renderConfig - Rendering configuration
  * @param {string} rendererId - Renderer ID
  * @param {Object} renderer - Renderer instance
  */
@@ -206,7 +226,7 @@ export function createUniformControls(container, renderConfig, rendererId, rende
         if (!renderer) return;
 
         if (isPaused) {
-            // Check API compatibility
+            // Resume renderer
             if (typeof renderer.resume === 'function') {
                 renderer.resume();
                 pauseButton.textContent = 'Pause';
@@ -214,7 +234,7 @@ export function createUniformControls(container, renderConfig, rendererId, rende
                 console.warn('Renderer does not support resume method');
             }
         } else {
-            // Check API compatibility
+            // Pause renderer
             if (typeof renderer.pause === 'function') {
                 renderer.pause();
                 pauseButton.textContent = 'Resume';
@@ -231,19 +251,16 @@ export function createUniformControls(container, renderConfig, rendererId, rende
     resetButton.className = styles.uniformButton;
     resetButton.addEventListener('click', () => {
         if (renderer) {
-            // Check API compatibility
+            // Reset renderer
             if (typeof renderer.reset === 'function') {
                 renderer.reset();
-            } else {
-                console.warn('Renderer does not support reset method, trying alternative methods');
-                // Try to use update method to reset
-                try {
-                    renderer.update({
-                        reset: true,
-                    });
-                } catch (e) {
-                    console.error('Failed to reset renderer:', e);
+                // Reset pause state if needed
+                if (isPaused) {
+                    isPaused = false;
+                    pauseButton.textContent = 'Pause';
                 }
+            } else {
+                console.warn('Renderer does not support reset method');
             }
         }
     });
@@ -271,7 +288,7 @@ export function createUniformControls(container, renderConfig, rendererId, rende
 
 /**
  * Create a single Uniform controller
- * @param {Object} uniform - Uniform configuration
+ * @param {UniformConfig} uniform - Uniform configuration
  * @param {string} rendererId - Renderer ID
  * @param {Object} renderer - Renderer instance
  * @returns {HTMLElement|null} Controller element
@@ -429,15 +446,25 @@ function createUniformControl(uniform, rendererId, renderer) {
  * @param {any} value - New value
  */
 function updateUniformValue(renderer, name, value) {
-    if (renderer && renderer.updateUniform) {
+    if (!renderer) return;
+
+    // Use updateUniform if available
+    if (typeof renderer.updateUniform === 'function') {
         renderer.updateUniform(name, value);
+    } else if (typeof renderer.update === 'function') {
+        // Fallback to update method with uniform parameter
+        renderer.update({
+            uniform: { name, value },
+        });
+    } else {
+        console.warn(`Unable to update uniform ${name}: renderer API methods not available`);
     }
 }
 
 /**
  * Create renderer control panel
  * @param {HTMLElement} container - Parent container
- * @param {Object} renderConfig - Rendering configuration
+ * @param {RenderConfig} renderConfig - Rendering configuration
  * @param {string} rendererId - Renderer ID
  * @param {Object} renderer - Renderer instance
  * @returns {HTMLElement} Control panel container

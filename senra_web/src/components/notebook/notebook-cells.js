@@ -3,10 +3,25 @@ import { marked } from 'marked';
 import { createNotebookRenderer } from './notebook-renderer.js';
 import { createRendererControls } from './notebook-controls.js';
 
+/** @typedef {import('./index.js').NotebookCell} NotebookCell */
+/** @typedef {import('./index.js').Notebook} Notebook */
+/** @typedef {import('./index.js').ViewerOptions} ViewerOptions */
+
+/**
+ * @typedef {Object} CellInfo
+ * @property {number} id - Cell ID
+ * @property {Object} config - Cell configuration
+ * @property {HTMLElement} container - Cell container element
+ */
+
+/**
+ * @typedef {Map<string, Object>} RenderersMap
+ */
+
 /**
  * Render Markdown cell
  * @param {HTMLElement} container - Container element
- * @param {Object} cell - Cell data
+ * @param {NotebookCell} cell - Cell data
  */
 export function renderMarkdownCell(container, cell) {
     if (!cell.content) {
@@ -21,7 +36,7 @@ export function renderMarkdownCell(container, cell) {
 /**
  * Render code cell
  * @param {HTMLElement} container - Container element
- * @param {Object} cell - Cell data
+ * @param {NotebookCell} cell - Cell data
  */
 export function renderCodeCell(container, cell) {
     if (!cell.content) {
@@ -45,10 +60,10 @@ export function renderCodeCell(container, cell) {
 /**
  * Render shader cell
  * @param {HTMLElement} container - Container element
- * @param {Object} cell - Cell data
- * @param {Object} notebook - Notebook data
- * @param {Map<string, Object>} renderers - Renderers map
- * @param {Object} options - Viewer options
+ * @param {NotebookCell} cell - Cell data
+ * @param {Notebook} notebook - Notebook data
+ * @param {RenderersMap} renderers - Renderers map
+ * @param {ViewerOptions} options - Viewer options
  */
 export function renderShaderCell(container, cell, notebook, renderers, options = {}) {
     if (!cell.content) {
@@ -101,18 +116,15 @@ export function renderShaderCell(container, cell, notebook, renderers, options =
                         // Add an adapter method to map updateUniform calls to appropriate notebook-renderer API
                         updateUniform: (name, value) => {
                             try {
-                                // Create custom uniform update object
-                                const uniformUpdate = {
-                                    cellId: cell.id,
-                                    config: {
-                                        uniforms: {
-                                            [name]: value,
-                                        },
-                                    },
-                                };
-
-                                // Call renderer's update method
-                                renderer.update(uniformUpdate);
+                                // Simply use the renderer's updateUniform method
+                                if (renderer && typeof renderer.updateUniform === 'function') {
+                                    renderer.updateUniform(name, value);
+                                } else {
+                                    // Fallback to update method if updateUniform is not available
+                                    renderer.update({
+                                        uniform: { name, value },
+                                    });
+                                }
                             } catch (error) {
                                 console.error(`Failed to update Uniform "${name}":`, error);
                             }
@@ -152,18 +164,15 @@ export function renderShaderCell(container, cell, notebook, renderers, options =
                         // Add an adapter method to map updateUniform calls to appropriate notebook-renderer API
                         updateUniform: (name, value) => {
                             try {
-                                // Create custom uniform update object
-                                const uniformUpdate = {
-                                    cellId: cell.id,
-                                    config: {
-                                        uniforms: {
-                                            [name]: value,
-                                        },
-                                    },
-                                };
-
-                                // Call renderer's update method
-                                renderer.update(uniformUpdate);
+                                // Simply use the renderer's updateUniform method
+                                if (renderer && typeof renderer.updateUniform === 'function') {
+                                    renderer.updateUniform(name, value);
+                                } else {
+                                    // Fallback to update method if updateUniform is not available
+                                    renderer.update({
+                                        uniform: { name, value },
+                                    });
+                                }
                             } catch (error) {
                                 console.error(`Failed to update Uniform "${name}":`, error);
                             }
@@ -185,10 +194,10 @@ export function renderShaderCell(container, cell, notebook, renderers, options =
 
 /**
  * Create cell element
- * @param {Object} cell - Cell data
- * @param {Object} notebook - Notebook data
- * @param {Map<string, Object>} renderers - Renderers map
- * @param {Object} options - Viewer options
+ * @param {NotebookCell} cell - Cell data
+ * @param {Notebook} notebook - Notebook data
+ * @param {RenderersMap} renderers - Renderers map
+ * @param {ViewerOptions} options - Viewer options
  * @returns {HTMLElement|null} Cell element
  */
 export function createCellElement(cell, notebook, renderers, options = {}) {

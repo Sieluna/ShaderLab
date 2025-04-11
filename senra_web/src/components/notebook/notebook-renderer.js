@@ -1,256 +1,50 @@
-import { ResourceManager, ShaderRendererFactory } from './moya/index.js';
+import { MoyaEngine } from './moya/index.js';
 
+/** @typedef {import('./index.js').Notebook} Notebook */
+
+/**
+ * @typedef {Object} RendererOptions
+ * @property {string} [powerPreference] - Power preference for WebGPU
+ */
+
+/**
+ * @typedef {Object} RendererStatus
+ * @property {string} status - Renderer status
+ * @property {number} rendererCount - Number of active renderers
+ * @property {Object|null} engineStatus - Engine status
+ */
+
+/**
+ * @typedef {Object} RendererAPI
+ * @property {function(Object): void} update - Update renderer
+ * @property {function(): void} reset - Reset renderer
+ * @property {function(): void} destroy - Destroy renderer
+ * @property {function(number, number): void} resize - Resize renderer
+ * @property {function(): void} pause - Pause renderer
+ * @property {function(): void} resume - Resume renderer
+ * @property {function(): RendererStatus} getStatus - Get renderer status
+ * @property {function(string, any): void} updateUniform - Update uniform value
+ */
+
+// Store active renderers
 const activeRenderers = new Map();
 
-class NotebookRendererManager {
-    container;
-    notebook;
-    options;
-    renderers = new Map();
-    resourceManager;
-    isRunning = false;
-    adapter = null;
-    device = null;
-    status = 'created';
-    resizeObserver = null;
-    _animationFrame = null;
-
-    constructor(container, notebook, options = {}) {
-        this.container = container;
-        this.notebook = notebook;
-        this.options = options;
-        this.resourceManager = new ResourceManager();
-    }
-
-    async initialize() {
-        try {
-            this.status = 'initializing';
-
-            await this._initWebGPU();
-            await this._loadResources();
-            this._createRenderers();
-            this._setupResizeObserver();
-
-            this.isRunning = true;
-            this.status = 'running';
-            this._startRenderLoop();
-
-            return true;
-        } catch (error) {
-            this.status = 'error';
-            console.error('Renderer initialization failed:', error);
-            throw error;
-        }
-    }
-
-    async _initWebGPU() {
-        this.adapter = await navigator.gpu.requestAdapter({
-            powerPreference: this.options.powerPreference ?? 'high-performance',
-        });
-
-        if (!this.adapter) {
-            throw new Error('WebGPU adapter not available');
-        }
-
-        this.device = await this.adapter.requestDevice();
-        this.device.lost.then((info) => {
-            console.error('WebGPU device lost:', info);
-            this.status = 'device-lost';
-            if (this.isRunning) {
-                this.initialize().catch(console.error);
-            }
-        });
-    }
-
-    async _loadResources() {
-        if (!this.notebook.resources || !this.notebook.shaders) {
-            console.warn('Notebook has no resources or shaders');
-            return;
-        }
-
-        for (const resource of this.notebook.resources) {
-            await this.resourceManager.loadResource(resource, this.device);
-        }
-
-        for (const shader of this.notebook.shaders) {
-            await this.resourceManager.loadShader(shader, this.device);
-        }
-    }
-
-    _createRenderers() {
-        const content =
-            typeof this.notebook.content === 'string'
-                ? JSON.parse(this.notebook.content)
-                : this.notebook.content;
-
-        if (!content?.cells) {
-            console.warn('Invalid notebook content format');
-            return;
-        }
-
-        const renderCells = content.cells.filter((cell) => cell.cell_type === 'render');
-
-        if (renderCells.length === 0) {
-            console.warn('No render cells found in notebook');
-            return;
-        }
-
-        for (const cell of renderCells) {
-            const renderConfig =
-                typeof cell.content === 'string' ? JSON.parse(cell.content) : cell.content;
-
-            const renderContainer = document.createElement('div');
-            renderContainer.className = 'renderer-container';
-            renderContainer.dataset.cellId = cell.id;
-            renderContainer.style.width = `${renderConfig.width}px`;
-            renderContainer.style.height = `${renderConfig.height}px`;
-            this.container.appendChild(renderContainer);
-
-            const renderer = ShaderRendererFactory.createRenderer(
-                renderContainer,
-                this.device,
-                renderConfig,
-                this.resourceManager,
-            );
-
-            this.renderers.set(cell.id, renderer);
-        }
-    }
-
-    _setupResizeObserver() {
-        this.resizeObserver = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                const containerWidth = entry.contentRect.width;
-                for (const [, renderer] of this.renderers) {
-                    renderer.handleContainerResize(containerWidth);
-                }
-            }
-        });
-
-        this.resizeObserver.observe(this.container);
-    }
-
-    _startRenderLoop() {
-        if (this._animationFrame) {
-            return;
-        }
-
-        const render = () => {
-            if (!this.isRunning) {
-                return;
-            }
-
-            for (const [, renderer] of this.renderers) {
-                if (renderer.isVisible()) {
-                    renderer.render();
-                }
-            }
-
-            this._animationFrame = requestAnimationFrame(render);
-        };
-
-        this._animationFrame = requestAnimationFrame(render);
-    }
-
-    update(data) {
-        if (data.notebook) {
-            this.notebook = data.notebook;
-            this.reset().then(() => this.initialize());
-        }
-
-        if (data.cellId && data.config) {
-            const renderer = this.renderers.get(data.cellId);
-            if (renderer) {
-                renderer.updateConfig(data.config);
-            }
-        }
-    }
-
-    async reset() {
-        this.pause();
-
-        for (const [, renderer] of this.renderers) {
-            renderer.destroy();
-        }
-
-        this.renderers.clear();
-
-        while (this.container.firstChild) {
-            this.container.removeChild(this.container.firstChild);
-        }
-
-        this.status = 'reset';
-    }
-
-    destroy() {
-        this.pause();
-
-        if (this.resizeObserver) {
-            this.resizeObserver.disconnect();
-            this.resizeObserver = null;
-        }
-
-        for (const [, renderer] of this.renderers) {
-            renderer.destroy();
-        }
-
-        this.renderers.clear();
-
-        this.resourceManager.releaseAll();
-
-        if (this.device) {
-            this.device = null;
-        }
-
-        this.status = 'destroyed';
-    }
-
-    resize(width, height) {
-        for (const [, renderer] of this.renderers) {
-            renderer.resize(width, height);
-        }
-    }
-
-    pause() {
-        this.isRunning = false;
-        if (this._animationFrame) {
-            cancelAnimationFrame(this._animationFrame);
-            this._animationFrame = null;
-        }
-        this.status = 'paused';
-    }
-
-    resume() {
-        if (this.status !== 'destroyed' && !this.isRunning) {
-            this.isRunning = true;
-            this.status = 'running';
-            this._startRenderLoop();
-        }
-    }
-
-    getStatus() {
-        return {
-            status: this.status,
-            rendererCount: this.renderers.size,
-            resourceCount: this.resourceManager.getResourceCount(),
-            gpuInfo: this.adapter
-                ? {
-                      name: this.adapter.name,
-                      isIntegratedGPU: !!this.adapter.isIntegratedGPU,
-                      limits: this.device ? this.device.limits : null,
-                  }
-                : null,
-        };
-    }
-}
-
+/**
+ * Create a notebook renderer
+ * @param {string} containerId - Container ID
+ * @param {Notebook} notebook - Notebook data
+ * @param {RendererOptions} options - Render options
+ * @returns {RendererAPI|null} Renderer API
+ */
 export function createNotebookRenderer(containerId, notebook, options = {}) {
+    // Get container element
     const container = document.getElementById(containerId);
     if (!container) {
         console.error(`Container with id '${containerId}' not found`);
         return null;
     }
 
+    // Check WebGPU support
     if (!navigator.gpu) {
         console.error('WebGPU is not supported in this browser');
         container.innerHTML =
@@ -258,41 +52,384 @@ export function createNotebookRenderer(containerId, notebook, options = {}) {
         return null;
     }
 
-    const manager = new NotebookRendererManager(container, notebook, options);
+    // Internal state
+    let engine = null;
+    let notebookData = notebook;
+    let renderCells = new Map(); // Store render cell information
+    let containersMap = new Map(); // Container ID to cell ID mapping
+    let resizeObserver = null;
+    let commandBuffer = []; // Command buffer
+    let isRunning = false;
+    let status = 'created';
 
-    manager
-        .initialize()
-        .then(() => {
-            activeRenderers.set(containerId, manager);
-        })
-        .catch((error) => {
-            console.error('Failed to initialize renderer:', error);
-            container.innerHTML = `<div class="error-message">Renderer initialization failed: ${error.message}</div>`;
-        });
+    // API object with direct method implementations
+    const api = {
+        update: (data) => {
+            // Update entire notebook
+            if (data.notebook) {
+                notebookData = data.notebook;
+                commandBuffer.push({
+                    type: 'update',
+                    data: { notebook: notebookData },
+                });
 
-    return {
-        // Update rendering data
-        update: (data) => manager.update(data),
+                // Parse notebook content
+                const content =
+                    typeof notebookData.content === 'string'
+                        ? JSON.parse(notebookData.content)
+                        : notebookData.content;
 
-        // Reset renderer
-        reset: () => manager.reset(),
+                if (!content?.cells) {
+                    console.warn('Invalid notebook content format');
+                    return;
+                }
 
-        // Destroy renderer and release resources
-        destroy: () => {
-            manager.destroy();
-            activeRenderers.delete(containerId);
+                // Extract render cells
+                const cells = content.cells.filter((cell) => cell.cell_type === 'render');
+                renderCells.clear();
+
+                // Create render cells
+                for (const cell of cells) {
+                    const config =
+                        typeof cell.content === 'string' ? JSON.parse(cell.content) : cell.content;
+
+                    const renderContainer = document.createElement('div');
+                    renderContainer.className = 'renderer-container';
+                    renderContainer.id = `render-${cell.id}`;
+                    renderContainer.dataset.cellId = cell.id;
+                    renderContainer.style.width = `${config.width || 640}px`;
+                    renderContainer.style.height = `${config.height || 480}px`;
+                    container.appendChild(renderContainer);
+
+                    renderCells.set(cell.id, {
+                        id: cell.id,
+                        config: config,
+                        container: renderContainer,
+                    });
+                    containersMap.set(renderContainer.id, cell.id);
+
+                    commandBuffer.push({
+                        type: 'init',
+                        data: {
+                            containerId: renderContainer.id,
+                            notebook: notebookData,
+                            config: config,
+                            options: options,
+                        },
+                    });
+                }
+            }
+
+            // Update specific cell
+            if (data.cellId && data.config) {
+                const cellInfo = renderCells.get(data.cellId);
+                if (cellInfo?.container) {
+                    cellInfo.config = { ...cellInfo.config, ...data.config };
+                    commandBuffer.push({
+                        type: 'update',
+                        data: {
+                            containerId: cellInfo.container.id,
+                            config: data.config,
+                        },
+                    });
+                }
+            }
+
+            // Update uniform values
+            if (data.uniform) {
+                renderCells.forEach((cellInfo) => {
+                    if (cellInfo.container) {
+                        commandBuffer.push({
+                            type: 'uniform',
+                            data: {
+                                containerId: cellInfo.container.id,
+                                name: data.uniform.name,
+                                value: data.uniform.value,
+                            },
+                        });
+                    }
+                });
+            }
+
+            // Flush commands to engine
+            if (commandBuffer.length > 0 && engine) {
+                engine.processCommands(commandBuffer);
+                commandBuffer = [];
+            }
         },
 
-        // Resize renderer
-        resize: (width, height) => manager.resize(width, height),
+        reset: () => {
+            // Pause rendering
+            api.pause();
 
-        // Pause rendering
-        pause: () => manager.pause(),
+            // Generate reset commands
+            renderCells.forEach((cellInfo) => {
+                if (cellInfo.container) {
+                    commandBuffer.push({
+                        type: 'reset',
+                        data: { containerId: cellInfo.container.id },
+                    });
+                }
+            });
 
-        // Resume rendering
-        resume: () => manager.resume(),
+            // Flush commands
+            if (engine && commandBuffer.length > 0) {
+                engine.processCommands(commandBuffer);
+                commandBuffer = [];
+            }
 
-        // Get renderer status
-        getStatus: () => manager.getStatus(),
+            // Clear DOM container
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+
+            // Clear local state
+            renderCells.clear();
+            containersMap.clear();
+            status = 'reset';
+        },
+
+        destroy: () => {
+            api.pause();
+
+            if (resizeObserver) {
+                resizeObserver.disconnect();
+                resizeObserver = null;
+            }
+
+            renderCells.forEach((cellInfo) => {
+                if (cellInfo.container) {
+                    commandBuffer.push({
+                        type: 'destroy',
+                        data: { containerId: cellInfo.container.id },
+                    });
+                }
+            });
+
+            if (engine && commandBuffer.length > 0) {
+                engine.processCommands(commandBuffer);
+                commandBuffer = [];
+            }
+
+            if (engine) {
+                engine.destroy();
+                engine = null;
+            }
+
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+
+            renderCells.clear();
+            containersMap.clear();
+            activeRenderers.delete(containerId);
+            status = 'destroyed';
+        },
+
+        resize: (width, height) => {
+            renderCells.forEach((cellInfo) => {
+                if (cellInfo.container) {
+                    commandBuffer.push({
+                        type: 'resize',
+                        data: {
+                            containerId: cellInfo.container.id,
+                            width: width,
+                            height: height,
+                        },
+                    });
+
+                    cellInfo.container.style.width = `${width}px`;
+                    cellInfo.container.style.height = `${height}px`;
+                }
+            });
+
+            if (engine && commandBuffer.length > 0) {
+                engine.processCommands(commandBuffer);
+                commandBuffer = [];
+            }
+        },
+
+        pause: () => {
+            // Send pause commands to all cell renderers
+            renderCells.forEach((cellInfo) => {
+                if (cellInfo.container) {
+                    commandBuffer.push({
+                        type: 'pause',
+                        data: { containerId: cellInfo.container.id },
+                    });
+                }
+            });
+
+            if (engine && commandBuffer.length > 0) {
+                engine.processCommands(commandBuffer);
+                commandBuffer = [];
+            }
+
+            // Also directly pause the engine
+            if (engine && typeof engine.pause === 'function') {
+                engine.pause();
+            }
+
+            isRunning = false;
+            status = 'paused';
+        },
+
+        resume: () => {
+            if (status !== 'destroyed') {
+                // Send resume commands to all cell renderers
+                renderCells.forEach((cellInfo) => {
+                    if (cellInfo.container) {
+                        commandBuffer.push({
+                            type: 'resume',
+                            data: { containerId: cellInfo.container.id },
+                        });
+                    }
+                });
+
+                if (engine && commandBuffer.length > 0) {
+                    engine.processCommands(commandBuffer);
+                    commandBuffer = [];
+                }
+
+                // Also directly resume the engine
+                if (engine && typeof engine.resume === 'function') {
+                    engine.resume();
+                }
+
+                isRunning = true;
+                status = 'running';
+            }
+        },
+
+        getStatus: () => {
+            return {
+                status: status,
+                rendererCount: renderCells.size,
+                engineStatus: engine ? engine.getStatus() : null,
+            };
+        },
+
+        updateUniform: (name, value) => {
+            if (!engine) return;
+
+            // Create a simplified update command that directly targets the main uniform buffer
+            // without trying to update every shader
+            commandBuffer.push({
+                type: 'uniform',
+                data: {
+                    // Use first available render cell container as target
+                    containerId: Array.from(renderCells.values())[0]?.container?.id,
+                    name: name,
+                    value: value,
+                },
+            });
+
+            if (commandBuffer.length > 0) {
+                engine.processCommands(commandBuffer);
+                commandBuffer = [];
+            }
+        },
     };
+
+    // Initialize the renderer
+    (async () => {
+        try {
+            status = 'initializing';
+            engine = new MoyaEngine(options);
+            await engine.initialize();
+
+            // Parse initial notebook content
+            const content =
+                typeof notebookData.content === 'string'
+                    ? JSON.parse(notebookData.content)
+                    : notebookData.content;
+
+            if (!content?.cells) {
+                console.warn('Invalid notebook content format');
+                return;
+            }
+
+            // Create initial render cells
+            const cells = content.cells.filter((cell) => cell.cell_type === 'render');
+            for (const cell of cells) {
+                const config =
+                    typeof cell.content === 'string' ? JSON.parse(cell.content) : cell.content;
+
+                const renderContainer = document.createElement('div');
+                renderContainer.className = 'renderer-container';
+                renderContainer.id = `render-${cell.id}`;
+                renderContainer.dataset.cellId = cell.id;
+                renderContainer.style.width = `${config.width || 640}px`;
+                renderContainer.style.height = `${config.height || 480}px`;
+                container.appendChild(renderContainer);
+
+                renderCells.set(cell.id, {
+                    id: cell.id,
+                    config: config,
+                    container: renderContainer,
+                });
+                containersMap.set(renderContainer.id, cell.id);
+
+                commandBuffer.push({
+                    type: 'init',
+                    data: {
+                        containerId: renderContainer.id,
+                        notebook: notebookData,
+                        config: config,
+                        options: options,
+                    },
+                });
+            }
+
+            // Setup resize observer
+            resizeObserver = new ResizeObserver((entries) => {
+                entries.forEach((entry) => {
+                    const containerWidth = entry.contentRect.width;
+                    const container = entry.target;
+
+                    if (container.id && containersMap.has(container.id)) {
+                        const cellId = containersMap.get(container.id);
+                        const cellInfo = renderCells.get(cellId);
+
+                        if (cellInfo?.config) {
+                            const aspectRatio = cellInfo.config.width / cellInfo.config.height;
+                            const height = Math.floor(containerWidth / aspectRatio);
+
+                            commandBuffer.push({
+                                type: 'resize',
+                                data: {
+                                    containerId: container.id,
+                                    width: containerWidth,
+                                    height: height,
+                                },
+                            });
+
+                            if (engine) {
+                                engine.processCommands(commandBuffer);
+                                commandBuffer = [];
+                            }
+                        }
+                    }
+                });
+            });
+            resizeObserver.observe(container);
+
+            // Process initial commands
+            if (commandBuffer.length > 0) {
+                engine.processCommands(commandBuffer);
+                commandBuffer = [];
+            }
+
+            isRunning = true;
+            status = 'running';
+            activeRenderers.set(containerId, api);
+        } catch (error) {
+            status = 'error';
+            console.error('Renderer initialization failed:', error);
+            container.innerHTML = `<div class="error-message">Renderer initialization failed: ${error.message}</div>`;
+            throw error;
+        }
+    })();
+
+    return api;
 }

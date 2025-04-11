@@ -1,11 +1,20 @@
 import styles from './notebook-viewer.module.css';
 import { createCellElement } from './notebook-cells.js';
 
+/** @typedef {import('./index.js').Notebook} Notebook */
+/** @typedef {import('./index.js').ViewerOptions} ViewerOptions */
+
+/**
+ * @typedef {Object} ViewerAPI
+ * @property {function(Notebook|string): Promise<boolean>} loadNotebook - Load notebook data
+ * @property {function(): void} destroy - Destroy viewer
+ */
+
 /**
  * Create notebook viewer
  * @param {HTMLElement} container - Container element
- * @param {Object} options - Viewer options
- * @returns {Object} Notebook viewer API
+ * @param {ViewerOptions} options - Viewer options
+ * @returns {ViewerAPI} Notebook viewer API
  */
 export function createNotebookViewer(container, options = {}) {
     // Internal state

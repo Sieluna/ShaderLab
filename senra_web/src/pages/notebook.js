@@ -143,7 +143,7 @@ export function notebookPage(id) {
                 notebookViewer = createNotebookViewer(viewerContainer, {
                     renderMath: true,
                     codeSyntaxHighlight: true,
-                    autoRunShaders: true
+                    autoRunShaders: true,
                 });
 
                 notebookViewer.loadNotebook(notebook);

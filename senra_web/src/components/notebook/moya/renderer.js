@@ -77,6 +77,8 @@ export class ShaderRenderer {
     intersectionObserver = null;
     /** @type {boolean} Renderer visibility status */
     _isVisible = true;
+    /** @type {boolean} Whether rendering is paused */
+    _isPaused = false;
 
     /**
      * Create a shader renderer instance
@@ -335,7 +337,7 @@ export class ShaderRenderer {
      * Render a frame
      */
     render() {
-        if (!this.isInitialized || !this._isVisible) {
+        if (!this.isInitialized || !this._isVisible || this._isPaused) {
             return;
         }
 
@@ -579,16 +581,21 @@ export class ShaderRenderer {
         // Store new value
         this.customUniforms.set(name, value);
 
-        // Update uniform buffer through GeometryManager
-        this.geometryManager.updateCustomUniform(name, value);
+        try {
+            // Update uniform buffer through GeometryManager
+            this.geometryManager.updateCustomUniform(name, value);
 
-        // Update through BindGroupManager
-        this.bindGroupManager.updateUniformBuffer(
-            name,
-            value,
-            this.geometryManager.uniformBuffers,
-            (value) => this.geometryManager._createTypedArrayForValue(value),
-        );
+            // Update through BindGroupManager
+            this.bindGroupManager.updateUniformBuffer(
+                name,
+                value,
+                this.geometryManager.uniformBuffers,
+                (value) => this.geometryManager._createTypedArrayForValue(value),
+            );
+        } catch (error) {
+            // Handle error silently - uniform update failed but we can continue
+            console.debug(`Failed to update uniform ${name}:`, error);
+        }
     }
 
     /**
@@ -613,6 +620,33 @@ export class ShaderRenderer {
 
         this.container.innerHTML = '';
         this.container.appendChild(errorElement);
+    }
+
+    /**
+     * Pause rendering
+     * @public
+     */
+    pause() {
+        this._isPaused = true;
+
+        // Cancel any pending animation frame
+        if (this._animationFrame) {
+            cancelAnimationFrame(this._animationFrame);
+            this._animationFrame = null;
+        }
+    }
+
+    /**
+     * Resume rendering
+     * @public
+     */
+    resume() {
+        this._isPaused = false;
+
+        // Only resume if we were previously rendering
+        if (this.isInitialized && !this._animationFrame) {
+            this._animationFrame = requestAnimationFrame(() => this.render());
+        }
     }
 
     /**

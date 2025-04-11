@@ -1,194 +1,159 @@
-.state-test {
-    margin: 0 auto;
-    padding: 20px;
-    max-width: 1200px;
+.container {
+    background: #f9f9f9;
+    min-height: 100vh;
 
-    .test-section {
-        margin-bottom: 2rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        background: #fff;
-        padding: 1.5rem;
+    & > .nav {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
 
-        .test-controls {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 1rem;
-            margin: 1rem 0;
-
-            & > button {
-                transition: background 0.2s;
-                cursor: pointer;
-                margin: 1rem 0;
-                border: none;
-                border-radius: 4px;
-                background: #007bff;
-                padding: 0.5rem 1rem;
-                color: white;
-
-                &:hover {
-                    background: #0056b3;
-                }
-            }
-
-            .form-container {
-                margin-bottom: 1.5rem;
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                background: #fff;
-                padding: 1rem;
-
-                .form-title {
-                    margin-bottom: 1rem;
-                    border-bottom: 1px solid #e0e0e0;
-                    padding-bottom: 0.5rem;
-                    color: #333;
-                    font-weight: 600;
-                    font-size: 1.1em;
-                }
-            }
-        }
-    }
-
-    .state-monitor {
-        margin-top: 2rem;
-        border-top: 2px solid #eee;
-        padding-top: 2rem;
-
-        .state-display {
-            position: relative;
-            margin: 1rem 0;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 1rem;
-
-            .state-toggle {
-                position: absolute;
-                top: 0.5rem;
-                left: 0.5rem;
-                border: none;
-                background: none;
-                padding: 0;
-                color: #666;
-            }
-
-            .state-timestamp {
-                margin-left: 2rem;
-                color: #666;
-                font-size: 0.9em;
-            }
-        }
-    }
-
-    .input-form {
-        margin: 1rem 0;
-        border-radius: 6px;
-        background: #f8f9fa;
-        padding: 1rem;
-
-        & > button {
-            transition: background 0.2s;
+        & button {
+            transition: all 0.2s ease;
             cursor: pointer;
-            margin: 0.5rem 0;
             border: none;
             border-radius: 4px;
-            background: #007bff;
-            padding: 0.5rem 1rem;
-            width: 100%;
-            color: white;
+            background: #f0f0f0;
+            padding: 8px 16px;
+            font-size: 14px;
 
             &:hover {
-                background: #0056b3;
+                background: #e0e0e0;
+            }
+
+            &.active {
+                background: #007bff;
+                color: white;
             }
         }
+    }
 
-        .form-field {
-            margin-bottom: 1rem;
+    .tabs {
+        width: 100%;
+
+        & > .content {
+            display: none;
+
+            &.active {
+                display: block;
+            }
+        }
+    }
+}
+
+@keyframes highlight {
+    from {
+        background: #fff3cd;
+    }
+    to {
+        background: transparent;
+    }
+}
+
+.updated {
+    animation: highlight 1s;
+}
+
+.section {
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+    background: #fff;
+    padding: 15px;
+}
+
+.controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 10px;
+    margin: 10px 0;
+
+    & button {
+        cursor: pointer;
+        border: none;
+        border-radius: 4px;
+        background: #007bff;
+        padding: 8px 12px;
+        color: white;
+
+        &:hover {
+            background: #0056b3;
+        }
+    }
+
+    & .form {
+        margin-bottom: 10px;
+        border: 1px solid #e0e0e0;
+        border-radius: 5px;
+        padding: 10px;
+
+        & .title {
+            margin-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 5px;
+            font-weight: 600;
+        }
+
+        & .field {
+            margin-bottom: 10px;
 
             & > label {
                 display: block;
-                margin-bottom: 0.5rem;
-                color: #333;
+                margin-bottom: 5px;
             }
 
             & > input {
                 box-sizing: border-box;
                 border: 1px solid #ddd;
                 border-radius: 4px;
-                padding: 0.5rem;
+                padding: 6px;
                 width: 100%;
             }
         }
     }
 }
 
-.renderer-test {
-    margin: 0 auto;
-    padding: 20px;
-    max-width: 1200px;
-
-    .test-controls {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 1rem;
-        margin: 1rem 0;
-
-        & > button {
-            transition: background 0.2s;
-            cursor: pointer;
-            margin: 1rem 0;
-            border: none;
-            border-radius: 4px;
-            background: #007bff;
-            padding: 0.5rem 1rem;
-            color: white;
-
-            &:hover {
-                background: #0056b3;
-            }
-        }
-    }
-}
-
-.test-result {
-    position: relative;
-    margin-top: 1rem;
-    border-radius: 6px;
+.result {
+    margin-top: 10px;
+    border-radius: 4px;
     background: #f8f9fa;
-    padding: 1rem;
-    font-family: Monaco, monospace;
+    padding: 10px;
+    overflow-x: auto;
+    font-family: monospace;
 
-    .result-meta {
+    & > .meta {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 0.5rem;
+        margin-bottom: 5px;
         color: #666;
         font-size: 0.9em;
     }
-
-    .diff-marker {
-        border-radius: 2px;
-        background: #fff3cd;
-        padding: 0 2px;
-    }
 }
 
-.debug-container {
-    background: #f9f9f9;
-    min-height: 100vh;
+.state-monitor {
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
 
-    @keyframes highlight {
-        from {
-            background: #fff3cd;
-        }
-
-        to {
-            background: transparent;
-        }
+    & > .display {
+        position: relative;
+        margin: 10px 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 10px;
     }
 
-    .updated {
-        animation: highlight 1s;
+    & > .toggle {
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        border: none;
+        background: none;
+        color: #666;
+    }
+
+    & > .time {
+        margin-left: 20px;
+        color: #666;
+        font-size: 0.9em;
     }
 }

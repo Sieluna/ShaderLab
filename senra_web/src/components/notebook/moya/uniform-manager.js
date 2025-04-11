@@ -207,7 +207,10 @@ export class UniformManager {
         const uniformInfo = this.#uniformBuffers.get(bufferKey);
 
         if (!uniformInfo) {
-            console.warn(`Uniform ${uniformName} not found for shader ${shaderId}`);
+            // Only log warning if this is a known shader but the uniform is missing
+            if (this.#parsedShaders.has(shaderId)) {
+                console.warn(`Uniform ${uniformName} not found for shader ${shaderId}`);
+            }
             return false;
         }
 
