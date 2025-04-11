@@ -1,4 +1,3 @@
-export { ShaderRendererFactory } from './renderer-factory.js';
 import { ResourceManager } from './resource-manager.js';
 import { ShaderRenderer } from './renderer.js';
 
