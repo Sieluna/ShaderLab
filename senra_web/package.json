@@ -10,7 +10,7 @@
     "preview": "npm run build:wasm && vite preview"
   },
   "dependencies": {
-    "three": "latest"
+    "marked": "latest"
   },
   "devDependencies": {
     "postcss-nesting": "latest",

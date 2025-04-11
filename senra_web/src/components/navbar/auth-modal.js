@@ -1,5 +1,5 @@
 import styles from './auth-modal.module.css';
-import closeIcon from '../assets/close.svg?raw';
+import closeIcon from '../../assets/close.svg?raw';
 
 export function createAuthModal({ onLogin, onRegister }) {
     const modal = document.createElement('div');

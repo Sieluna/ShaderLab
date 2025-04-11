@@ -1,5 +1,5 @@
 import styles from './avatar.module.css';
-import { appState } from '../state.js';
+import { appState } from '../../state.js';
 
 const WHITE_AVATAR =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdj+P///38ACfsD/QVDRcoAAAAASUVORK5CYII=';

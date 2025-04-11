@@ -1,9 +1,9 @@
 import styles from './navbar.module.css';
-import searchIcon from '../assets/search.svg?raw';
-import { appState, addBasePath } from '../state.js';
+import searchIcon from '../../assets/search.svg?raw';
+import { appState, addBasePath } from '../../state.js';
 import { createAvatar } from './avatar.js';
 import { createAuthModal } from './auth-modal.js';
-import { authService } from '../services/index.js';
+import { authService } from '../../services/index.js';
 
 function createNavItem({ label, path, isActive }) {
     const item = document.createElement('a');

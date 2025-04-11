@@ -1,3 +1,3 @@
-export { navbar } from './navbar.js';
-export { router } from './router.js';
+export { navbar, router } from './navbar/index.js';
+export { createNotebookViewer } from './notebook/index.js';
 export { notebookCard } from './notebook-card.js';
