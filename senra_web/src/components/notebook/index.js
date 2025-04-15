@@ -1,4 +1,4 @@
-export * from './notebook-viewer.js';
+export { createNotebookViewer } from './notebook-viewer.js';
 
 /**
  * @typedef {Object} Notebook
@@ -61,7 +61,9 @@ export * from './notebook-viewer.js';
 
 /**
  * @typedef {Object} ViewerOptions
- * @property {boolean} [renderMath] - Whether to render math
- * @property {boolean} [codeSyntaxHighlight] - Whether to highlight code syntax
- * @property {boolean} [autoRunShaders] - Whether to auto-run shaders
+ * @property {boolean} [renderMath=true] - Whether to render math expressions
+ * @property {boolean} [codeSyntaxHighlight=true] - Whether to highlight code syntax
+ * @property {boolean} [autoRunShaders=true] - Whether to automatically run shaders
+ * @property {boolean} [readOnlyEditors=false] - Whether editors are read-only
+ * @property {boolean} [enableShaderEditing=true] - Whether to enable shader editing
  */

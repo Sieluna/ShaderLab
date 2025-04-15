@@ -10,9 +10,15 @@
     "preview": "npm run build:wasm && vite preview"
   },
   "dependencies": {
+    "@codemirror/language": "^6.0",
+    "@codemirror/state": "^6.0",
+    "@codemirror/view": "^6.0",
+    "@lezer/highlight": "^1.0",
+    "@lezer/lr": "^1.0",
     "marked": "latest"
   },
   "devDependencies": {
+    "@lezer/generator": "^1.0",
     "postcss-nesting": "latest",
     "vite": "latest"
   }
