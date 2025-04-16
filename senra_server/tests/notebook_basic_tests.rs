@@ -80,7 +80,6 @@ async fn test_notebook_workflow() {
             Request::builder()
                 .method(http::Method::GET)
                 .uri(format!("/notebooks/{}", notebook_id))
-                .header(http::header::AUTHORIZATION, format!("Bearer {}", token))
                 .body(Body::empty())
                 .unwrap(),
         )

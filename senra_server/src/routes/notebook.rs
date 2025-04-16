@@ -113,16 +113,22 @@ async fn list_notebooks(
 )]
 async fn get_notebook(
     State(state): State<AppState>,
-    auth_user: AuthUser,
+    auth_user: Option<AuthUser>,
     Path(id): Path<i64>,
 ) -> Result<Json<NotebookResponse>> {
+    let user_id = auth_user.as_ref().map(|user| user.user_id);
     let notebook_service = state.services.notebook;
-    let notebook = notebook_service.get_notebook(auth_user.user_id, id).await?;
+
+    let notebook = notebook_service
+        .get_notebook(user_id.unwrap_or_default(), id)
+        .await?;
+
     let stats = notebook_service.get_notebook_stats(id).await?;
     let tags = notebook_service.get_notebook_tags(id).await?;
-    let is_liked = notebook_service
-        .is_notebook_liked(auth_user.user_id, id)
-        .await?;
+    let is_liked = match user_id {
+        Some(user_id) => notebook_service.is_notebook_liked(user_id, id).await?,
+        None => false,
+    };
 
     let resources = state.services.resource.get_resources(id).await?;
     let shaders = state.services.shader.get_shaders(id).await?;
