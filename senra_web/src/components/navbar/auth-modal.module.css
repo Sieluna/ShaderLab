@@ -129,3 +129,10 @@
         background-color: var(--theme-primary-hover);
     }
 }
+
+.error {
+    color: #ff4d4f;
+    font-size: 14px;
+    margin-bottom: 16px;
+    min-height: 20px;
+}

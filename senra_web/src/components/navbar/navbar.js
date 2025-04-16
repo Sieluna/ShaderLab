@@ -71,16 +71,24 @@ export function navbar(items) {
 
     const authModal = createAuthModal({
         onLogin: ({ username, password }) => {
-            authService.login(username, password);
-
-            authModal.hide();
-            authModal.reset();
+            authService.login(username, password).then((result) => {
+                if (result.success) {
+                    authModal.hide();
+                    authModal.reset();
+                } else {
+                    authModal.setLoginError(result.error);
+                }
+            });
         },
         onRegister: ({ username, email, password }) => {
-            authService.register(username, email, password);
-
-            authModal.hide();
-            authModal.reset();
+            authService.register(username, email, password).then((result) => {
+                if (result.success) {
+                    authModal.hide();
+                    authModal.reset();
+                } else {
+                    authModal.setRegisterError(result.error);
+                }
+            });
         },
     });
     document.body.appendChild(authModal.element);

@@ -23,6 +23,7 @@ export function createAuthModal({ onLogin, onRegister }) {
                     <label for="loginPassword">Password</label>
                     <input type="password" id="loginPassword" name="password" required>
                 </div>
+                <div class="${styles.error}" id="loginError"></div>
                 <button type="submit" class="${styles.submit}">Login</button>
             </form>
             
@@ -39,6 +40,7 @@ export function createAuthModal({ onLogin, onRegister }) {
                     <label for="registerPassword">Password</label>
                     <input type="password" id="registerPassword" name="password" required>
                 </div>
+                <div class="${styles.error}" id="registerError"></div>
                 <button type="submit" class="${styles.submit}">Register</button>
             </form>
         </div>
@@ -92,6 +94,9 @@ export function createAuthModal({ onLogin, onRegister }) {
         onRegister(registerData);
     });
 
+    const loginError = modal.querySelector('#loginError');
+    const registerError = modal.querySelector('#registerError');
+
     return {
         element: modal,
 
@@ -106,6 +111,8 @@ export function createAuthModal({ onLogin, onRegister }) {
         reset: () => {
             loginForm.reset();
             registerForm.reset();
+            loginError.textContent = '';
+            registerError.textContent = '';
 
             tabBtns.forEach((btn) => {
                 const isLoginTab = btn.dataset.tab === 'login';
@@ -114,6 +121,14 @@ export function createAuthModal({ onLogin, onRegister }) {
 
             loginForm.style.display = 'block';
             registerForm.style.display = 'none';
+        },
+
+        setLoginError: (error) => {
+            loginError.textContent = error;
+        },
+
+        setRegisterError: (error) => {
+            registerError.textContent = error;
         },
     };
 }
