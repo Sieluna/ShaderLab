@@ -75,7 +75,7 @@ function createForm({ onSubmit }) {
     let currentMode = 'login';
 
     const setMode = (mode) => {
-        currentMode = typeof mode === "string" ? mode.toLowerCase() : "login";
+        currentMode = typeof mode === 'string' ? mode.toLowerCase() : 'login';
         email.style.display = currentMode === 'register' ? 'block' : 'none';
         submit.textContent = currentMode === 'login' ? 'Login' : 'Register';
         setError('');

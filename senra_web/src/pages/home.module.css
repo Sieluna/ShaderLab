@@ -2,177 +2,50 @@
     margin: 0 auto;
     padding: 2rem 1rem;
     max-width: 1200px;
+}
 
-    .header {
-        margin-bottom: 4rem;
-        text-align: center;
+.header {
+    margin-bottom: 4rem;
+    text-align: center;
 
-        h1 {
-            margin-bottom: 1rem;
-            color: var(--theme-primary-color);
-            font-size: 3rem;
-        }
-
-        p {
-            opacity: 0.8;
-            font-size: 1.2rem;
-        }
+    & h1 {
+        margin: 0 0 1rem 0;
+        color: var(--theme-text-color);
+        font-size: 3rem;
     }
 
-    .trendingSection {
-        margin-bottom: 4rem;
-
-        h2 {
-            display: inline-block;
-            position: relative;
-            margin-bottom: 2rem;
-            font-size: 1.8rem;
-
-            &::after {
-                position: absolute;
-                bottom: -8px;
-                left: 0;
-                border-radius: 3px;
-                background-color: var(--theme-primary-color);
-                width: 100%;
-                height: 3px;
-                content: '';
-            }
-        }
-
-        .notebookGrid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 2rem;
-
-            .notebookCard {
-                position: relative;
-                transition:
-                    transform 0.3s ease,
-                    box-shadow 0.3s ease;
-                cursor: pointer;
-                box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
-                border-radius: 12px;
-                background-color: var(--theme-hover-bg);
-                overflow: hidden;
-
-                &:hover {
-                    transform: translateY(-5px);
-                    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.15);
-
-                    .cardLink {
-                        transform: translateY(0);
-                    }
-                }
-
-                .previewContainer {
-                    position: relative;
-                    background-color: #000;
-                    aspect-ratio: 16 / 9;
-                    width: 100%;
-                }
-
-                .cardContent {
-                    padding: 1.25rem;
-
-                    .cardTitle {
-                        margin: 0 0 1rem 0;
-                        overflow: hidden;
-                        font-size: 1.2rem;
-                        text-overflow: ellipsis;
-                        white-space: nowrap;
-                    }
-
-                    .cardMeta {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        font-size: 0.9rem;
-
-                        .author {
-                            display: flex;
-                            align-items: center;
-                            gap: 0.5rem;
-
-                            .avatar {
-                                border-radius: 50%;
-                                width: 24px;
-                                height: 24px;
-                                object-fit: cover;
-                            }
-                        }
-
-                        .stats {
-                            display: flex;
-                            gap: 0.75rem;
-
-                            span {
-                                display: flex;
-                                align-items: center;
-                                gap: 0.25rem;
-
-                                i {
-                                    color: rgba(255, 255, 255, 0.7);
-                                    font-size: 0.9em;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                .cardLink {
-                    position: absolute;
-                    right: 0;
-                    bottom: 0;
-                    left: 0;
-                    transform: translateY(100%);
-                    transition: transform 0.3s ease;
-                    background-color: var(--theme-primary-color);
-                    padding: 0.75rem;
-                    color: #000;
-                    font-weight: 500;
-                    text-align: center;
-                    text-decoration: none;
-                }
-            }
-        }
+    & p {
+        opacity: 0.7;
+        margin: 0;
+        color: var(--theme-text-color);
+        font-size: 1.2rem;
     }
+}
+
+.trendingSection {
+    & h2 {
+        margin: 0 0 2rem 0;
+        color: var(--theme-text-color);
+        font-size: 2rem;
+    }
+}
+
+.notebookGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2rem;
 }
 
 @media (max-width: 768px) {
-    .container {
-        .trendingSection {
-            .notebookGrid {
-                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-                gap: 1.5rem;
-            }
+    .header {
+        margin-bottom: 3rem;
+
+        & h1 {
+            font-size: 2.5rem;
         }
 
-        .header {
-            h1 {
-                font-size: 2.5rem;
-            }
-        }
-    }
-}
-
-@media (max-width: 480px) {
-    .container {
-        padding: 1.5rem 1rem;
-
-        .trendingSection {
-            .notebookGrid {
-                grid-template-columns: 1fr;
-                gap: 1.5rem;
-            }
-        }
-
-        .header {
-            margin-bottom: 3rem;
-
-            h1 {
-                font-size: 2rem;
-            }
+        & p {
+            font-size: 1.1rem;
         }
     }
 }

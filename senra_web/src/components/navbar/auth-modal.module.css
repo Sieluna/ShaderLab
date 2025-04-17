@@ -36,8 +36,8 @@
 .tabs {
     display: flex;
     position: relative;
-    border-bottom: 1px solid var(--theme-border-color);
     margin: 0.5rem 1.5rem;
+    border-bottom: 1px solid var(--theme-border-color);
 
     & .tab {
         flex: 1;
@@ -130,8 +130,8 @@
 }
 
 .error {
-    color: #ff4d4f;
-    font-size: 14px;
     margin-bottom: 16px;
     min-height: 20px;
+    color: #ff4d4f;
+    font-size: 14px;
 }
