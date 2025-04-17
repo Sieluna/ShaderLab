@@ -1,134 +1,154 @@
 import styles from './auth-modal.module.css';
 import closeIcon from '../../assets/close.svg?raw';
 
+function createTabs({ onTabChange, onClose }) {
+    const tabs = document.createElement('div');
+    tabs.className = styles.tabs;
+
+    const login = document.createElement('button');
+    login.className = `${styles.tab} ${styles.active}`;
+    login.dataset.tab = 'login';
+    login.textContent = 'Login';
+
+    const register = document.createElement('button');
+    register.className = styles.tab;
+    register.dataset.tab = 'register';
+    register.textContent = 'Register';
+
+    const close = document.createElement('button');
+    close.className = styles.close;
+    close.innerHTML = closeIcon;
+
+    tabs.append(login, register, close);
+
+    const setActiveTab = (tab) => {
+        login.classList.toggle(styles.active, tab === 'login');
+        register.classList.toggle(styles.active, tab === 'register');
+        onTabChange?.(tab);
+    };
+    login.addEventListener('click', () => setActiveTab('login'));
+    register.addEventListener('click', () => setActiveTab('register'));
+    close.addEventListener('click', () => onClose?.());
+
+    return {
+        element: tabs,
+        setActiveTab,
+    };
+}
+
+function createForm({ onSubmit }) {
+    const form = document.createElement('form');
+    form.className = styles.form;
+
+    const username = document.createElement('div');
+    username.className = styles.group;
+    username.innerHTML = `
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required>
+    `;
+
+    const email = document.createElement('div');
+    email.className = styles.group;
+    email.style.display = 'none';
+    email.innerHTML = `
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email">
+    `;
+
+    const password = document.createElement('div');
+    password.className = styles.group;
+    password.innerHTML = `
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+    `;
+
+    const error = document.createElement('div');
+    error.className = styles.error;
+
+    const submit = document.createElement('button');
+    submit.type = 'submit';
+    submit.className = styles.submit;
+    submit.textContent = 'Login';
+
+    form.append(username, email, password, error, submit);
+
+    let currentMode = 'login';
+
+    const setMode = (mode) => {
+        currentMode = typeof mode === "string" ? mode.toLowerCase() : "login";
+        email.style.display = currentMode === 'register' ? 'block' : 'none';
+        submit.textContent = currentMode === 'login' ? 'Login' : 'Register';
+        setError('');
+    };
+
+    const setError = (message) => {
+        error.textContent = message ?? '';
+    };
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const data = {
+            username: formData.get('username'),
+            password: formData.get('password'),
+            ...(currentMode === 'register' && { email: formData.get('email') }),
+        };
+        onSubmit?.(currentMode, data);
+    });
+
+    return {
+        element: form,
+        setMode,
+        setError,
+    };
+}
+
 export function createAuthModal({ onLogin, onRegister }) {
     const modal = document.createElement('div');
     modal.className = styles.modal;
     modal.style.display = 'none';
 
-    modal.innerHTML = `
-        <div class="${styles.content}">
-            <div class="${styles.tabs}">
-                <button class="${styles.tab} ${styles.active}" data-tab="login">Login</button>
-                <button class="${styles.tab}" data-tab="register">Register</button>
-                <button class="${styles.close}">${closeIcon}</button>
-            </div>
-            
-            <form id="loginForm" class="${styles.form}" style="display: block;">
-                <div class="${styles.group}">
-                    <label for="loginUsername">Username</label>
-                    <input type="text" id="loginUsername" name="username" required>
-                </div>
-                <div class="${styles.group}">
-                    <label for="loginPassword">Password</label>
-                    <input type="password" id="loginPassword" name="password" required>
-                </div>
-                <div class="${styles.error}" id="loginError"></div>
-                <button type="submit" class="${styles.submit}">Login</button>
-            </form>
-            
-            <form id="registerForm" class="${styles.form}" style="display: none;">
-                <div class="${styles.group}">
-                    <label for="registerUsername">Username</label>
-                    <input type="text" id="registerUsername" name="username" required>
-                </div>
-                <div class="${styles.group}">
-                    <label for="registerEmail">Email</label>
-                    <input type="email" id="registerEmail" name="email" required>
-                </div>
-                <div class="${styles.group}">
-                    <label for="registerPassword">Password</label>
-                    <input type="password" id="registerPassword" name="password" required>
-                </div>
-                <div class="${styles.error}" id="registerError"></div>
-                <button type="submit" class="${styles.submit}">Register</button>
-            </form>
-        </div>
-    `;
+    const content = modal.appendChild(document.createElement('div'));
+    content.className = styles.content;
 
-    const closeBtn = modal.querySelector(`.${styles.close}`);
-    const tabBtns = modal.querySelectorAll(`.${styles.tab}`);
-    const loginForm = modal.querySelector('#loginForm');
-    const registerForm = modal.querySelector('#registerForm');
-
-    tabBtns.forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const tab = btn.dataset.tab;
-
-            tabBtns.forEach((b) => b.classList.remove(styles.active));
-            btn.classList.add(styles.active);
-
-            loginForm.style.display = tab === 'login' ? 'block' : 'none';
-            registerForm.style.display = tab === 'register' ? 'block' : 'none';
-        });
+    const form = createForm({
+        onSubmit: (mode, data) => {
+            try {
+                mode === 'register' ? onRegister(data) : onLogin(data);
+            } catch (err) {
+                setError(err?.message || String(err));
+            }
+        },
+    });
+    const tabs = createTabs({
+        onTabChange: form.setMode,
+        onClose: () => {
+            modal.style.display = 'none';
+        },
     });
 
-    closeBtn.addEventListener('click', () => {
-        modal.style.display = 'none';
-    });
+    content.append(tabs.element, form.element);
 
+    // Outside‑click closes modal
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
             modal.style.display = 'none';
         }
     });
 
-    loginForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const formData = new FormData(loginForm);
-        const loginData = {
-            username: formData.get('username'),
-            password: formData.get('password'),
-        };
-        onLogin(loginData);
-    });
-
-    registerForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const formData = new FormData(registerForm);
-        const registerData = {
-            username: formData.get('username'),
-            email: formData.get('email'),
-            password: formData.get('password'),
-        };
-        onRegister(registerData);
-    });
-
-    const loginError = modal.querySelector('#loginError');
-    const registerError = modal.querySelector('#registerError');
-
     return {
         element: modal,
-
         show: () => {
             modal.style.display = 'flex';
+            tabs.setActiveTab('login');
         },
-
         hide: () => {
             modal.style.display = 'none';
         },
-
         reset: () => {
-            loginForm.reset();
-            registerForm.reset();
-            loginError.textContent = '';
-            registerError.textContent = '';
-
-            tabBtns.forEach((btn) => {
-                const isLoginTab = btn.dataset.tab === 'login';
-                btn.classList.toggle(styles.active, isLoginTab);
-            });
-
-            loginForm.style.display = 'block';
-            registerForm.style.display = 'none';
+            form.setMode();
+            tabs.setActiveTab('login');
         },
-
-        setLoginError: (error) => {
-            loginError.textContent = error;
-        },
-
-        setRegisterError: (error) => {
-            registerError.textContent = error;
-        },
+        setError: form.setError,
     };
 }
