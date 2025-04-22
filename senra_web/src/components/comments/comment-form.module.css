@@ -1,0 +1,73 @@
+.form {
+    margin-bottom: 2rem;
+
+    & > textarea {
+        box-sizing: border-box;
+        margin-bottom: 1rem;
+        border: 1px solid var(--theme-border-color);
+        border-radius: 4px;
+        background-color: var(--theme-bg-color);
+        padding: 0.75rem;
+        width: 100%;
+        min-height: 100px;
+        max-height: 300px;
+        overflow-y: auto;
+        resize: vertical;
+        color: var(--theme-text-color);
+    }
+
+    & > button {
+        transition: background-color 0.2s ease;
+        cursor: pointer;
+        border: none;
+        border-radius: 4px;
+        background-color: var(--theme-primary-color);
+        padding: 0.75rem 1.5rem;
+        color: #000;
+        font-weight: 500;
+
+        &:hover {
+            background-color: var(--theme-primary-hover);
+        }
+
+        &:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+    }
+}
+
+.status {
+    margin-top: 0.75rem;
+    border-radius: 4px;
+    padding: 0.5rem;
+    font-size: 0.9rem;
+    text-align: center;
+
+    &.success {
+        background-color: rgba(46, 204, 113, 0.2);
+        color: #27ae60;
+    }
+
+    &.error {
+        background-color: rgba(231, 76, 60, 0.2);
+        color: #e74c3c;
+    }
+}
+
+.login {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 2rem;
+    border-radius: 4px;
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 1.5rem;
+    text-align: center;
+
+    & > p {
+        opacity: 0.7;
+        margin: 0;
+        font-style: italic;
+    }
+}
