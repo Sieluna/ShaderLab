@@ -4,12 +4,12 @@ import { appState } from '../../state.js';
 const WHITE_AVATAR =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdj+P///38ACfsD/QVDRcoAAAAASUVORK5CYII=';
 
-function createLoginButton(onClick) {
+function createLoginButton({ onLoginClick }) {
     const button = document.createElement('button');
-    button.className = styles.btn;
+    button.className = styles.button;
     button.textContent = 'Login';
     button.style.display = 'none';
-    button.addEventListener('click', (e) => onClick?.(e));
+    button.addEventListener('click', (e) => onLoginClick?.(e));
 
     return {
         element: button,
@@ -18,49 +18,44 @@ function createLoginButton(onClick) {
     };
 }
 
-function createDropdownMenu(menuItems) {
-    const menu = document.createElement('div');
-    menu.className = styles.dropdown;
-
-    menuItems.forEach(({ text, action }) => {
-        const button = menu.appendChild(document.createElement('button'));
-        button.textContent = text;
-        action?.(button);
-    });
-
-    return menu;
-}
-
 function createAvatarButton({ onProfileClick, onSettingsClick, onLogoutClick }) {
     const container = document.createElement('div');
     container.className = styles.avatar;
     container.style.display = 'none';
 
-    const img = container.appendChild(document.createElement('img'));
+    const img = document.createElement('img');
     Object.assign(img, { src: WHITE_AVATAR, alt: 'Avatar' });
 
-    container.appendChild(
-        createDropdownMenu([
-            {
-                text: 'Profile',
-                action: (button) => {
-                    button.addEventListener('click', () => onProfileClick?.());
-                },
+    const dropdown = document.createElement('div');
+    dropdown.className = styles.dropdown;
+
+    const menuItems = [
+        {
+            text: 'Profile',
+            action: (button) => {
+                button.addEventListener('click', () => onProfileClick?.());
             },
-            {
-                text: 'Settings',
-                action: (button) => {
-                    button.addEventListener('click', () => onSettingsClick?.());
-                },
+        },
+        {
+            text: 'Settings',
+            action: (button) => {
+                button.addEventListener('click', () => onSettingsClick?.());
             },
-            {
-                text: 'Logout',
-                action: (button) => {
-                    button.addEventListener('click', () => onLogoutClick?.());
-                },
+        },
+        {
+            text: 'Logout',
+            action: (button) => {
+                button.addEventListener('click', () => onLogoutClick?.());
             },
-        ]),
-    );
+        },
+    ];
+    menuItems.forEach(({ text, action }) => {
+        const button = dropdown.appendChild(document.createElement('button'));
+        button.textContent = text;
+        action?.(button);
+    });
+
+    container.append(img, dropdown);
 
     img.addEventListener('click', (e) => {
         e.preventDefault();
@@ -104,19 +99,19 @@ export function createAvatar({ onLoginClick, onLogoutClick, onProfileClick, onSe
     const container = document.createElement('div');
     container.className = styles.container;
 
-    const loginBtn = createLoginButton(onLoginClick);
-    const avatarBtn = createAvatarButton({ onLogoutClick, onProfileClick, onSettingsClick });
+    const login = createLoginButton({ onLoginClick });
+    const avatar = createAvatarButton({ onLogoutClick, onProfileClick, onSettingsClick });
 
-    container.append(loginBtn.element, avatarBtn.element);
+    container.append(login.element, avatar.element);
 
     const updateAuthState = (state) => {
         const isAuthenticated = state.auth?.isAuthenticated ?? false;
         const userData = state.auth?.user ?? null;
 
-        isAuthenticated ? loginBtn.hide() : loginBtn.show();
-        isAuthenticated ? avatarBtn.show() : avatarBtn.hide();
+        isAuthenticated ? login.hide() : login.show();
+        isAuthenticated ? avatar.show() : avatar.hide();
 
-        avatarBtn.setImage(
+        avatar.setImage(
             isAuthenticated && userData?.avatar
                 ? { avatar: userData.avatar }
                 : { avatar: WHITE_AVATAR },
@@ -126,5 +121,7 @@ export function createAvatar({ onLoginClick, onLogoutClick, onProfileClick, onSe
     updateAuthState(appState.getState());
     appState.subscribe(updateAuthState);
 
-    return container;
+    return {
+        element: container,
+    };
 }

@@ -2,19 +2,19 @@ import styles from './router.module.css';
 import { appState } from '../../state.js';
 
 export function router(routes = {}) {
-    const routerContainer = document.createElement('div');
-    routerContainer.className = styles.container;
+    const container = document.createElement('div');
+    container.className = styles.container;
 
     const renderRoute = (path) => {
-        routerContainer.innerHTML = '';
+        container.innerHTML = '';
         const routeHandler = routes[path] || routes['/'] || (() => '');
 
         if (typeof routeHandler === 'function') {
             const result = routeHandler();
             if (result instanceof HTMLElement) {
-                routerContainer.appendChild(result);
+                container.appendChild(result);
             } else {
-                routerContainer.innerHTML = result;
+                container.innerHTML = result;
             }
         }
     };
@@ -26,5 +26,5 @@ export function router(routes = {}) {
 
     renderRoute(appState.getState().ui?.currentPath || '/');
 
-    return routerContainer;
+    return container;
 }
