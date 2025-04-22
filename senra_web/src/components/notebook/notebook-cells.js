@@ -2,6 +2,7 @@ import styles from './notebook-viewer.module.css';
 import { marked } from 'marked';
 import { createNotebookRenderer } from './notebook-renderer.js';
 import { createRendererControls } from './notebook-controls.js';
+import { createShaderTabs } from './code/index.js';
 
 /** @typedef {import('./index.js').NotebookCell} NotebookCell */
 /** @typedef {import('./index.js').Notebook} Notebook */
@@ -37,24 +38,66 @@ export function renderMarkdownCell(container, cell) {
  * Render code cell
  * @param {HTMLElement} container - Container element
  * @param {NotebookCell} cell - Cell data
+ * @param {Notebook} notebook - Notebook data
+ * @param {ViewerOptions} options - Viewer options
  */
-export function renderCodeCell(container, cell) {
+export function renderCodeCell(container, cell, notebook, options = {}) {
     if (!cell.content) {
         container.textContent = 'Empty code cell';
         return;
     }
 
-    // Create code block
-    const pre = document.createElement('pre');
-    const code = document.createElement('code');
+    // Check if content has shader_ids
+    if (
+        typeof cell.content === 'object' &&
+        cell.content.shader_ids &&
+        Array.isArray(cell.content.shader_ids)
+    ) {
+        // Shader code editing
+        const shaderIds = cell.content.shader_ids;
 
-    // Convert object content to string (if needed)
-    const codeContent =
-        typeof cell.content === 'object' ? JSON.stringify(cell.content, null, 2) : cell.content;
+        if (shaderIds.length === 0) {
+            container.textContent = 'No shaders associated with this cell';
+            return;
+        }
 
-    code.textContent = codeContent;
-    pre.appendChild(code);
-    container.appendChild(pre);
+        // Find the referenced shaders
+        const shaders = [];
+        if (notebook && notebook.shaders && Array.isArray(notebook.shaders)) {
+            shaderIds.forEach((id) => {
+                const shader = notebook.shaders.find((s) => s.id === id);
+                if (shader) {
+                    shaders.push(shader);
+                }
+            });
+        }
+
+        if (shaders.length === 0) {
+            container.textContent = 'Referenced shaders not found in the notebook';
+            return;
+        }
+
+        // Create shader tabs with editors
+        createShaderTabs(container, shaders, notebook, {
+            readOnly: options.readOnlyEditors || false,
+            onChange: (data) => {
+                console.log('Shader content changed:', data);
+                // Here you could implement saving the changes back to the notebook
+            },
+        });
+    } else {
+        // Regular code display (non-shader)
+        const pre = document.createElement('pre');
+        const code = document.createElement('code');
+
+        // Convert object content to string (if needed)
+        const codeContent =
+            typeof cell.content === 'object' ? JSON.stringify(cell.content, null, 2) : cell.content;
+
+        code.textContent = codeContent;
+        pre.appendChild(code);
+        container.appendChild(pre);
+    }
 }
 
 /**
@@ -250,7 +293,7 @@ export function createCellElement(cell, notebook, renderers, options = {}) {
             renderMarkdownCell(content, cell);
             break;
         case 'code':
-            renderCodeCell(content, cell);
+            renderCodeCell(content, cell, notebook, options);
             break;
         case 'render':
             renderShaderCell(content, cell, notebook, renderers, options);

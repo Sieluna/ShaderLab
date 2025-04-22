@@ -26,6 +26,8 @@ export function createNotebookViewer(container, options = {}) {
         renderMath: true,
         codeSyntaxHighlight: true,
         autoRunShaders: true,
+        readOnlyEditors: false,
+        enableShaderEditing: true,
         ...options,
     };
 

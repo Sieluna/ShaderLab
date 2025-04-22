@@ -307,6 +307,9 @@ export function createRendererTest() {
 
             notebookViewer = createNotebookViewer(viewerContainer, {
                 autoRunShaders: false,
+                readOnlyEditors: false,
+                enableShaderEditing: true,
+                codeSyntaxHighlight: true,
             });
 
             updateTestResult('viewer-test-result', {
