@@ -1,0 +1,50 @@
+.editor {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--theme-border-color);
+    border-radius: 4px;
+    background-color: var(--theme-hover-bg);
+    height: 100%;
+    min-height: 300px;
+    overflow: hidden;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--theme-border-color);
+    background-color: var(--theme-hover-bg);
+    padding: 8px 12px;
+}
+
+.langSelect {
+    border: 1px solid var(--theme-border-color);
+    border-radius: 3px;
+    background-color: var(--theme-bg-color);
+    padding: 4px 8px;
+    min-width: 100px;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+}
+
+.container {
+    flex: 1;
+    min-height: 200px;
+    overflow: auto;
+
+    .cm-editor {
+        height: 100%;
+        min-height: 200px;
+        font-size: 14px;
+    }
+}
+
+.controls {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    border-top: 1px solid var(--theme-border-color);
+    background-color: var(--theme-hover-bg);
+    padding: 8px 12px;
+}
