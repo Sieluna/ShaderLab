@@ -60,6 +60,78 @@ impl NotebookService {
         Ok(count > 0)
     }
 
+    /// Like a notebook
+    pub async fn like_notebook(&self, user_id: i64, notebook_id: i64) -> Result<()> {
+        let mut tx = self.pool.begin().await?;
+
+        // Check if user has already liked this notebook
+        let already_liked = self.is_notebook_liked(user_id, notebook_id).await?;
+        if already_liked {
+            return Ok(());
+        }
+
+        // Add like record
+        sqlx::query(
+            r#"
+            INSERT INTO notebook_likes (notebook_id, user_id)
+            VALUES ($1, $2)
+            "#,
+        )
+        .bind(notebook_id)
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await?;
+
+        // Update like count in stats
+        sqlx::query(
+            r#"
+            UPDATE notebook_stats
+            SET like_count = like_count + 1
+            WHERE notebook_id = $1
+            "#,
+        )
+        .bind(notebook_id)
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Unlike a notebook
+    pub async fn unlike_notebook(&self, user_id: i64, notebook_id: i64) -> Result<()> {
+        let mut tx = self.pool.begin().await?;
+
+        // Remove like record
+        let result = sqlx::query(
+            r#"
+            DELETE FROM notebook_likes
+            WHERE notebook_id = $1 AND user_id = $2
+            "#,
+        )
+        .bind(notebook_id)
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await?;
+
+        if result.rows_affected() > 0 {
+            // Update like count in stats only if a like was actually removed
+            sqlx::query(
+                r#"
+                UPDATE notebook_stats
+                SET like_count = like_count - 1
+                WHERE notebook_id = $1
+                "#,
+            )
+            .bind(notebook_id)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        tx.commit().await?;
+        Ok(())
+    }
+
     /// Lists notebooks for a user with pagination
     pub async fn list_notebooks(&self, page: i64, per_page: i64) -> Result<(Vec<Notebook>, i64)> {
         let offset = (page - 1) * per_page;
@@ -157,6 +229,18 @@ impl NotebookService {
         .fetch_optional(&self.pool)
         .await?
         .ok_or(NotebookError::NotFound)?;
+
+        // Increment view count
+        sqlx::query(
+            r#"
+            UPDATE notebook_stats
+            SET view_count = view_count + 1
+            WHERE notebook_id = $1
+            "#,
+        )
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
 
         Ok(notebook)
     }
