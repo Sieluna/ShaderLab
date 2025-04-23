@@ -2,188 +2,198 @@ import styles from './notebook.module.css';
 import eyeIcon from '../assets/eye.svg?raw';
 import heartIcon from '../assets/heart.svg?raw';
 import commentIcon from '../assets/chat.svg?raw';
-import { appState } from '../state.js';
 import { notebookService } from '../services/index.js';
-import { createRenderer } from '../renderer/index.js';
+import { createNotebookViewer, createCommentList } from '../components/index.js';
 
 export function notebookPage(id) {
     const container = document.createElement('div');
     container.className = styles.container;
 
-    const loader = document.createElement('div');
+    const loader = container.appendChild(document.createElement('div'));
     loader.className = styles.loader;
     loader.innerHTML = '<div class="spinner"></div><p>Loading...</p>';
-    container.appendChild(loader);
 
-    const content = document.createElement('div');
+    const content = container.appendChild(document.createElement('div'));
     content.className = styles.content;
     content.style.display = 'none';
-    container.appendChild(content);
 
     const errorDisplay = document.createElement('div');
     errorDisplay.className = styles.error;
     errorDisplay.style.display = 'none';
     container.appendChild(errorDisplay);
 
-    let renderer = null;
+    const sidebar = document.createElement('div');
+    sidebar.className = styles.commentsSidebar;
+    container.appendChild(sidebar);
 
-    const unsubscribeNotebook = notebookService.notebookState.subscribe((state) => {
-        if (state.current.isLoading) {
+    const toggle = document.createElement('button');
+    toggle.className = styles.commentToggle;
+    toggle.innerHTML = commentIcon;
+    container.appendChild(toggle);
+
+    let viewer = null;
+    let commentsBadge = null;
+    let commentsComponent = null;
+
+    const prevState = {
+        notebookId: null,
+        commentsCount: 0,
+    };
+
+    const unsubscribe = notebookService.notebookState.subscribe(({ current }) => {
+        if (current.isLoading) {
             loader.style.display = 'flex';
             content.style.display = 'none';
             errorDisplay.style.display = 'none';
-        } else if (state.current.error) {
+            return;
+        }
+
+        if (current.error) {
             loader.style.display = 'none';
             content.style.display = 'none';
             errorDisplay.style.display = 'block';
-            errorDisplay.innerHTML = `<p>${state.current.error}</p>`;
-        } else if (state.current.notebook) {
-            loader.style.display = 'none';
-            content.style.display = 'block';
-            errorDisplay.style.display = 'none';
+            errorDisplay.innerHTML = `<p>${current.error}</p>`;
+            return;
+        }
 
-            renderNotebook(state.current.notebook);
+        if (!current.notebook) return;
 
-            const comments = state.current.comments;
+        loader.style.display = 'none';
+        content.style.display = 'block';
+        errorDisplay.style.display = 'none';
 
-            if (comments.items.length === 0 && !comments.isLoading && !comments.hasLoaded) {
-                notebookService.loadComments(state.current.notebook.id);
+        const isNotebookChanged = current.notebook.id !== prevState.notebookId;
+        const currentCommentsCount = current.notebook.stats.comment_count;
+
+        if (isNotebookChanged) {
+            renderNotebook(current.notebook);
+            prevState.notebookId = current.notebook.id;
+
+            // If the sidebar is open, refresh comments for the new notebook
+            if (sidebar.classList.contains(styles.open) && commentsComponent) {
+                commentsComponent.load(current.notebook.id);
             }
+        }
 
-            const commentsList = document.getElementById('comments-list');
-            if (!commentsList) return;
-
-            if (comments.isLoading) {
-                commentsList.innerHTML = '<div class="comments-loader">Loading comments...</div>';
-            } else if (comments.error) {
-                commentsList.innerHTML = `<div class="error">Failed to load comments: ${comments.error}</div>`;
-            } else if (comments.items.length > 0) {
-                commentsList.innerHTML = comments.items
-                    .map(
-                        (comment) => `
-                    <div class="${styles.commentItem}">
-                        <div class="${styles.commentHeader}">
-                            <div class="${styles.commentAuthor}">
-                                <img src="${comment.author_avatar ? `data:image/png;base64,${btoa(String.fromCharCode.apply(null, comment.author_avatar))}` : '/placeholder-avatar.png'}" 
-                                     alt="${comment.author}" class="${styles.avatar}">
-                                <span>${comment.author}</span>
-                            </div>
-                            <div class="${styles.commentDate}">
-                                ${new Date(comment.created_at).toLocaleString()}
-                            </div>
-                        </div>
-                        <div class="${styles.commentContent}">
-                            ${comment.content}
-                        </div>
-                    </div>
-                `,
-                    )
-                    .join('');
-            } else {
-                commentsList.innerHTML = '<div class="empty-state">No comments yet</div>';
-            }
+        if (isNotebookChanged || currentCommentsCount !== prevState.commentsCount) {
+            updateCommentBadge(currentCommentsCount);
+            prevState.commentsCount = currentCommentsCount;
         }
     });
 
+    const updateCommentBadge = (count) => {
+        if (!commentsBadge) {
+            commentsBadge = toggle.appendChild(
+                Object.assign(document.createElement('span'), {
+                    className: styles.commentCount,
+                }),
+            );
+        }
+        commentsBadge.textContent = count;
+
+        const commentsToggle = document.getElementById('comments-toggle');
+        if (commentsToggle) {
+            const countSpan = commentsToggle.querySelector('span.count');
+            if (countSpan) {
+                countSpan.textContent = count;
+            }
+        }
+    };
+
+    const toggleSidebar = () => {
+        const isOpen = sidebar.classList.toggle(styles.open);
+
+        if (isOpen) {
+            // Create comments component if it doesn't exist
+            if (!commentsComponent) {
+                commentsComponent = createCommentList({
+                    onSubmit: (content) =>
+                        notebookService.createComment(prevState.notebookId, content),
+                });
+                commentsComponent.onClose(toggleSidebar);
+                sidebar.innerHTML = '';
+                sidebar.appendChild(commentsComponent.element);
+            }
+
+            // Load comments for the current notebook
+            commentsComponent.load(prevState.notebookId);
+        }
+    };
+
+    toggle.addEventListener('click', toggleSidebar);
+
     setTimeout(() => {
-        notebookService.loadNotebookDetails(id);
+        notebookService.loadNotebookDetails(id).then((notebook) => {
+            notebookService.loadComments(notebook.id).then();
+        });
     }, 0);
 
     function renderNotebook(notebook) {
+        const { title, author, stats } = notebook;
+
         content.innerHTML = `
             <header class="${styles.header}">
-                <h1>${notebook.title}</h1>
+                <h1>${title}</h1>
                 <div class="${styles.meta}">
                     <div class="${styles.author}">
-                        <img src="${notebook.author.avatar ? `data:image/png;base64,${btoa(String.fromCharCode.apply(null, notebook.author.avatar))}` : '/placeholder-avatar.png'}" 
-                             alt="${notebook.author.username}" class="${styles.avatar}">
-                        <span>${notebook.author.username}</span>
+                        <img src="${author.avatar ? `data:image/png;base64,${btoa(String.fromCharCode.apply(null, author.avatar))}` : '/placeholder-avatar.png'}" 
+                             alt="${author.username}" class="${styles.avatar}">
+                        <span>${author.username}</span>
                     </div>
                     <div class="${styles.stats}">
                         <span title="View">
                             ${eyeIcon}
-                            ${notebook.stats.view_count}
+                            ${stats.view_count}
                         </span>
                         <span title="Like">
                             ${heartIcon}
-                            ${notebook.stats.like_count}
+                            ${stats.like_count}
                         </span>
-                        <span title="Comment">
+                        <span title="Comment" id="comments-toggle">
                             ${commentIcon}
-                            ${notebook.stats.comment_count}
+                            <span class="count">${stats.comment_count}</span>
                         </span>
                     </div>
                 </div>
             </header>
             
             <div class="${styles.mainContent}">
-                <div class="${styles.shaderContainer}" id="shader-container"></div>
-                
-                <div class="${styles.markdownContent}">
-                    ${notebook.description ? `<div class="${styles.description}">${notebook.description}</div>` : ''}
-                    <div class="${styles.notebookContent}">${JSON.stringify(notebook.content)}</div>
-                </div>
-            </div>
-            
-            <div class="${styles.commentsSection}">
-                <h2>Comments (${notebook.stats.comment_count})</h2>
-                <div class="${styles.commentForm}">
-                    <textarea placeholder="Add a comment..." id="comment-input"></textarea>
-                    <button id="submit-comment">Submit Comment</button>
-                </div>
-                <div class="${styles.commentsList}" id="comments-list">
-                    <div class="${styles.commentsLoader}">Loading comments...</div>
-                </div>
+                <div class="${styles.notebookViewerContainer}" id="notebook-viewer-container"></div>
             </div>
         `;
 
+        document.getElementById('comments-toggle')?.addEventListener('click', toggleSidebar);
+
         setTimeout(() => {
-            const shaderContainer = document.getElementById('shader-container');
-            if (shaderContainer) {
-                renderer = createRenderer('shader-container', notebook);
-            }
-        }, 10);
+            const viewerContainer = document.getElementById('notebook-viewer-container');
+            if (!viewerContainer) return;
 
-        const commentInput = document.getElementById('comment-input');
-        const submitButton = document.getElementById('submit-comment');
+            viewer?.destroy();
+            viewer = null;
 
-        if (submitButton && commentInput) {
-            submitButton.addEventListener('click', async () => {
-                const content = commentInput.value.trim();
-                if (!content) return;
-
-                const isAuthenticated = appState.getState().auth.isAuthenticated;
-                if (!isAuthenticated) {
-                    alert('Please login first');
-                    return;
-                }
-
-                const result = await notebookService.createComment(notebook.id, content);
-                if (result.success) {
-                    commentInput.value = '';
-                }
+            viewer = createNotebookViewer(viewerContainer, {
+                renderMath: true,
+                codeSyntaxHighlight: true,
+                autoRunShaders: true,
             });
-        }
+
+            viewer.loadNotebook(notebook);
+        }, 10);
     }
 
     const cleanup = () => {
-        if (renderer) {
-            renderer.destroy();
-            renderer = null;
-        }
-
-        unsubscribeNotebook();
+        viewer?.destroy();
+        commentsComponent?.destroy();
+        viewer = null;
+        commentsComponent = null;
+        unsubscribe();
     };
 
     const handleRouteChange = () => {
-        const currentPath = window.location.pathname;
-        if (!currentPath.startsWith(`/notebook/${id}`)) {
-            cleanup();
-        }
+        !window.location.pathname.startsWith(`/notebook/${id}`) && cleanup();
     };
 
     window.addEventListener('popstate', handleRouteChange);
-
     container.cleanup = cleanup;
 
     return container;

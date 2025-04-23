@@ -1,5 +1,6 @@
 import process from "node:process";
 import path from "node:path";
+import { lezer } from "@lezer/generator/rollup";
 import { defineConfig, loadEnv } from 'vite';
 import postcssNesting from 'postcss-nesting';
 
@@ -21,6 +22,7 @@ export default defineConfig(({ mode }) => {
             __APP_ENV__: JSON.stringify(env.APP_ENV ?? "development"),
             __APP_API_URL__: JSON.stringify(env.APP_API_URL ?? "http://localhost:3000"),
         },
+        plugins: [lezer()],
         resolve: {
             alias: {
                 'senra_api': path.resolve(__dirname, './pkg')

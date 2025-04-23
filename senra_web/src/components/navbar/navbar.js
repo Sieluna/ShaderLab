@@ -1,17 +1,9 @@
 import styles from './navbar.module.css';
-import searchIcon from '../assets/search.svg?raw';
-import { appState, addBasePath } from '../state.js';
+import searchIcon from '../../assets/search.svg?raw';
+import { appState, addBasePath } from '../../state.js';
 import { createAvatar } from './avatar.js';
 import { createAuthModal } from './auth-modal.js';
-import { authService } from '../services/index.js';
-
-function createNavItem({ label, path, isActive }) {
-    const item = document.createElement('a');
-    item.className = `${styles.navLink} ${isActive ? styles.active : ''}`;
-    item.href = path;
-    item.textContent = label;
-    return item;
-}
+import { authService } from '../../services/index.js';
 
 function createSearchBox() {
     const container = document.createElement('div');
@@ -24,7 +16,9 @@ function createSearchBox() {
     const button = container.appendChild(document.createElement('button'));
     button.innerHTML = searchIcon;
 
-    return container;
+    return {
+        element: container,
+    };
 }
 
 function createMenuToggle() {
@@ -50,50 +44,55 @@ export function navbar(items) {
     const container = document.createElement('div');
     container.className = styles.container;
 
-    const menuToggle = createMenuToggle();
-    container.appendChild(menuToggle);
+    const menu = createMenuToggle();
 
-    const navList = container.appendChild(document.createElement('ul'));
+    const navList = document.createElement('ul');
     const renderNavItems = (currentPath) => {
         navList.innerHTML = '';
-        items.forEach((item) => {
+        items.forEach(({ label, path }) => {
             const li = navList.appendChild(document.createElement('li'));
-            li.appendChild(
-                createNavItem({
-                    ...item,
-                    isActive: currentPath === item.path,
-                }),
-            );
+            const a = li.appendChild(document.createElement('a'));
+            a.className = `${styles.navLink} ${currentPath === path ? styles.active : ''}`;
+            a.href = path;
+            a.textContent = label;
         });
     };
 
-    container.appendChild(createSearchBox());
+    const search = createSearchBox();
 
-    const authModal = createAuthModal({
+    const modal = createAuthModal({
         onLogin: ({ username, password }) => {
-            authService.login(username, password);
-
-            authModal.hide();
-            authModal.reset();
+            authService.login(username, password).then((result) => {
+                if (result.success) {
+                    modal.hide();
+                    modal.reset();
+                } else {
+                    modal.setError(result.error);
+                }
+            });
         },
         onRegister: ({ username, email, password }) => {
-            authService.register(username, email, password);
-
-            authModal.hide();
-            authModal.reset();
+            authService.register(username, email, password).then((result) => {
+                if (result.success) {
+                    modal.hide();
+                    modal.reset();
+                } else {
+                    modal.setError(result.error);
+                }
+            });
         },
     });
-    document.body.appendChild(authModal.element);
 
-    const avatarContainer = createAvatar({
-        onLoginClick: () => authModal.show(),
+    const avatar = createAvatar({
+        onLoginClick: () => modal.show(),
         onLogoutClick: () => authService.logout(),
         onProfileClick: (userData) => {
             console.log('Profile clicked:', userData);
         },
     });
 
-    container.appendChild(avatarContainer);
+    container.append(menu, navList, search.element, avatar.element);
+    document.body.appendChild(modal.element);
 
     appState.subscribe((state) => {
         const currentPath = state.ui?.currentPath || '/';
@@ -115,18 +114,18 @@ export function navbar(items) {
             window.history.pushState({}, '', addBasePath(path));
 
             if (window.innerWidth <= 768) {
-                navbar.classList.remove(styles.menuOpen);
+                navbar.classList.remove(styles.open);
             }
         }
     });
 
-    menuToggle.addEventListener('click', () => {
-        navbar.classList.toggle(styles.menuOpen);
+    menu.addEventListener('click', () => {
+        navbar.classList.toggle(styles.open);
     });
 
     window.addEventListener('resize', () => {
-        if (window.innerWidth > 768 && navbar.classList.contains(styles.menuOpen)) {
-            navbar.classList.remove(styles.menuOpen);
+        if (window.innerWidth > 768 && navbar.classList.contains(styles.open)) {
+            navbar.classList.remove(styles.open);
         }
     });
 

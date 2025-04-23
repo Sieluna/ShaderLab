@@ -1,7 +1,7 @@
 import init, { JsClient } from 'senra_api';
 import { authService, userService } from './services/index.js';
 
-const API_URL = globalThis.__APP_API_URL__;
+const API_URL = __APP_API_URL__;
 
 console.info('Current API server', API_URL);
 

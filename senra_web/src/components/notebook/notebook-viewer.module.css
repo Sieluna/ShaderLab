@@ -1,0 +1,479 @@
+/* Notebook Viewer Styles */
+.notebookViewer {
+    margin: 0 auto;
+    background-color: var(--theme-bg-color);
+    padding: 20px;
+    max-width: 1200px;
+    color: var(--theme-text-color);
+    line-height: 1.5;
+}
+
+/* Header Styles */
+.notebookHeader {
+    margin-bottom: 30px;
+    border-bottom: 1px solid var(--theme-border-color);
+    padding-bottom: 15px;
+}
+
+.notebookTitle {
+    margin: 0 0 10px 0;
+    color: var(--theme-text-color);
+    font-size: 2em;
+}
+
+.notebookDescription {
+    opacity: 0.7;
+    margin-bottom: 15px;
+    color: var(--theme-text-color);
+    font-size: 1.1em;
+}
+
+.notebookMeta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    opacity: 0.6;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+}
+
+.notebookTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.notebookTag {
+    border-radius: 3px;
+    background-color: var(--theme-hover-bg);
+    padding: 3px 8px;
+    color: var(--theme-text-color);
+    font-size: 0.85em;
+}
+
+/* Content Container */
+.notebookContent {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Cell Styles */
+.notebookCell {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--theme-border-color);
+    border-radius: 4px;
+    overflow: hidden;
+
+    /* Collapsed State */
+    &.collapsed {
+        & .cellContent {
+            display: none;
+        }
+    }
+}
+
+/* Cell Toolbar */
+.cellToolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--theme-border-color);
+    background-color: var(--theme-hover-bg);
+    padding: 5px 10px;
+    font-size: 0.85em;
+}
+
+.cellTypeIndicator {
+    border-radius: 3px;
+    background-color: var(--theme-hover-bg);
+    padding: 2px 6px;
+    color: var(--theme-text-color);
+    font-size: 0.85em;
+}
+
+.cellMarkdown {
+    & .cellTypeIndicator {
+        background-color: #e1f5fe;
+        color: #0277bd;
+    }
+}
+
+.cellCode {
+    & .cellTypeIndicator {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+    }
+}
+
+.cellRender {
+    & .cellTypeIndicator {
+        background-color: #fff3e0;
+        color: #ef6c00;
+    }
+}
+
+.cellCollapseButton {
+    opacity: 0.7;
+    cursor: pointer;
+    border: none;
+    border-radius: 3px;
+    background: none;
+    padding: 2px 8px;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+
+    &:hover {
+        background-color: var(--theme-hover-bg);
+    }
+}
+
+/* Cell Content */
+.cellContent {
+    padding: 15px;
+}
+
+/* Markdown Cell */
+.cellMarkdown {
+    & .cellContent {
+        padding: 15px 20px;
+    }
+
+    & h1,
+    & h2,
+    & h3,
+    & h4,
+    & h5,
+    & h6 {
+        margin-top: 0;
+        margin-bottom: 16px;
+        font-weight: 600;
+        line-height: 1.25;
+    }
+
+    & h1 {
+        border-bottom: 1px solid var(--theme-border-color);
+        padding-bottom: 0.3em;
+        font-size: 2em;
+    }
+
+    & h2 {
+        border-bottom: 1px solid var(--theme-border-color);
+        padding-bottom: 0.3em;
+        font-size: 1.5em;
+    }
+
+    & p {
+        margin-top: 0;
+        margin-bottom: 16px;
+    }
+
+    & a {
+        color: var(--theme-primary-color);
+        text-decoration: none;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+}
+
+/* Code Cell */
+.cellCode {
+    & pre {
+        margin: 0;
+        border-radius: 3px;
+        background-color: var(--theme-hover-bg);
+        padding: 10px;
+        overflow-x: auto;
+    }
+
+    & code {
+        color: var(--theme-text-color);
+        font-size: 0.9em;
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+}
+
+/* Render Cell */
+.cellRender {
+    & .renderContainer {
+        position: relative;
+        border-radius: 3px;
+        background-color: var(--theme-hover-bg);
+        overflow: hidden;
+    }
+}
+
+.renderWrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.renderContainer {
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    background-color: var(--theme-hover-bg);
+    overflow: hidden;
+}
+
+.renderControlsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    background-color: var(--theme-hover-bg);
+    padding: 15px;
+    width: 100%;
+    max-width: 800px;
+}
+
+.renderControls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-bottom: 1px solid var(--theme-border-color);
+    padding-bottom: 15px;
+    width: 100%;
+}
+
+.renderControlsTitle {
+    margin: 0 0 10px 0;
+    color: var(--theme-text-color);
+    font-weight: 600;
+    font-size: 1em;
+}
+
+.resolutionSelector {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.resolutionSelect {
+    border: 1px solid var(--theme-border-color);
+    border-radius: 4px;
+    background-color: var(--theme-bg-color);
+    padding: 5px 10px;
+    min-width: 120px;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+}
+
+.customResolution {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.resolutionInput {
+    border: 1px solid var(--theme-border-color);
+    border-radius: 4px;
+    background-color: var(--theme-bg-color);
+    padding: 5px 8px;
+    width: 70px;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+}
+
+.resolutionSeparator {
+    opacity: 0.7;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+}
+
+.resolutionApply {
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--theme-primary-color);
+    padding: 5px 15px;
+    color: var(--theme-bg-color);
+    font-size: 0.9em;
+
+    &:hover {
+        background-color: var(--theme-primary-hover);
+    }
+}
+
+.uniformControls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+.uniformControlRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.uniformLabel {
+    min-width: 120px;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+}
+
+.uniformControl {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 8px;
+}
+
+.uniformValue {
+    width: 40px;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+    text-align: center;
+}
+
+.uniformButton {
+    cursor: pointer;
+    border: 1px solid var(--theme-border-color);
+    border-radius: 4px;
+    background-color: var(--theme-bg-color);
+    padding: 4px 12px;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+
+    &:hover {
+        background-color: var(--theme-hover-bg);
+    }
+}
+
+.timeControls {
+    display: flex;
+    gap: 8px;
+}
+
+.vecInput {
+    border: 1px solid var(--theme-border-color);
+    border-radius: 4px;
+    background-color: var(--theme-bg-color);
+    padding: 4px 8px;
+    width: 60px;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+}
+
+.vecLabel {
+    opacity: 0.7;
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+}
+
+.vecContainer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.vec4Container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.vecRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.renderStartButton {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--theme-primary-color);
+    padding: 8px 16px;
+    color: var(--theme-text-color);
+    font-size: 14px;
+
+    &:hover {
+        background-color: var(--theme-primary-hover);
+    }
+}
+
+/* Renderer Styles */
+.webgpuCanvas {
+    display: block;
+    border-radius: 3px;
+    width: 100%;
+    height: 100%;
+}
+
+/* Error Messages */
+.notebookError,
+.errorMessage {
+    border-radius: 4px;
+    background-color: rgba(255, 0, 0, 0.1);
+    padding: 15px;
+    color: #c62828;
+    font-size: 14px;
+}
+
+/* Loading Indicator */
+.notebookLoading {
+    opacity: 0.6;
+    padding: 20px;
+    color: var(--theme-text-color);
+    text-align: center;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .notebookViewer {
+        padding: 15px;
+    }
+
+    .notebookTitle {
+        font-size: 1.5em;
+    }
+
+    .cellMarkdown {
+        & h1 {
+            font-size: 1.5em;
+        }
+
+        & h2 {
+            font-size: 1.3em;
+        }
+    }
+
+    .renderControlsContainer {
+        padding: 10px;
+    }
+
+    .uniformControlRow {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .uniformLabel {
+        margin-bottom: 5px;
+        min-width: auto;
+    }
+
+    .resolutionSelector {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
