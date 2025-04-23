@@ -3,9 +3,9 @@ import { homePage, notebookPage, debugPage } from './pages/index.js';
 import { appState, normalizePath, addBasePath } from './state.js';
 import './style.css';
 
-function initializeApp() {
-    const mode = globalThis.__APP_ENV__;
+const mode = __APP_ENV__;
 
+function initializeApp() {
     const app = document.querySelector('#app');
     if (!app) return;
 
