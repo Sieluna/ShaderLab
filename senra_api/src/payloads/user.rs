@@ -1,37 +1,39 @@
 use serde::{Deserialize, Serialize};
 
-use crate::user::UserInfoResponse;
+use super::notebook::NotebookListResponse;
 
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AuthRequest {
-    pub token: String,
+pub struct EditUserRequest {
+    pub username: Option<String>,
+    pub email: Option<String>,
+    pub password: Option<String>,
+    pub avatar: Option<Vec<u8>>,
 }
 
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoginRequest {
+pub struct UserPreviewResponse {
+    pub id: i64,
     pub username: String,
-    pub password: String,
+    pub avatar: Option<Vec<u8>>,
 }
 
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegisterRequest {
+pub struct UserInfoResponse {
+    pub id: i64,
     pub username: String,
     pub email: String,
-    pub password: String,
+    pub avatar: Vec<u8>,
 }
 
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TokenResponse {
-    pub token: Option<String>,
-}
-
-#[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AuthResponse {
-    pub user: UserInfoResponse,
-    pub token: String,
+pub struct UserResponse {
+    pub id: i64,
+    pub username: String,
+    pub avatar: Option<Vec<u8>>,
+    pub created_at: String,
+    pub notebooks: NotebookListResponse,
 }

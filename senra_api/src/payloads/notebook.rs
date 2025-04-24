@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::resource::{CreateResourceRequest, ResourceResponse};
-use crate::shader::{CreateShaderRequest, ShaderResponse};
-use crate::user::UserPreviewResponse;
+use super::resource::{CreateResourceRequest, ResourceResponse};
+use super::shader::{CreateShaderRequest, ShaderResponse};
+use super::user::UserPreviewResponse;
 
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]

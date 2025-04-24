@@ -438,7 +438,6 @@ async fn delete_notebook(
         .await
 }
 
-
 #[utoipa::path(
     post,
     path = "/notebooks/{id}/like",

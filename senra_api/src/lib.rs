@@ -1,28 +1,18 @@
-mod auth;
 mod client;
 #[cfg(target_arch = "wasm32")]
 mod client_wasm;
 mod endpoint;
-mod notebook;
-mod notebook_content;
-mod resource;
-mod shader;
-mod user;
+mod payloads;
 
 use http::Method;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-pub use auth::*;
 pub use client::*;
 #[cfg(target_arch = "wasm32")]
 pub use client_wasm::*;
 pub use endpoint::*;
-pub use notebook::*;
-pub use notebook_content::*;
-pub use resource::*;
-pub use shader::*;
-pub use user::*;
+pub use payloads::*;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ApiError {
