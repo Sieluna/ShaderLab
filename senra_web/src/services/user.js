@@ -1,90 +1,62 @@
 import { appState } from '../state.js';
 import { userApi } from '../api.js';
 
-export async function getUserProfile(userId = null) {
-    const state = appState.getState();
-    if (state.ui.isLoading) return state;
+/**
+ * Helper to manage async operations with UI state
+ */
+const withUIState = async (operation) => {
+    if (appState.get('ui.isLoading')) {
+        return { success: false, error: 'Already loading' };
+    }
 
-    appState.setState((state) => ({
-        ...state,
-        ui: { ...state.ui, isLoading: true, error: null },
-    }));
+    appState.set('ui', {
+        ...appState.get('ui'),
+        isLoading: true,
+        error: null
+    });
 
     try {
-        let userData;
-        if (userId) {
-            userData = await userApi.getUser(userId);
-        } else {
-            userData = await userApi.getSelf();
-        }
+        const result = await operation();
 
-        appState.setState((state) => ({
-            ...state,
-            auth: {
-                ...state.auth,
-                user: userData,
-            },
-            ui: { ...state.ui, isLoading: false, error: null },
-        }));
+        appState.set('ui.isLoading', false);
 
-        return { success: true, data: userData };
+        return { success: true, ...result };
     } catch (error) {
-        console.error('Failed to get user profile:', error);
+        console.error('Operation failed:', error);
 
-        appState.setState((state) => ({
-            ...state,
-            ui: {
-                ...state.ui,
-                isLoading: false,
-                error: `Failed to get user profile: ${error.message}`,
-            },
-        }));
+        appState.set('ui', {
+            ...appState.get('ui'),
+            isLoading: false,
+            error: error.message,
+        });
 
         return { success: false, error: error.message };
     }
+};
+
+export async function getUserProfile(userId = null) {
+    return withUIState(async () => {
+        const userData = userId
+            ? await userApi.getUser(userId)
+            : await userApi.getSelf();
+
+        appState.set('auth.user', userData);
+
+        return { data: userData };
+    });
 }
 
 export async function updateUserProfile(data) {
-    const state = appState.getState();
-    if (state.ui.isLoading) return state;
-
     if (!data) {
         return { success: false, error: 'No update data provided' };
     }
 
-    appState.setState((state) => ({
-        ...state,
-        ui: { ...state.ui, isLoading: true, error: null },
-    }));
-
-    try {
+    return withUIState(async () => {
         const response = await userApi.updateUser(data);
 
-        appState.setState((state) => ({
-            ...state,
-            auth: {
-                ...state.auth,
-                user: {
-                    ...state.auth.user,
-                    ...response,
-                },
-            },
-            ui: { ...state.ui, isLoading: false, error: null },
-        }));
+        const currentUser = appState.get('auth.user');
+        appState.set('auth.user', { ...currentUser, ...response });
 
-        return { success: true, data: response };
-    } catch (error) {
-        console.error('Failed to update user profile:', error);
-
-        appState.setState((state) => ({
-            ...state,
-            ui: {
-                ...state.ui,
-                isLoading: false,
-                error: `Failed to update user profile: ${error.message}`,
-            },
-        }));
-
-        return { success: false, error: error.message };
-    }
+        return { data: response };
+    });
 }

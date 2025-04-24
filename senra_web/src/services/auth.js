@@ -1,16 +1,52 @@
 import { appState } from '../state.js';
 import { authApi } from '../api.js';
 
+/**
+ * Helper to manage async operations with UI state
+ */
+const withUIState = async (operation) => {
+    if (appState.get('ui.isLoading')) {
+        return { success: false, error: 'Already loading' };
+    }
+
+    appState.set('ui', {
+        ...appState.get('ui'),
+        isLoading: true,
+        error: null
+    });
+
+    try {
+        const result = await operation();
+
+        appState.set('ui.isLoading', false);
+
+        return { success: true, ...result };
+    } catch (error) {
+        console.error('Operation failed:', error);
+
+        appState.set('ui', {
+            ...appState.get('ui'),
+            isLoading: false,
+            error: error.message,
+        });
+
+        return { success: false, error: error.message };
+    }
+};
+
+/**
+ * Helper to update auth state
+ */
+const setAuthState = (isAuthenticated, user = null) => {
+    appState.set('auth', { isAuthenticated, user });
+};
+
 export async function checkAuthStatus() {
     try {
-        if (await authApi.verifyToken()) {
-            appState.setState((state) => ({
-                ...state,
-                auth: {
-                    ...state.auth,
-                    isAuthenticated: true,
-                },
-            }));
+        const isValid = await authApi.verifyToken();
+
+        if (isValid) {
+            appState.set('auth.isAuthenticated', true);
             return true;
         } else {
             logout(false);
@@ -28,39 +64,18 @@ export async function login(username, password) {
         return { success: false, error: 'Please enter username and password' };
     }
 
-    appState.setState((state) => ({
-        ...state,
-        ui: { ...state.ui, isLoading: true, error: null },
-    }));
-
-    try {
+    return withUIState(async () => {
         const response = await authApi.login(username, password);
 
-        appState.setState((state) => ({
-            ...state,
-            auth: {
-                isAuthenticated: true,
-                user: {
-                    id: response.id,
-                    username: response.username,
-                    email: response.email,
-                    avatar: response.avatar,
-                },
-            },
-            ui: { ...state.ui, isLoading: false, error: null },
-        }));
+        setAuthState(true, {
+            id: response.id,
+            username: response.username,
+            email: response.email,
+            avatar: response.avatar,
+        });
 
-        return { success: true };
-    } catch (error) {
-        console.error('Login failed:', error);
-
-        appState.setState((state) => ({
-            ...state,
-            ui: { ...state.ui, isLoading: false, error: `Login failed: ${error.message}` },
-        }));
-
-        return { success: false, error: `Login failed: ${error.message}` };
-    }
+        return { data: response };
+    });
 }
 
 export async function register(username, email, password) {
@@ -68,8 +83,7 @@ export async function register(username, email, password) {
         return { success: false, error: 'Please fill in all required fields' };
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return { success: false, error: 'Please enter a valid email address' };
     }
 
@@ -77,56 +91,26 @@ export async function register(username, email, password) {
         return { success: false, error: 'Password must be at least 6 characters long' };
     }
 
-    appState.setState((state) => ({
-        ...state,
-        ui: { ...state.ui, isLoading: true, error: null },
-    }));
-
-    try {
+    return withUIState(async () => {
         const response = await authApi.register(username, email, password);
 
-        appState.setState((state) => ({
-            ...state,
-            auth: {
-                isAuthenticated: true,
-                user: {
-                    id: response.id,
-                    username: response.username,
-                    email: response.email,
-                    avatar: response.avatar,
-                },
-            },
-            ui: { ...state.ui, isLoading: false, error: null },
-        }));
+        setAuthState(true, {
+            id: response.id,
+            username: response.username,
+            email: response.email,
+            avatar: response.avatar,
+        });
 
-        return { success: true };
-    } catch (error) {
-        console.error('Registration failed:', error);
-
-        appState.setState((state) => ({
-            ...state,
-            ui: { ...state.ui, isLoading: false, error: `Registration failed: ${error.message}` },
-        }));
-
-        return { success: false, error: `Registration failed: ${error.message}` };
-    }
+        return { data: response };
+    });
 }
 
 export async function logout(redirect = true) {
     try {
         await authApi.logout();
+        setAuthState(false);
 
-        appState.setState((state) => ({
-            ...state,
-            auth: {
-                isAuthenticated: false,
-                user: null,
-            },
-        }));
-
-        if (redirect) {
-            window.location.reload();
-        }
+        redirect && window.location.reload();
     } catch (error) {
         console.error('Logout failed:', error);
     }

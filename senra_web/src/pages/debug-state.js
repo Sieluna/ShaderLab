@@ -16,7 +16,7 @@ function createStateDisplay(id, state) {
     timestamp.className = styles.time;
 
     const content = display.appendChild(document.createElement('pre'));
-    let previousState = state.getState();
+    let previousState = state.get();
 
     const updateContent = (newState) => {
         const diffs = deepDiff(previousState, newState);
@@ -30,8 +30,8 @@ function createStateDisplay(id, state) {
         toggle.textContent = content.style.display === 'none' ? '▶' : '▼';
     });
 
-    state.subscribe(updateContent);
-    updateContent(state.getState());
+    state.subscribe('', updateContent);
+    updateContent(state.get());
 
     return display;
 }
@@ -132,10 +132,8 @@ export function createStateTest() {
     const stateMonitor = document.createElement('div');
     stateMonitor.className = styles.stateMonitor;
     stateMonitor.innerHTML = '<h2>Real-time State Monitor</h2>';
-    [
-        { id: 'app-state', state: appState },
-        { id: 'notebook-state', state: notebookService.notebookState },
-    ].forEach(({ id, state }) => stateMonitor.appendChild(createStateDisplay(id, state)));
+
+    stateMonitor.appendChild(createStateDisplay('app-state', appState));
 
     const testConfig = {
         auth: [

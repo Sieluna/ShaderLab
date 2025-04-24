@@ -4,6 +4,7 @@ import heartIcon from '../assets/heart.svg?raw';
 import commentIcon from '../assets/chat.svg?raw';
 import { notebookService } from '../services/index.js';
 import { createNotebookViewer, createCommentList } from '../components/index.js';
+import { notebookState } from '../state.js';
 
 export function notebookPage(id) {
     const container = document.createElement('div');
@@ -40,7 +41,7 @@ export function notebookPage(id) {
         commentsCount: 0,
     };
 
-    const unsubscribe = notebookService.notebookState.subscribe(({ current }) => {
+    const unsubscribe = notebookState.subscribe(({ current }) => {
         if (current.isLoading) {
             loader.style.display = 'flex';
             content.style.display = 'none';

@@ -1,5 +1,5 @@
 import styles from './comment-form.module.css';
-import { authState } from '../../state.js';
+import { appState } from '../../state.js';
 
 /**
  * Creates a comment form component
@@ -10,7 +10,7 @@ import { authState } from '../../state.js';
 export function createCommentForm({ onSubmit }) {
     const container = document.createElement('div');
 
-    if (authState.getState().isAuthenticated) {
+    if (appState.get('auth.isAuthenticated')) {
         container.className = styles.form;
         container.innerHTML = `
             <textarea placeholder="Add a comment..." id="comment-input"></textarea>

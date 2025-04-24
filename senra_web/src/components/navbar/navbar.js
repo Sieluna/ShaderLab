@@ -1,9 +1,10 @@
 import styles from './navbar.module.css';
 import searchIcon from '../../assets/search.svg?raw';
-import { appState, addBasePath } from '../../state.js';
+import { appState } from '../../state.js';
 import { createAvatar } from './avatar.js';
 import { createAuthModal } from './auth-modal.js';
 import { authService } from '../../services/index.js';
+import { createLinkHandler } from '../../utils/router.js';
 
 function createSearchBox() {
     const container = document.createElement('div');
@@ -94,30 +95,15 @@ export function navbar(items) {
     container.append(menu, navList, search.element, avatar.element);
     document.body.appendChild(modal.element);
 
-    appState.subscribe((state) => {
-        const currentPath = state.ui?.currentPath || '/';
-        renderNavItems(currentPath);
+    appState.subscribe('ui.currentPath', (currentPath) => {
+        renderNavItems(currentPath || '/');
     });
 
-    navbar.addEventListener('click', (e) => {
-        if (e.target.matches(`.${styles.navLink}`)) {
-            e.preventDefault();
-            const path = e.target.getAttribute('href');
-            appState.setState((prev) => ({
-                ...prev,
-                ui: {
-                    ...prev.ui,
-                    currentPath: path,
-                },
-            }));
-
-            window.history.pushState({}, '', addBasePath(path));
-
-            if (window.innerWidth <= 768) {
-                navbar.classList.remove(styles.open);
-            }
-        }
+    const linkHandler = createLinkHandler({
+        closeMenu: () => navbar.classList.remove(styles.open)
     });
+    
+    navbar.addEventListener('click', linkHandler);
 
     menu.addEventListener('click', () => {
         navbar.classList.toggle(styles.open);
@@ -130,7 +116,8 @@ export function navbar(items) {
     });
 
     navbar.appendChild(container);
-    renderNavItems(appState.getState().ui?.currentPath || '/');
+
+    renderNavItems(appState.get('ui.currentPath') || '/');
 
     return navbar;
 }

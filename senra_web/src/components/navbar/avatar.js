@@ -104,9 +104,9 @@ export function createAvatar({ onLoginClick, onLogoutClick, onProfileClick, onSe
 
     container.append(login.element, avatar.element);
 
-    const updateAuthState = (state) => {
-        const isAuthenticated = state.auth?.isAuthenticated ?? false;
-        const userData = state.auth?.user ?? null;
+    const updateAuthState = (authState) => {
+        const isAuthenticated = authState?.isAuthenticated ?? false;
+        const userData = authState?.user ?? null;
 
         isAuthenticated ? login.hide() : login.show();
         isAuthenticated ? avatar.show() : avatar.hide();
@@ -118,8 +118,9 @@ export function createAvatar({ onLoginClick, onLogoutClick, onProfileClick, onSe
         );
     };
 
-    updateAuthState(appState.getState());
-    appState.subscribe(updateAuthState);
+    updateAuthState(appState.get('auth'));
+
+    appState.subscribe('auth', updateAuthState);
 
     return {
         element: container,
