@@ -47,6 +47,8 @@ fn openapi() -> Router {
             notebook::create_notebook,
             notebook::update_notebook,
             notebook::delete_notebook,
+            notebook::like_notebook,
+            notebook::unlike_notebook,
             notebook::list_versions,
             notebook::list_comments,
             notebook::create_comment,

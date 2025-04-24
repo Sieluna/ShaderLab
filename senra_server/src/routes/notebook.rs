@@ -1,5 +1,5 @@
 use axum::extract::{Path, Query, State};
-use axum::routing::{delete, get};
+use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use senra_api::*;
 use serde::Deserialize;
@@ -33,6 +33,8 @@ pub fn router(state: AppState) -> Router {
             "/notebooks/{id}/comments/{comment_id}",
             delete(delete_comment),
         )
+        .route("/notebooks/{id}/like", post(like_notebook))
+        .route("/notebooks/{id}/unlike", post(unlike_notebook))
         .with_state(state)
 }
 
@@ -433,6 +435,57 @@ async fn delete_notebook(
         .services
         .notebook
         .delete_notebook(auth_user.user_id, id)
+        .await
+}
+
+
+#[utoipa::path(
+    post,
+    path = "/notebooks/{id}/like",
+    tag = "notebook",
+    params(
+        ("id" = i64, Path, description = "Notebook ID")
+    ),
+    responses(
+        (status = 200, description = "Successfully liked the notebook"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Notebook not found")
+    )
+)]
+async fn like_notebook(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(id): Path<i64>,
+) -> Result<()> {
+    state
+        .services
+        .notebook
+        .like_notebook(auth_user.user_id, id)
+        .await
+}
+
+#[utoipa::path(
+    post,
+    path = "/notebooks/{id}/unlike",
+    tag = "notebook",
+    params(
+        ("id" = i64, Path, description = "Notebook ID")
+    ),
+    responses(
+        (status = 200, description = "Successfully unliked the notebook"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Notebook not found")
+    )
+)]
+async fn unlike_notebook(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(id): Path<i64>,
+) -> Result<()> {
+    state
+        .services
+        .notebook
+        .unlike_notebook(auth_user.user_id, id)
         .await
 }
 
