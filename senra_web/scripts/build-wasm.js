@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const projectPath = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const workspacePath = resolve(projectPath, '..');
 
-const apiDir = join(workspacePath, 'senra_api');
+const apiDir = join(workspacePath, 'senra_client');
 const pkgDir = join(projectPath, 'pkg');
 
 console.log('Building Rust WASM library...');

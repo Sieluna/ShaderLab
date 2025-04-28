@@ -1,5 +1,9 @@
+use alloc::string::String;
+use alloc::vec::Vec;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use time::OffsetDateTime;
 
 use super::resource::{CreateResourceRequest, ResourceResponse};
 use super::shader::{CreateShaderRequest, ShaderResponse};
@@ -51,8 +55,10 @@ pub struct NotebookInfo {
     pub title: String,
     pub description: Option<String>,
     pub tags: Vec<String>,
-    pub created_at: String,
-    pub updated_at: String,
+    #[serde(with = "time::serde::iso8601")]
+    pub created_at: OffsetDateTime,
+    #[serde(with = "time::serde::iso8601")]
+    pub updated_at: OffsetDateTime,
 }
 
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
@@ -93,7 +99,8 @@ pub struct NotebookVersionResponse {
     pub notebook_id: i64,
     pub version: i32,
     pub content: Value,
-    pub created_at: String,
+    #[serde(with = "time::serde::iso8601")]
+    pub created_at: OffsetDateTime,
 }
 
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
@@ -110,8 +117,10 @@ pub struct NotebookCommentResponse {
     pub notebook_id: i64,
     pub user_id: i64,
     pub content: String,
-    pub created_at: String,
-    pub updated_at: String,
+    #[serde(with = "time::serde::iso8601")]
+    pub created_at: OffsetDateTime,
+    #[serde(with = "time::serde::iso8601")]
+    pub updated_at: OffsetDateTime,
     pub author: String,
     pub author_avatar: Option<Vec<u8>>,
 }

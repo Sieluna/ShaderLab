@@ -1,8 +1,9 @@
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// Notebook content protocol for ShaderLab, optimized for WebGPU rendering
-/// Similar to Jupyter notebook format but with specialized structures for shader rendering
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NotebookContent {
@@ -15,7 +16,6 @@ pub struct NotebookContent {
     pub metadata: Value,
 }
 
-/// Represents a single cell in the notebook
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Cell {
@@ -29,7 +29,6 @@ pub struct Cell {
     pub metadata: CellMetadata,
 }
 
-/// Types of cells supported in the notebook
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -42,7 +41,6 @@ pub enum CellType {
     Render,
 }
 
-/// Metadata for a cell
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CellMetadata {
@@ -51,7 +49,6 @@ pub struct CellMetadata {
     pub collapsed: bool,
 }
 
-/// Configuration for WebGPU rendering in a render cell
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderConfig {
@@ -71,7 +68,6 @@ pub struct RenderConfig {
     pub performance: PerformanceConfig,
 }
 
-/// Configuration for the WebGPU rendering pipeline
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PipelineConfig {
@@ -86,7 +82,6 @@ pub struct PipelineConfig {
     pub render_passes: Vec<RenderPassConfig>,
 }
 
-/// Configuration for binding a shader to a specific stage in the pipeline
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShaderBinding {
@@ -98,7 +93,6 @@ pub struct ShaderBinding {
     pub entry_point: String,
 }
 
-/// Available shader stages in the WebGPU pipeline
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -111,7 +105,6 @@ pub enum ShaderStage {
     Compute,
 }
 
-/// Configuration for a vertex attribute in the pipeline
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VertexAttribute {
@@ -125,7 +118,6 @@ pub struct VertexAttribute {
     pub stride: u64,
 }
 
-/// Configuration for binding a resource to the pipeline
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceBinding {
@@ -139,7 +131,6 @@ pub struct ResourceBinding {
     pub binding_type: BindingType,
 }
 
-/// Types of bindings available in WebGPU
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -154,7 +145,6 @@ pub enum BindingType {
     Sampler,
 }
 
-/// Configuration for a render pass in the pipeline
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderPassConfig {
@@ -193,7 +183,6 @@ pub struct RenderPassConfig {
     pub shader_parameters: Value,
 }
 
-/// Types of render passes supported in the pipeline
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -209,7 +198,6 @@ pub enum RenderPassType {
     Compute,
 }
 
-/// Configuration for binding an input texture to a render pass
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InputTextureBinding {
@@ -224,7 +212,6 @@ pub struct InputTextureBinding {
     pub sampler_config: Option<SamplerConfig>,
 }
 
-/// Configuration for a texture sampler
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SamplerConfig {
@@ -242,7 +229,6 @@ pub struct SamplerConfig {
     pub address_mode_v: String,
 }
 
-/// Configuration for an output texture in a render pass
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OutputTextureConfig {
@@ -263,7 +249,6 @@ pub struct OutputTextureConfig {
     pub blend: Option<BlendConfig>,
 }
 
-/// Configuration for blending in render targets
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlendConfig {
@@ -276,7 +261,6 @@ pub struct BlendConfig {
     pub operation: String,
 }
 
-/// Configuration for geometry in a render pass
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase", tag = "type")]
@@ -304,7 +288,6 @@ pub enum GeometryConfig {
     },
 }
 
-/// Configuration for a 3D camera
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CameraConfig {

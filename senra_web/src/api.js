@@ -1,4 +1,4 @@
-import init, { JsClient } from 'senra_api';
+import init, { ApiClient } from 'senra_client';
 import { authService, userService } from './services/index.js';
 
 const API_URL = __APP_API_URL__;
@@ -7,115 +7,82 @@ console.info('Current API server', API_URL);
 
 let client = null;
 
-init().then(() => {
-    client = new JsClient(API_URL);
+const clientInitPromise = init().then(() => {
+    client = new ApiClient(API_URL);
+    client.load_token();
+    return client;
+});
+
+clientInitPromise.then(() => {
     authService.checkAuthStatus().then(() => {
         userService.getUserProfile();
     });
 });
 
+const ensureClient = async () => {
+    if (!client) {
+        await clientInitPromise;
+    }
+    return client;
+};
+
 export const authApi = {
     login: async (username, password) => {
-        if (!client) throw new Error('WASM client not initialized');
+        const client = await ensureClient();
         return await client.login(username, password);
     },
     register: async (username, email, password) => {
-        if (!client) throw new Error('WASM client not initialized');
+        const client = await ensureClient();
         return await client.register(username, email, password);
     },
     verifyToken: async () => {
-        if (!client) throw new Error('WASM client not initialized');
+        const client = await ensureClient();
         return await client.verify_token();
     },
     logout: async () => {
-        if (!client) throw new Error('WASM client not initialized');
+        const client = await ensureClient();
         return await client.logout();
     },
 };
 
 export const userApi = {
     getSelf: async (page = 1, perPage = 10) => {
-        const url = new URL('/user', API_URL);
-        url.search = new URLSearchParams({ page, per_page: perPage });
-
-        const response = await fetch(url, {
-            headers: { Authorization: `Bearer ${client?.token ?? ''}` },
-        });
-        if (!response.ok) throw new Error(`Get self failed: ${response.status}`);
-        return response.json();
+        const client = await ensureClient();
+        return await client.get_self();
     },
     getUser: async (id, page = 1, perPage = 10) => {
-        const url = new URL(`/user/${id}`, API_URL);
-        url.search = new URLSearchParams({ page, per_page: perPage });
-
-        const response = await fetch(url, {
-            headers: { Authorization: `Bearer ${client?.token ?? ''}` },
-        });
-        if (!response.ok) throw new Error(`Get user failed: ${response.status}`);
-        return response.json();
+        const client = await ensureClient();
+        return await client.get_user(id);
     },
     updateUser: async (data) => {
-        const response = await fetch(new URL('/user', API_URL), {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${client?.token ?? ''}`,
-            },
-            body: JSON.stringify(data),
-        });
-        if (!response.ok) throw new Error(`Update user failed: ${response.status}`);
-        return response.json();
+        const client = await ensureClient();
+        return await client.update_user(data);
     },
 };
 
 export const notebookApi = {
     listNotebooks: async (page = 1, perPage = 10) => {
-        const url = new URL('/notebooks', API_URL);
-        url.search = new URLSearchParams({ page, per_page: perPage });
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`List notebooks failed: ${response.status}`);
-        return response.json();
+        const client = await ensureClient();
+        return await client.get_notebooks(page, perPage);
     },
     getNotebook: async (id) => {
-        const response = await fetch(new URL(`/notebooks/${id}`, API_URL), {
-            headers: { Authorization: `Bearer ${client?.token ?? ''}` },
-        });
-        if (!response.ok) throw new Error(`Get notebook failed: ${response.status}`);
-        return response.json();
+        const client = await ensureClient();
+        return await client.get_notebook(id);
     },
     createNotebook: async (data) => {
-        const response = await fetch(new URL('/notebooks', API_URL), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${client?.token ?? ''}`,
-            },
-            body: JSON.stringify(data),
-        });
-        if (!response.ok) throw new Error(`Create notebook failed: ${response.status}`);
-        return response.json();
+        const client = await ensureClient();
+        return await client.create_notebook(data);
     },
     updateNotebook: async (id, data) => {
-        const response = await fetch(new URL(`/notebooks/${id}`, API_URL), {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${client?.token ?? ''}`,
-            },
-            body: JSON.stringify(data),
-        });
-        if (!response.ok) throw new Error(`Update notebook failed: ${response.status}`);
-        return response.json();
+        const client = await ensureClient();
+        return await client.update_notebook(id, data);
     },
     deleteNotebook: async (id) => {
-        const response = await fetch(new URL(`/notebooks/${id}`, API_URL), {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${client?.token ?? ''}` },
-        });
-        if (!response.ok) throw new Error(`Delete notebook failed: ${response.status}`);
-        return response.json();
+        const client = await ensureClient();
+        return await client.delete_notebook(id);
     },
     listComments: async (id, page = 1, perPage = 10) => {
+        await ensureClient();
         const url = new URL(`/notebooks/${id}/comments`, API_URL);
         url.search = new URLSearchParams({ page, per_page: perPage });
         const response = await fetch(url, {
@@ -125,6 +92,7 @@ export const notebookApi = {
         return response.json();
     },
     createComment: async (id, content) => {
+        await ensureClient();
         const response = await fetch(new URL(`/notebooks/${id}/comments`, API_URL), {
             method: 'POST',
             headers: {
@@ -137,6 +105,7 @@ export const notebookApi = {
         return response.json();
     },
     deleteComment: async (id, commentId) => {
+        await ensureClient();
         const response = await fetch(new URL(`/notebooks/${id}/comments/${commentId}`, API_URL), {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${client?.token ?? ''}` },
@@ -145,6 +114,7 @@ export const notebookApi = {
         return response.json();
     },
     listVersions: async (id, page = 1, perPage = 10) => {
+        await ensureClient();
         const url = new URL(`/notebooks/${id}/versions`, API_URL);
         url.search = new URLSearchParams({ page, per_page: perPage });
         const response = await fetch(url, {
@@ -153,4 +123,75 @@ export const notebookApi = {
         if (!response.ok) throw new Error(`List versions failed: ${response.status}`);
         return response.json();
     },
+};
+
+export const wsApi = {
+    connect: async () => {
+        const client = await ensureClient();
+        return await client.connect_websocket();
+    },
+
+    sendMessage: async (messageType, payload) => {
+        const client = await ensureClient();
+        return await client.send_ws_message(messageType, payload);
+    },
+
+    receiveMessage: async () => {
+        const client = await ensureClient();
+        return await client.receive_ws_message();
+    },
+
+    messageListeners: new Set(),
+
+    addMessageListener: (listener) => {
+        wsApi.messageListeners.add(listener);
+    },
+
+    removeMessageListener: (listener) => {
+        wsApi.messageListeners.delete(listener);
+    },
+
+    startListening: async () => {
+        const client = await ensureClient();
+
+        const listenLoop = async () => {
+            try {
+                while (true) {
+                    const message = await client.receive_ws_message();
+                    wsApi.messageListeners.forEach(listener => {
+                        try {
+                            listener(message);
+                        } catch (error) {
+                            console.error('Error in WebSocket message listener:', error);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('WebSocket listening stopped:', error);
+                setTimeout(() => {
+                    console.log('Attempting to restart WebSocket listening...');
+                    wsApi.startListening();
+                }, 5000);
+            }
+        };
+
+        listenLoop();
+    },
+
+    connectAndListen: async () => {
+        await wsApi.connect();
+        wsApi.startListening();
+    },
+
+    sendNotification: async (payload) => {
+        return await wsApi.sendMessage('notification', payload);
+    },
+
+    sendChatMessage: async (payload) => {
+        return await wsApi.sendMessage('chat', payload);
+    },
+
+    sendCommand: async (command, payload) => {
+        return await wsApi.sendMessage('command', { command, ...payload });
+    }
 };

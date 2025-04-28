@@ -62,8 +62,8 @@ async fn get_self(
                 title: notebook.title,
                 description: notebook.description,
                 tags: tags.into_iter().map(|tag| tag.tag).collect(),
-                created_at: notebook.created_at.to_string(),
-                updated_at: notebook.updated_at.to_string(),
+                created_at: notebook.created_at,
+                updated_at: notebook.updated_at,
             },
             author: UserPreviewResponse {
                 id: user.id,
@@ -84,7 +84,7 @@ async fn get_self(
         id: user.id,
         username: user.username,
         avatar: Some(user.avatar),
-        created_at: user.created_at.to_string(),
+        created_at: user.created_at,
         notebooks: NotebookListResponse { notebooks, total },
     }))
 }
@@ -136,8 +136,8 @@ async fn get_user(
                 title: notebook.title,
                 description: notebook.description,
                 tags: tags.into_iter().map(|tag| tag.tag).collect(),
-                created_at: notebook.created_at.to_string(),
-                updated_at: notebook.updated_at.to_string(),
+                created_at: notebook.created_at,
+                updated_at: notebook.updated_at,
             },
             author: UserPreviewResponse {
                 id: user.id,
@@ -158,7 +158,7 @@ async fn get_user(
         id: user.id,
         username: user.username,
         avatar: Some(user.avatar),
-        created_at: user.created_at.to_string(),
+        created_at: user.created_at,
         notebooks: NotebookListResponse { notebooks, total },
     }))
 }

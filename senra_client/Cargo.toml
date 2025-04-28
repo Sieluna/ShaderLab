@@ -1,0 +1,36 @@
+[package]
+name = "senra_client"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+async-trait = "0.1"
+bytes = "1"
+http = "1"
+log = "0.4"
+reqwest = { version = "0.12", features = ["json"] }
+senra_api = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+futures-util = "0.3"
+tokio = { workspace = true, features = ["sync"] }
+tokio-tungstenite = "0.26"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1"
+futures-channel = "0.3"
+futures-util = "0.3"
+js-sys = "0.3"
+serde-wasm-bindgen = "0.6"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["WebSocket", "MessageEvent", "ErrorEvent", "BinaryType", "Window", "Storage"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+env_logger = "0.11"

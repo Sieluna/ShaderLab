@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
         plugins: [lezer()],
         resolve: {
             alias: {
-                'senra_api': path.resolve(__dirname, './pkg')
+                'senra_client': path.resolve(__dirname, './pkg')
             }
         },
     }

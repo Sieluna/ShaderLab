@@ -79,8 +79,8 @@ async fn list_notebooks(
                 title: notebook.title,
                 description: notebook.description,
                 tags: tags.into_iter().map(|tag| tag.tag).collect(),
-                created_at: notebook.created_at.to_string(),
-                updated_at: notebook.updated_at.to_string(),
+                created_at: notebook.created_at,
+                updated_at: notebook.updated_at,
             },
             author: UserPreviewResponse {
                 id: user.id,
@@ -145,7 +145,7 @@ async fn get_notebook(
             resource_type: r.resource_type,
             data: r.data,
             metadata: r.metadata,
-            created_at: r.created_at.to_string(),
+            created_at: r.created_at,
         })
         .collect();
 
@@ -158,8 +158,8 @@ async fn get_notebook(
             shader_type: s.shader_type,
             code: s.code,
             version: s.version,
-            created_at: s.created_at.to_string(),
-            updated_at: s.updated_at.to_string(),
+            created_at: s.created_at,
+            updated_at: s.updated_at,
         })
         .collect();
 
@@ -169,8 +169,8 @@ async fn get_notebook(
             title: notebook.title,
             description: notebook.description,
             tags: tags.into_iter().map(|tag| tag.tag).collect(),
-            created_at: notebook.created_at.to_string(),
-            updated_at: notebook.updated_at.to_string(),
+            created_at: notebook.created_at,
+            updated_at: notebook.updated_at,
         },
         author: UserPreviewResponse {
             id: user.id,
@@ -266,7 +266,7 @@ async fn create_notebook(
             resource_type: r.resource_type,
             data: r.data,
             metadata: r.metadata,
-            created_at: r.created_at.to_string(),
+            created_at: r.created_at,
         })
         .collect();
 
@@ -279,8 +279,8 @@ async fn create_notebook(
             shader_type: s.shader_type,
             code: s.code,
             version: s.version,
-            created_at: s.created_at.to_string(),
-            updated_at: s.updated_at.to_string(),
+            created_at: s.created_at,
+            updated_at: s.updated_at,
         })
         .collect();
 
@@ -290,8 +290,8 @@ async fn create_notebook(
             title: notebook.title,
             description: notebook.description,
             tags: tags.into_iter().map(|tag| tag.tag).collect(),
-            created_at: notebook.created_at.to_string(),
-            updated_at: notebook.updated_at.to_string(),
+            created_at: notebook.created_at,
+            updated_at: notebook.updated_at,
         },
         author: UserPreviewResponse {
             id: user.id,
@@ -367,7 +367,7 @@ async fn update_notebook(
             resource_type: r.resource_type,
             data: r.data,
             metadata: r.metadata,
-            created_at: r.created_at.to_string(),
+            created_at: r.created_at,
         })
         .collect();
 
@@ -380,8 +380,8 @@ async fn update_notebook(
             shader_type: s.shader_type,
             code: s.code,
             version: s.version,
-            created_at: s.created_at.to_string(),
-            updated_at: s.updated_at.to_string(),
+            created_at: s.created_at,
+            updated_at: s.updated_at,
         })
         .collect();
 
@@ -391,8 +391,8 @@ async fn update_notebook(
             title: notebook.title,
             description: notebook.description,
             tags: tags.into_iter().map(|tag| tag.tag).collect(),
-            created_at: notebook.created_at.to_string(),
-            updated_at: notebook.updated_at.to_string(),
+            created_at: notebook.created_at,
+            updated_at: notebook.updated_at,
         },
         author: UserPreviewResponse {
             id: user.id,
@@ -525,7 +525,7 @@ async fn list_versions(
                 notebook_id: v.notebook_id,
                 version: v.version,
                 content: v.content,
-                created_at: v.created_at.to_string(),
+                created_at: v.created_at,
             })
             .collect(),
         total,
@@ -568,8 +568,8 @@ async fn list_comments(
             notebook_id: comment.notebook_id,
             user_id: comment.user_id,
             content: comment.content,
-            created_at: comment.created_at.to_string(),
-            updated_at: comment.updated_at.to_string(),
+            created_at: comment.created_at,
+            updated_at: comment.updated_at,
             author: author.username,
             author_avatar: Some(author.avatar),
         });
@@ -611,8 +611,8 @@ async fn create_comment(
         notebook_id: comment.notebook_id,
         user_id: comment.user_id,
         content: comment.content,
-        created_at: comment.created_at.to_string(),
-        updated_at: comment.updated_at.to_string(),
+        created_at: comment.created_at,
+        updated_at: comment.updated_at,
         author: user.username,
         author_avatar: Some(user.avatar),
     }))
