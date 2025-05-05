@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "senra_api",
+    "senra_app",
     "senra_client",
     "senra_server"
 ]
