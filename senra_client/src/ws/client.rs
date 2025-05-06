@@ -5,7 +5,7 @@ use bytes::Bytes;
 use senra_api::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientConfig, Error, Result};
+use crate::{ClientConfig, Error, Result, WebSocketError};
 
 use super::{WsMessage, WsResponse, WsTransport};
 
@@ -96,8 +96,8 @@ impl WsClient {
 
     /// Build WebSocket URL from the base configuration
     fn build_websocket_url(&self) -> Result<String> {
-        let token = self.config.token.as_ref().ok_or_else(|| {
-            Error::Authentication("Token required for WebSocket connection".to_string())
+        let token = self.config.token.as_ref().ok_or_else(|| Error::Auth {
+            message: "Token required for WebSocket connection".to_string(),
         })?;
 
         Ok(format!(
@@ -111,7 +111,7 @@ impl WsClient {
     /// Ensure the connection is active before performing operations
     async fn ensure_connected(&self) -> Result<()> {
         if !self.is_connected().await {
-            return Err(Error::Network("WebSocket not connected".to_string()));
+            return Err(Error::WebSocket(WebSocketError::NotConnected));
         }
         Ok(())
     }
@@ -150,12 +150,16 @@ where
                 client
                     .send(&request)
                     .await
-                    .map_err(|e| ProtocolError::TransportError(e.to_string()))?;
+                    .map_err(|e| ProtocolError::Transport {
+                        message: e.to_string(),
+                    })?;
 
                 let response = client
                     .receive()
                     .await
-                    .map_err(|e| ProtocolError::TransportError(e.to_string()))?;
+                    .map_err(|e| ProtocolError::Transport {
+                        message: e.to_string(),
+                    })?;
 
                 Ok(response)
             })
@@ -173,12 +177,17 @@ where
                     client
                         .send(&request)
                         .await
-                        .map_err(|e| ProtocolError::TransportError(e.to_string()))?;
+                        .map_err(|e| ProtocolError::Transport {
+                            message: e.to_string(),
+                        })?;
 
-                    let response = client
-                        .receive()
-                        .await
-                        .map_err(|e| ProtocolError::TransportError(e.to_string()))?;
+                    let response =
+                        client
+                            .receive()
+                            .await
+                            .map_err(|e| ProtocolError::Transport {
+                                message: e.to_string(),
+                            })?;
 
                     Ok(response)
                 }
@@ -188,8 +197,9 @@ where
             });
 
             Box::pin(async move {
-                rx.await
-                    .map_err(|_| ProtocolError::Unknown("Channel closed".to_string()))?
+                rx.await.map_err(|_| ProtocolError::Unknown {
+                    message: "Channel closed".to_string(),
+                })?
             })
         }
     }

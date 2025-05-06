@@ -48,11 +48,11 @@ export const authApi = {
 export const userApi = {
     getSelf: async (page = 1, perPage = 10) => {
         const client = await ensureClient();
-        return await client.get_self();
+        return await client.get_self(page, perPage);
     },
     getUser: async (id, page = 1, perPage = 10) => {
         const client = await ensureClient();
-        return await client.get_user(id);
+        return await client.get_user(id, page, perPage);
     },
     updateUser: async (data) => {
         const client = await ensureClient();
@@ -81,47 +81,29 @@ export const notebookApi = {
         const client = await ensureClient();
         return await client.delete_notebook(id);
     },
-    listComments: async (id, page = 1, perPage = 10) => {
-        await ensureClient();
-        const url = new URL(`/notebooks/${id}/comments`, API_URL);
-        url.search = new URLSearchParams({ page, per_page: perPage });
-        const response = await fetch(url, {
-            headers: { Authorization: `Bearer ${client?.token ?? ''}` },
-        });
-        if (!response.ok) throw new Error(`List comments failed: ${response.status}`);
-        return response.json();
+    likeNotebook: async (id) => {
+        const client = await ensureClient();
+        return await client.like_notebook(id);
     },
-    createComment: async (id, content) => {
-        await ensureClient();
-        const response = await fetch(new URL(`/notebooks/${id}/comments`, API_URL), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${client?.token ?? ''}`,
-            },
-            body: JSON.stringify({ content }),
-        });
-        if (!response.ok) throw new Error(`Create comment failed: ${response.status}`);
-        return response.json();
-    },
-    deleteComment: async (id, commentId) => {
-        await ensureClient();
-        const response = await fetch(new URL(`/notebooks/${id}/comments/${commentId}`, API_URL), {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${client?.token ?? ''}` },
-        });
-        if (!response.ok) throw new Error(`Delete comment failed: ${response.status}`);
-        return response.json();
+    unlikeNotebook: async (id) => {
+        const client = await ensureClient();
+        return await client.unlike_notebook(id);
     },
     listVersions: async (id, page = 1, perPage = 10) => {
-        await ensureClient();
-        const url = new URL(`/notebooks/${id}/versions`, API_URL);
-        url.search = new URLSearchParams({ page, per_page: perPage });
-        const response = await fetch(url, {
-            headers: { Authorization: `Bearer ${client?.token ?? ''}` },
-        });
-        if (!response.ok) throw new Error(`List versions failed: ${response.status}`);
-        return response.json();
+        const client = await ensureClient();
+        return await client.get_notebook_versions(id, page, perPage);
+    },
+    listComments: async (id, page = 1, perPage = 10) => {
+        const client = await ensureClient();
+        return await client.get_notebook_comments(id, page, perPage);
+    },
+    createComment: async (id, content) => {
+        const client = await ensureClient();
+        return await client.create_notebook_comment(id, { content });
+    },
+    deleteComment: async (id, commentId) => {
+        const client = await ensureClient();
+        return await client.delete_notebook_comment(id, commentId);
     },
 };
 

@@ -1,36 +1,107 @@
-use senra_api::*;
-
-#[derive(Debug, Clone)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    Protocol(ProtocolError),
-    Network(String),
-    Authentication(String),
-    NotFound(String),
-    BadRequest(String),
-    InternalServerError(String),
-    Unknown(String),
+    /// HTTP-related errors
+    #[error("HTTP error: {0}")]
+    Http(#[from] HttpError),
+
+    /// WebSocket-related errors  
+    #[error("WebSocket error: {0}")]
+    WebSocket(#[from] WebSocketError),
+
+    /// Protocol-level errors
+    #[error("Protocol error: {0}")]
+    Protocol(#[from] senra_api::ProtocolError),
+
+    /// Authentication and authorization errors
+    #[error("Authentication error: {message}")]
+    Auth { message: String },
+
+    /// Configuration errors
+    #[error("Configuration error: {message}")]
+    Config { message: String },
+
+    /// Invalid input or request errors
+    #[error("Invalid request: {message}")]
+    InvalidRequest { message: String },
+
+    /// Server responded with an error
+    #[error("Server error: {status} - {message}")]
+    Server { status: u16, message: String },
+
+    /// Resource not found
+    #[error("Resource not found: {resource}")]
+    NotFound { resource: String },
 }
 
-impl From<ProtocolError> for Error {
-    fn from(err: ProtocolError) -> Self {
-        Self::Protocol(err)
-    }
+#[derive(Debug, thiserror::Error)]
+pub enum HttpError {
+    /// Failed to build HTTP request
+    #[error("Failed to build request: {source}")]
+    RequestBuild {
+        #[source]
+        source: reqwest::Error,
+    },
+
+    /// Network request failed
+    #[error("Network request failed: {source}")]
+    Network {
+        #[source]
+        source: reqwest::Error,
+    },
+
+    /// Failed to read response
+    #[error("Failed to read response: {source}")]
+    Response {
+        #[source]
+        source: reqwest::Error,
+    },
+
+    /// Unsupported HTTP method
+    #[error("Unsupported HTTP method: {method}")]
+    UnsupportedMethod { method: String },
+
+    /// Invalid URL format
+    #[error("Invalid URL: {url}")]
+    InvalidUrl { url: String },
 }
 
-impl core::fmt::Display for Error {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::Protocol(err) => write!(f, "Protocol error: {}", err),
-            Self::Network(msg) => write!(f, "Network error: {}", msg),
-            Self::Authentication(msg) => write!(f, "Authentication error: {}", msg),
-            Self::NotFound(msg) => write!(f, "Not found: {}", msg),
-            Self::BadRequest(msg) => write!(f, "Bad request: {}", msg),
-            Self::InternalServerError(msg) => write!(f, "Internal server error: {}", msg),
-            Self::Unknown(msg) => write!(f, "Unknown error: {}", msg),
+#[derive(Debug, thiserror::Error)]
+pub enum WebSocketError {
+    /// Connection failed
+    #[error("WebSocket connection failed: {message}")]
+    ConnectionFailed { message: String },
+
+    /// Not connected
+    #[error("WebSocket not connected")]
+    NotConnected,
+
+    /// Failed to send message
+    #[error("Failed to send WebSocket message: {message}")]
+    SendFailed { message: String },
+
+    /// Failed to receive message
+    #[error("Failed to receive WebSocket message: {message}")]
+    ReceiveFailed { message: String },
+
+    /// Connection closed unexpectedly  
+    #[error("WebSocket connection closed unexpectedly")]
+    ConnectionClosed,
+
+    /// Invalid message format
+    #[error("Invalid WebSocket message format: {message}")]
+    InvalidMessage { message: String },
+}
+
+impl From<reqwest::Error> for HttpError {
+    fn from(err: reqwest::Error) -> Self {
+        if err.is_builder() {
+            HttpError::RequestBuild { source: err }
+        } else if err.is_request() || err.is_connect() || err.is_timeout() {
+            HttpError::Network { source: err }
+        } else {
+            HttpError::Response { source: err }
         }
     }
 }
 
-impl std::error::Error for Error {}
-
-pub type Result<T> = core::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;

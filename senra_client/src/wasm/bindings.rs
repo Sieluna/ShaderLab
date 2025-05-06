@@ -193,16 +193,33 @@ impl ApiClient {
 
     // User API
     #[wasm_bindgen]
-    pub async fn get_self(&self) -> Result<JsValue, ApiError> {
-        let response = self.client.get_self().await.map_err(ApiError::from)?;
+    pub async fn get_self(
+        &self,
+        page: Option<u32>,
+        per_page: Option<u32>,
+    ) -> Result<JsValue, ApiError> {
+        let page_i64 = page.map(|p| p as i64);
+        let per_page_i64 = per_page.map(|p| p as i64);
+        let response = self
+            .client
+            .get_self(page_i64, per_page_i64)
+            .await
+            .map_err(ApiError::from)?;
         serialize_to_js(&response)
     }
 
     #[wasm_bindgen]
-    pub async fn get_user(&self, id: u32) -> Result<JsValue, ApiError> {
+    pub async fn get_user(
+        &self,
+        id: u32,
+        page: Option<u32>,
+        per_page: Option<u32>,
+    ) -> Result<JsValue, ApiError> {
+        let page_i64 = page.map(|p| p as i64);
+        let per_page_i64 = per_page.map(|p| p as i64);
         let response = self
             .client
-            .get_user(id as i64)
+            .get_user(id as i64, page_i64, per_page_i64)
             .await
             .map_err(ApiError::from)?;
         serialize_to_js(&response)
@@ -361,5 +378,64 @@ impl ApiClient {
                 code: "WS_NOT_CONNECTED".to_string(),
             })
         }
+    }
+
+    // Notebook Versions API
+    #[wasm_bindgen]
+    pub async fn get_notebook_versions(
+        &self,
+        id: u32,
+        page: Option<u32>,
+        per_page: Option<u32>,
+    ) -> Result<JsValue, ApiError> {
+        let page_i64 = page.map(|p| p as i64);
+        let per_page_i64 = per_page.map(|p| p as i64);
+        let response = self
+            .client
+            .get_notebook_versions(id as i64, page_i64, per_page_i64)
+            .await
+            .map_err(ApiError::from)?;
+        serialize_to_js(&response)
+    }
+
+    // Notebook Comments API
+    #[wasm_bindgen]
+    pub async fn get_notebook_comments(
+        &self,
+        id: u32,
+        page: Option<u32>,
+        per_page: Option<u32>,
+    ) -> Result<JsValue, ApiError> {
+        let page_i64 = page.map(|p| p as i64);
+        let per_page_i64 = per_page.map(|p| p as i64);
+        let response = self
+            .client
+            .get_notebook_comments(id as i64, page_i64, per_page_i64)
+            .await
+            .map_err(ApiError::from)?;
+        serialize_to_js(&response)
+    }
+
+    #[wasm_bindgen]
+    pub async fn create_notebook_comment(
+        &self,
+        id: u32,
+        data: JsValue,
+    ) -> Result<JsValue, ApiError> {
+        let request: CreateNotebookCommentRequest = from_value(data).map_err(ApiError::from)?;
+        let response = self
+            .client
+            .create_notebook_comment(id as i64, request)
+            .await
+            .map_err(ApiError::from)?;
+        serialize_to_js(&response)
+    }
+
+    #[wasm_bindgen]
+    pub async fn delete_notebook_comment(&self, id: u32, comment_id: u32) -> Result<(), ApiError> {
+        self.client
+            .delete_notebook_comment(id as i64, comment_id as i64)
+            .await
+            .map_err(ApiError::from)
     }
 }

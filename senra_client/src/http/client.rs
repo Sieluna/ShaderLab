@@ -1,17 +1,18 @@
+use reqwest::{Client, Request, Response};
 use senra_api::{AsyncResult, Codec, Pipeline, PipelineContext, ProtocolError};
 use serde::{Deserialize, Serialize};
 
-use crate::{ClientConfig, Error, Result};
+use crate::{ClientConfig, Error, HttpError, Result};
 
 #[derive(Clone)]
 pub struct HttpClient {
-    client: reqwest::Client,
+    client: Client,
     config: ClientConfig,
 }
 
 impl HttpClient {
     pub fn new(config: ClientConfig) -> Result<Self> {
-        let builder = reqwest::Client::builder();
+        let builder = Client::builder();
 
         #[cfg(not(target_arch = "wasm32"))]
         let builder = if let Some(timeout_ms) = config.timeout_ms {
@@ -20,7 +21,7 @@ impl HttpClient {
             builder
         };
 
-        let client = builder.build().map_err(|e| Error::Network(e.to_string()))?;
+        let client = builder.build().map_err(HttpError::from)?;
 
         Ok(Self { client, config })
     }
@@ -46,7 +47,7 @@ impl HttpClient {
         method: &str,
         endpoint: &str,
         request: Option<T>,
-    ) -> Result<reqwest::Request> {
+    ) -> Result<Request> {
         let url = format!("{}{}", self.config.base_url, endpoint);
 
         let mut req_builder = match method.to_uppercase().as_str() {
@@ -56,7 +57,9 @@ impl HttpClient {
             "PATCH" => self.client.patch(&url),
             "DELETE" => self.client.delete(&url),
             _ => {
-                return Err(Error::BadRequest(format!("Unsupported method: {}", method)));
+                return Err(Error::Http(HttpError::UnsupportedMethod {
+                    method: method.to_string(),
+                }));
             }
         };
 
@@ -76,18 +79,13 @@ impl HttpClient {
 
         req_builder
             .build()
-            .map_err(|e| Error::Network(e.to_string()))
+            .map_err(HttpError::from)
+            .map_err(Error::from)
     }
 
-    async fn handle_response<T: for<'de> Deserialize<'de>>(
-        &self,
-        response: reqwest::Response,
-    ) -> Result<T> {
+    async fn handle_response<T: for<'de> Deserialize<'de>>(&self, response: Response) -> Result<T> {
         let status = response.status();
-        let body = response
-            .bytes()
-            .await
-            .map_err(|e| Error::Network(e.to_string()))?;
+        let body = response.bytes().await.map_err(HttpError::from)?;
 
         match status.as_u16() {
             200..=299 => self
@@ -96,15 +94,23 @@ impl HttpClient {
                 .codec
                 .decode(&body)
                 .map_err(Error::from),
-            401 => Err(Error::Authentication("Unauthorized".to_string())),
-            404 => Err(Error::NotFound("Resource not found".to_string())),
-            400..=499 => Err(Error::BadRequest(
-                String::from_utf8_lossy(&body).to_string(),
-            )),
-            500..=599 => Err(Error::InternalServerError(
-                String::from_utf8_lossy(&body).to_string(),
-            )),
-            _ => Err(Error::Unknown(format!("Unexpected status: {}", status))),
+            401 => Err(Error::Auth {
+                message: "Unauthorized".to_string(),
+            }),
+            404 => Err(Error::NotFound {
+                resource: "Resource not found".to_string(),
+            }),
+            400..=499 => Err(Error::InvalidRequest {
+                message: String::from_utf8_lossy(&body).to_string(),
+            }),
+            500..=599 => Err(Error::Server {
+                status: status.as_u16(),
+                message: String::from_utf8_lossy(&body).to_string(),
+            }),
+            _ => Err(Error::Server {
+                status: status.as_u16(),
+                message: format!("Unexpected status: {}", status),
+            }),
         }
     }
 
@@ -119,11 +125,7 @@ impl HttpClient {
         Res: for<'de> Deserialize<'de>,
     {
         let req = self.build_request(method, endpoint, request).await?;
-        let response = self
-            .client
-            .execute(req)
-            .await
-            .map_err(|e| Error::Network(e.to_string()))?;
+        let response = self.client.execute(req).await.map_err(HttpError::from)?;
 
         self.handle_response(response).await
     }
@@ -145,9 +147,9 @@ where
         {
             Box::pin(async move {
                 let endpoint = context.metadata.get("endpoint").cloned().ok_or_else(|| {
-                    use senra_api::ProtocolError;
-
-                    ProtocolError::Unknown("Missing endpoint in context".to_string())
+                    ProtocolError::Unknown {
+                        message: "Missing endpoint in context".to_string(),
+                    }
                 })?;
                 let method = context
                     .metadata
@@ -158,7 +160,9 @@ where
                 client
                     .request(&method, &endpoint, Some(request))
                     .await
-                    .map_err(|e| ProtocolError::TransportError(e.to_string()))
+                    .map_err(|e| ProtocolError::Transport {
+                        message: e.to_string(),
+                    })
             })
         }
 
@@ -172,7 +176,9 @@ where
             spawn_local(async move {
                 let result = async {
                     let endpoint = context.metadata.get("endpoint").cloned().ok_or_else(|| {
-                        ProtocolError::Unknown("Missing endpoint in context".to_string())
+                        ProtocolError::Unknown {
+                            message: "Missing endpoint in context".to_string(),
+                        }
                     })?;
                     let method = context
                         .metadata
@@ -183,7 +189,9 @@ where
                     client
                         .request(&method, &endpoint, Some(request))
                         .await
-                        .map_err(|e| ProtocolError::TransportError(e.to_string()))
+                        .map_err(|e| ProtocolError::Transport {
+                            message: e.to_string(),
+                        })
                 }
                 .await;
 
@@ -191,8 +199,9 @@ where
             });
 
             Box::pin(async move {
-                rx.await
-                    .map_err(|_| ProtocolError::Unknown("Channel closed".to_string()))?
+                rx.await.map_err(|_| ProtocolError::Unknown {
+                    message: "Channel closed".to_string(),
+                })?
             })
         }
     }

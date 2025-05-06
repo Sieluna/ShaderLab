@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use bytes::Bytes;
 
-use crate::{Error, Result};
+use crate::Result;
 
 #[async_trait]
 pub trait WsTransport {
@@ -28,6 +28,8 @@ pub mod native {
     use futures_util::{SinkExt, StreamExt};
     use tokio::sync::{Mutex, RwLock, mpsc};
     use tokio_tungstenite::{connect_async, tungstenite::Message};
+
+    use crate::{Error, WebSocketError};
 
     use super::*;
 
@@ -56,9 +58,11 @@ pub mod native {
             }
 
             // Establish WebSocket connection
-            let (ws_stream, _) = connect_async(url)
-                .await
-                .map_err(|e| Error::Network(format!("Failed to connect: {}", e)))?;
+            let (ws_stream, _) = connect_async(url).await.map_err(|e| {
+                Error::WebSocket(WebSocketError::ConnectionFailed {
+                    message: e.to_string(),
+                })
+            })?;
 
             let (mut ws_sender, mut ws_receiver) = ws_stream.split();
             let (outgoing_tx, mut outgoing_rx) = mpsc::unbounded_channel::<Bytes>();
@@ -109,11 +113,14 @@ pub mod native {
 
         async fn send(&self, data: Bytes) -> Result<()> {
             if let Some(tx) = self.sender.lock().await.as_ref() {
-                tx.send(data)
-                    .map_err(|_| Error::Network("Failed to send message".to_string()))?;
+                tx.send(data).map_err(|_| {
+                    Error::WebSocket(WebSocketError::SendFailed {
+                        message: "Channel closed".to_string(),
+                    })
+                })?;
                 Ok(())
             } else {
-                Err(Error::Network("WebSocket not connected".to_string()))
+                Err(Error::WebSocket(WebSocketError::NotConnected))
             }
         }
 
@@ -121,9 +128,9 @@ pub mod native {
             if let Some(rx) = self.receiver.lock().await.as_mut() {
                 rx.recv()
                     .await
-                    .ok_or_else(|| Error::Network("Connection closed".to_string()))
+                    .ok_or_else(|| Error::WebSocket(WebSocketError::ConnectionClosed))
             } else {
-                Err(Error::Network("WebSocket not connected".to_string()))
+                Err(Error::WebSocket(WebSocketError::NotConnected))
             }
         }
 
@@ -154,6 +161,8 @@ pub mod wasm {
     use futures_util::StreamExt;
     use wasm_bindgen::{JsCast, prelude::*};
     use web_sys::{BinaryType, ErrorEvent, MessageEvent, WebSocket};
+
+    use crate::{Error, WebSocketError};
 
     use super::*;
 
@@ -190,15 +199,18 @@ pub mod wasm {
             *self.receiver.lock().unwrap() = Some(rx);
 
             // Connection completion channel
-            let (conn_tx, conn_rx) = oneshot::channel::<core::result::Result<(), String>>();
+            let (conn_tx, conn_rx) = oneshot::channel::<std::result::Result<(), String>>();
             let conn_tx = Arc::new(Mutex::new(Some(conn_tx)));
             let connected = Arc::clone(&self.connected);
 
             // Setup and attach all handlers, then immediately forget them to avoid crossing await boundaries
             {
                 // Create WebSocket
-                let ws = WebSocket::new(url)
-                    .map_err(|_| Error::Network("Failed to create WebSocket".to_string()))?;
+                let ws = WebSocket::new(url).map_err(|_| {
+                    Error::WebSocket(WebSocketError::ConnectionFailed {
+                        message: "Failed to create WebSocket".to_string(),
+                    })
+                })?;
 
                 ws.set_binary_type(BinaryType::Arraybuffer);
 
@@ -262,21 +274,28 @@ pub mod wasm {
             // Wait for connection - no closures cross this await boundary
             let result = conn_rx.await;
             result
-                .map_err(|_| Error::Network("Connection interrupted".to_string()))?
-                .map_err(Error::Network)
+                .map_err(|_| {
+                    Error::WebSocket(WebSocketError::ConnectionFailed {
+                        message: "Connection interrupted".to_string(),
+                    })
+                })?
+                .map_err(|e| Error::WebSocket(WebSocketError::ConnectionFailed { message: e }))
         }
 
         async fn send(&self, data: Bytes) -> Result<()> {
             if let Some(ws) = self.websocket.lock().unwrap().as_ref() {
                 if *self.connected.lock().unwrap() {
-                    ws.send_with_u8_array(&data)
-                        .map_err(|_| Error::Network("Failed to send message".to_string()))?;
+                    ws.send_with_u8_array(&data).map_err(|_| {
+                        Error::WebSocket(WebSocketError::SendFailed {
+                            message: "Failed to send message".to_string(),
+                        })
+                    })?;
                     Ok(())
                 } else {
-                    Err(Error::Network("WebSocket not connected".to_string()))
+                    Err(Error::WebSocket(WebSocketError::NotConnected))
                 }
             } else {
-                Err(Error::Network("WebSocket not initialized".to_string()))
+                Err(Error::WebSocket(WebSocketError::NotConnected))
             }
         }
 
@@ -288,12 +307,12 @@ pub mod wasm {
                 let result = receiver
                     .next()
                     .await
-                    .ok_or_else(|| Error::Network("Connection closed".to_string()));
+                    .ok_or_else(|| Error::WebSocket(WebSocketError::ConnectionClosed));
                 // Put the receiver back
                 *self.receiver.lock().unwrap() = Some(receiver);
                 result
             } else {
-                Err(Error::Network("No receiver available".to_string()))
+                Err(Error::WebSocket(WebSocketError::NotConnected))
             }
         }
 
@@ -303,8 +322,11 @@ pub mod wasm {
 
         async fn close(&self) -> Result<()> {
             if let Some(ws) = self.websocket.lock().unwrap().as_ref() {
-                ws.close()
-                    .map_err(|_| Error::Network("Failed to close WebSocket".to_string()))?;
+                ws.close().map_err(|_| {
+                    Error::WebSocket(WebSocketError::SendFailed {
+                        message: "Failed to close WebSocket".to_string(),
+                    })
+                })?;
             }
             *self.connected.lock().unwrap() = false;
             *self.websocket.lock().unwrap() = None;

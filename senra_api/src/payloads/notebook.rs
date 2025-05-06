@@ -53,6 +53,7 @@ pub struct NotebookStats {
 pub struct NotebookInfo {
     pub id: i64,
     pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub tags: Vec<String>,
     #[serde(with = "time::serde::iso8601")]
@@ -68,6 +69,7 @@ pub struct NotebookPreviewResponse {
     pub inner: NotebookInfo,
     pub author: UserPreviewResponse,
     pub stats: NotebookStats,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub preview: Option<Vec<u8>>,
 }
 
@@ -122,6 +124,7 @@ pub struct NotebookCommentResponse {
     #[serde(with = "time::serde::iso8601")]
     pub updated_at: OffsetDateTime,
     pub author: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub author_avatar: Option<Vec<u8>>,
 }
 
