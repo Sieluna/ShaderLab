@@ -7,6 +7,12 @@ members = [
 ]
 resolver = "2"
 
+[workspace.package]
+version = "0.1.0"
+authors = ["Sieluna <seele.peng@gmail.com>"]
+edition = "2024"
+repository = "https://github.com/Sieluna/ShaderLab"
+
 [workspace.dependencies]
 http = { version = "1", default-features = false }
 senra_api = { path = "senra_api", default-features = false }

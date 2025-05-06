@@ -34,11 +34,11 @@ impl ApiError {
 impl From<Error> for ApiError {
     fn from(err: Error) -> Self {
         let (message, code) = match err {
-            Error::Authentication(msg) => (msg, "AUTH_ERROR".to_string()),
-            Error::NotFound(msg) => (msg, "NOT_FOUND".to_string()),
-            Error::BadRequest(msg) => (msg, "BAD_REQUEST".to_string()),
-            Error::Network(msg) => (msg, "NETWORK_ERROR".to_string()),
-            Error::InternalServerError(msg) => (msg, "SERVER_ERROR".to_string()),
+            Error::Auth { message } => (message, "AUTH_ERROR".to_string()),
+            Error::NotFound { resource } => (resource, "NOT_FOUND".to_string()),
+            Error::InvalidRequest { message } => (message, "BAD_REQUEST".to_string()),
+            Error::Http(_) => ("Network error".to_string(), "NETWORK_ERROR".to_string()),
+            Error::Server { status: _, message } => (message, "SERVER_ERROR".to_string()),
             _ => (err.to_string(), "UNKNOWN_ERROR".to_string()),
         };
         Self { message, code }

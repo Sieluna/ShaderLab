@@ -65,7 +65,6 @@ impl PipelineContext {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
     struct TestResponse {

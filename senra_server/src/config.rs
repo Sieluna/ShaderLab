@@ -1,5 +1,6 @@
-use serde::Deserialize;
 use std::env;
+
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {

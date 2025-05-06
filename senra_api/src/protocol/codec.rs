@@ -1,4 +1,5 @@
 use alloc::vec::Vec;
+
 use serde::{Deserialize, Serialize};
 
 use super::error::ProtocolError;
@@ -109,7 +110,6 @@ impl Default for ProtocolConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
     struct TestRequest {

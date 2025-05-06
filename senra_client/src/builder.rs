@@ -92,7 +92,7 @@ impl ClientBuilder {
         }
 
         super::ApiClient::new(&config.base_url)
-            .map_err(|_| crate::error::Error::Unknown("Failed to create API client".to_string()))
+            .map_err(|_| crate::error::Error::Config { message: "Failed to create API client".to_string() })
     }
 }
 

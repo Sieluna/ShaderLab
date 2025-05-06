@@ -96,7 +96,7 @@ impl From<reqwest::Error> for HttpError {
     fn from(err: reqwest::Error) -> Self {
         if err.is_builder() {
             HttpError::RequestBuild { source: err }
-        } else if err.is_request() || err.is_connect() || err.is_timeout() {
+        } else if err.is_request() || err.is_timeout() {
             HttpError::Network { source: err }
         } else {
             HttpError::Response { source: err }
