@@ -85,10 +85,9 @@ jobs:
               repo: context.repo.repo,
               release_id: process.env.release_id
             });
-            const uploadUrl = data.upload_url.replace(/\{.*$/, '');
             const assetData = fs.readFileSync(assetPath);
             await github.rest.repos.uploadReleaseAsset({
-              url: uploadUrl,
+              url: data.upload_url,
               headers: {
                 'content-type': assetContentType,
                 'content-length': assetData.length
