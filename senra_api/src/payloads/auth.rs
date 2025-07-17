@@ -1,3 +1,5 @@
+use alloc::string::String;
+
 use serde::{Deserialize, Serialize};
 
 use super::user::UserInfoResponse;
@@ -26,6 +28,7 @@ pub struct RegisterRequest {
 #[cfg_attr(feature = "docs", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
 }
 

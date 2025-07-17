@@ -1,4 +1,8 @@
+use alloc::string::String;
+use alloc::vec::Vec;
+
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 use super::notebook::NotebookListResponse;
 
@@ -16,6 +20,7 @@ pub struct EditUserRequest {
 pub struct UserPreviewResponse {
     pub id: i64,
     pub username: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub avatar: Option<Vec<u8>>,
 }
 
@@ -33,7 +38,9 @@ pub struct UserInfoResponse {
 pub struct UserResponse {
     pub id: i64,
     pub username: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub avatar: Option<Vec<u8>>,
-    pub created_at: String,
+    #[serde(with = "time::serde::iso8601")]
+    pub created_at: OffsetDateTime,
     pub notebooks: NotebookListResponse,
 }

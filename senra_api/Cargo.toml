@@ -1,26 +1,19 @@
 [package]
 name = "senra_api"
-version = "0.1.0"
-edition = "2024"
-
-[lib]
-crate-type = ["cdylib", "rlib"]
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
 
 [dependencies]
-http.workspace = true
-reqwest = { version = "0.12", features = ["json"] }
-serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
+postcard = { version = "1", features = ["alloc"] }
+serde = { workspace = true, features = ["derive", "alloc"] }
+serde_json = { workspace = true, features = ["alloc"] }
 thiserror.workspace = true
-utoipa = { workspace = true, optional = true }
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-js-sys = "0.3"
-serde-wasm-bindgen = "0.6"
-wasm-bindgen = "0.2"
-wasm-bindgen-futures = "0.4"
-web-sys = { version = "0.3", features = ["Storage", "Window"] }
+time = { workspace = true, features = ["alloc", "formatting", "parsing", "serde"] }
+utoipa = { workspace = true, features = ["macros", "time"], optional = true }
 
 [features]
-default = []
-docs = ["dep:utoipa"]
+default = ["std"]
+std = ["serde/std", "serde_json/std"]
+docs = ["dep:utoipa", "std"]
