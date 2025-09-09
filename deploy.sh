@@ -136,8 +136,7 @@ parse_arguments "${@}"
 log() {
 	local -r level="${1}"
 	local -r message="${2}"
-	local -r timestamp
-	timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+	local -r timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
 	echo "[${timestamp}] [${level}] ${message}" | tee -a "${LOG_FILE:-/dev/null}" >&2
 }
 
@@ -220,7 +219,7 @@ check_dependencies() {
 	local -a package_map=()
 
 	# Check each required dependency
-	local -r required_commands=(curl unzip jq sqlite3 sha256sum)
+	local -r required_commands=(curl jq sha256sum sqlite3 unzip)
 	local cmd
 	for cmd in "${required_commands[@]}"; do
 		if ! command -v "${cmd}" >/dev/null 2>&1; then
@@ -372,14 +371,14 @@ set_secure_permissions() {
 # Arguments:
 #   endpoint: Health check endpoint (default: HEALTH_CHECK_ENDPOINT)
 #   timeout: Timeout in seconds (default: HEALTH_CHECK_TIMEOUT)
-#   port: Port number (default: 3000)
+#   port: Port number (default: 80)
 # Returns:
 #   0 if healthy, 1 if unhealthy
 #######################################
 health_check() {
 	local -r endpoint="${1:-${HEALTH_CHECK_ENDPOINT}}"
 	local -r timeout="${2:-${HEALTH_CHECK_TIMEOUT}}"
-	local -r port="${3:-3000}"
+	local -r port="${3:-80}"
 
 	log_info "Performing health check (timeout: ${timeout}s)..."
 
@@ -550,7 +549,7 @@ is_service_running() {
 
 #######################################
 # Fetches latest release information from GitHub API
-# Outputs download URL and optional checksum URL to stdout
+# Outputs download URL and optional SHA256 digest to stdout
 # Returns:
 #   0 if successful, 1 if failed
 #######################################
@@ -582,8 +581,11 @@ get_latest_release() {
 
 	# Get GitHub's calculated SHA256 digest
 	local sha256_digest
-	if ! sha256_digest=$(echo "${asset_info}" | jq -r ".digest // empty" | sed 's/^sha256://'); then
-		log_error "Failed to extract SHA256 digest"
+	sha256_digest=$(echo "${asset_info}" | jq -r ".digest // null")
+	if [[ "${sha256_digest}" != "null" && -n "${sha256_digest}" ]]; then
+		sha256_digest=$(echo "${sha256_digest}" | sed 's/^sha256://')
+	else
+		sha256_digest=""
 	fi
 
 	echo "${download_url}"
@@ -609,6 +611,10 @@ cmd_install() {
 
 	check_dependencies
 	create_service_user
+
+	if [ -f "${DB_FILE}" ]; then
+		sudo -u "${SERVICE_USER}" sqlite3 "${DB_FILE}" "VACUUM;"
+	fi
 
 	# Create directories with proper ownership
 	ensure_directory "${APP_BASE_DIR}" "${SERVICE_USER}:${SERVICE_GROUP}" "750"
@@ -638,7 +644,7 @@ Group=${SERVICE_GROUP}
 # Security hardening
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectSystem=strict
+ProtectSystem=full
 ProtectHome=true
 ReadWritePaths=${DATA_DIR} ${LOG_DIR}
 ProtectKernelTunables=true
@@ -647,7 +653,7 @@ ProtectControlGroups=true
 
 # Environment variables
 Environment="HOST=0.0.0.0"
-Environment="PORT=3000"
+Environment="PORT=80"
 Environment="DATABASE_URL=sqlite:file:${DB_FILE}"
 Environment="RUST_LOG=info"
 
@@ -667,10 +673,10 @@ cmd_deploy() {
 	ensure_directory "${RELEASES_DIR}" "${SERVICE_USER}:${SERVICE_GROUP}" "750"
 
 	# Get release information
-	local -a release_urls
-	mapfile -t release_urls < <(get_latest_release)
-	local -r asset_url="${release_urls[0]}"
-	local -r checksum_url="${release_urls[1]:-}"
+	local -a release_data
+	mapfile -t release_data < <(get_latest_release)
+	local -r asset_url="${release_data[0]}"
+	local -r sha256_digest="${release_data[1]:-}"
 
 	if [[ -z "${asset_url}" || "${asset_url}" == "null" ]]; then
 		log_error "Release asset not found"
@@ -695,18 +701,9 @@ cmd_deploy() {
 	# Download release
 	download_with_retry "${asset_url}" "${temp_dir}/release.zip"
 
-	# Download and verify checksum if available
-	if [[ -n "${checksum_url}" ]]; then
-		download_with_retry "${checksum_url}" "${temp_dir}/release.zip.sha256"
-		local expected_checksum
-		# Better checksum parsing - handle different formats
-		if [[ -f "${temp_dir}/release.zip.sha256" ]]; then
-			if ! expected_checksum=$(head -n1 "${temp_dir}/release.zip.sha256" | awk '{print $1}' | tr -d '[:space:]'); then
-				log_warn "Failed to parse checksum file, skipping verification"
-			else
-				verify_file_integrity "${temp_dir}/release.zip" "${expected_checksum}"
-			fi
-		fi
+	# Verify checksum if available from GitHub API
+	if [[ -n "${sha256_digest}" ]]; then
+		verify_file_integrity "${temp_dir}/release.zip" "${sha256_digest}"
 	fi
 
 	# Extract and validate
@@ -792,7 +789,6 @@ cmd_rollback() {
 	fi
 }
 
-# Fixed: Improved database operations with service state checking
 cmd_db_backup() {
 	check_root
 
@@ -997,14 +993,6 @@ Database Management:
   db:restore <filename>   Restore from backup
 
   help                    Show this help
-
-Features:
-- Robust error handling and validation
-- Google Bash Style Guide compliance
-- Comprehensive logging and monitoring
-- Atomic deployments with rollback capability
-- Secure file permissions and ownership
-- Health checks and service verification
 
 Examples:
   # Standard installation
