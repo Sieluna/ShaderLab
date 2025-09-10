@@ -219,7 +219,7 @@ check_dependencies() {
 	local -a package_map=()
 
 	# Check each required dependency
-	local -r required_commands=(curl jq sha256sum sqlite3 unzip)
+	local -r required_commands=(curl jq setcap sha256sum sqlite3 unzip)
 	local cmd
 	for cmd in "${required_commands[@]}"; do
 		if ! command -v "${cmd}" >/dev/null 2>&1; then
@@ -227,6 +227,7 @@ check_dependencies() {
 			# Map command to package name
 			case "${cmd}" in
 			sha256sum) package_map+=("coreutils") ;;
+			setcap) package_map+=("libcap2-bin") ;;
 			*) package_map+=("${cmd}") ;;
 			esac
 		fi
@@ -735,6 +736,11 @@ cmd_deploy() {
 	if ! chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${release_dir}"; then
 		log_error "Failed to set ownership on release directory"
 	fi
+
+	# Set capability to bind to port
+	if ! setcap 'cap_net_bind_service=+ep' "${release_dir}/${BINARY_NAME}"; then
+		log_error "Failed to set capability to bind to port"
+ 	fi
 
 	# Update symlink
 	if ! ln -sfn "${release_dir}" "${CURRENT_SYMLINK}"; then
