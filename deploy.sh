@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Manages installation, deployment, rollback, and database operations for Senra Server
+# Manages installation, deployment, rollback for Senra Server
 #
 # Usage: ./deploy.sh [options] <command>
 # See show_usage() for detailed usage information
@@ -39,7 +39,6 @@ HEALTH_CHECK_ENDPOINT="${HEALTH_CHECK_ENDPOINT:-${DEFAULT_HEALTH_CHECK_ENDPOINT}
 RELEASES_DIR="${APP_BASE_DIR}/releases"
 CURRENT_SYMLINK="${APP_BASE_DIR}/current"
 DB_FILE="${DATA_DIR}/shaderlab.db"
-DB_BACKUP_DIR="${DATA_DIR}/backups"
 LOG_FILE="/var/log/${SERVICE_NAME}/deploy.log"
 LOG_DIR="/var/log/${SERVICE_NAME}"
 
@@ -102,7 +101,7 @@ parse_arguments() {
 			shift
 			break
 			;;
-		install | deploy | rollback | list-releases | db:backup | db:list | db:restore | help | status) break ;;
+		install | deploy | rollback | status | list-releases | help) break ;;
 		*)
 			echo "Error: Unknown option '${1}'" >&2
 			echo "Use '${0} help' for usage information." >&2
@@ -116,7 +115,6 @@ parse_arguments() {
 	RELEASES_DIR="${APP_BASE_DIR}/releases"
 	CURRENT_SYMLINK="${APP_BASE_DIR}/current"
 	DB_FILE="${DATA_DIR}/shaderlab.db"
-	DB_BACKUP_DIR="${DATA_DIR}/backups"
 	LOG_FILE="/var/log/${SERVICE_NAME}/deploy.log"
 	LOG_DIR="/var/log/${SERVICE_NAME}"
 }
@@ -160,23 +158,6 @@ check_root() {
 	if [[ "$(id -u)" -ne 0 ]]; then
 		log_error "This script requires root privileges. Use 'sudo ${0} <command>'"
 	fi
-}
-
-#######################################
-# Prompts user for confirmation
-# Arguments:
-#   prompt: Confirmation prompt text
-# Returns:
-#   0 if user confirms (y/Y), 1 otherwise
-#######################################
-confirm() {
-	local -r prompt="${1}"
-	local choice
-	read -r -p "${prompt} (y/N): " choice
-	case "${choice}" in
-	[Yy] | [Yy][Ee][Ss]) return 0 ;;
-	*) return 1 ;;
-	esac
 }
 
 #######################################
@@ -334,15 +315,6 @@ set_secure_permissions() {
 		fi
 		if ! chmod 750 "${DATA_DIR}"; then
 			log_error "Failed to set permissions on ${DATA_DIR}"
-		fi
-	fi
-
-	if [[ -d "${DB_BACKUP_DIR}" ]]; then
-		if ! chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${DB_BACKUP_DIR}"; then
-			log_error "Failed to set ownership on ${DB_BACKUP_DIR}"
-		fi
-		if ! chmod 750 "${DB_BACKUP_DIR}"; then
-			log_error "Failed to set permissions on ${DB_BACKUP_DIR}"
 		fi
 	fi
 
@@ -621,7 +593,6 @@ cmd_install() {
 	ensure_directory "${APP_BASE_DIR}" "${SERVICE_USER}:${SERVICE_GROUP}" "750"
 	ensure_directory "${RELEASES_DIR}" "${SERVICE_USER}:${SERVICE_GROUP}" "750"
 	ensure_directory "${DATA_DIR}" "${SERVICE_USER}:${SERVICE_GROUP}" "750"
-	ensure_directory "${DB_BACKUP_DIR}" "${SERVICE_USER}:${SERVICE_GROUP}" "750"
 
 	# Set permissions after all directories are created and user exists
 	set_secure_permissions
@@ -795,77 +766,6 @@ cmd_rollback() {
 	fi
 }
 
-cmd_db_backup() {
-	check_root
-
-	# Ensure backup directory exists
-	ensure_directory "$DB_BACKUP_DIR" "$SERVICE_USER:$SERVICE_GROUP" "750"
-
-	[[ ! -f "$DB_FILE" ]] && {
-		log_warn "Database file not found, skipping backup"
-		return 0
-	}
-
-	local backup_file="$DB_BACKUP_DIR/shaderlab.db-$(date +%Y%m%d-%H%M%S).bak"
-	log_info "Creating database backup: $(basename "$backup_file")"
-
-	# Check if service is running
-	local was_running=false
-	if is_service_running; then
-		was_running=true
-		log_info "Stopping service for consistent backup..."
-		systemctl stop "$SERVICE_NAME"
-	fi
-
-	# Create backup
-	cp "$DB_FILE" "$backup_file"
-
-	# Set proper ownership
-	chown "$SERVICE_USER:$SERVICE_GROUP" "$backup_file"
-	chmod 640 "$backup_file"
-
-	# Restart service only if it was running
-	if [[ "$was_running" == "true" ]]; then
-		log_info "Restarting service..."
-		systemctl start "$SERVICE_NAME"
-	fi
-
-	log_info "Database backup completed successfully"
-}
-
-cmd_db_restore() {
-	check_root
-	local backup_file="$DB_BACKUP_DIR/${1:?Backup filename required}"
-	[[ ! -f "$backup_file" ]] && log_error "Backup file not found: $backup_file"
-
-	confirm "Restore database from $(basename "$backup_file")? This will overwrite the current database!" || exit 0
-
-	log_info "Restoring database from: $(basename "$backup_file")"
-
-	# Check if service is running
-	local was_running=false
-	if is_service_running; then
-		was_running=true
-		log_info "Stopping service for database restore..."
-		systemctl stop "$SERVICE_NAME"
-	fi
-
-	# Restore database
-	cp -f "$backup_file" "$DB_FILE"
-
-	# Set proper ownership
-	chown "$SERVICE_USER:$SERVICE_GROUP" "$DB_FILE"
-	chmod 640 "$DB_FILE"
-
-	# Restart service only if it was running
-	if [[ "$was_running" == "true" ]]; then
-		log_info "Restarting service..."
-		systemctl start "$SERVICE_NAME"
-	fi
-
-	log_info "Database restore completed successfully"
-}
-
 cmd_cleanup_releases() {
 	log_info "Cleaning up old releases..."
 
@@ -992,12 +892,6 @@ Commands:
   rollback                Rollback to previous version
   status                  Show service status and health
   list-releases           List available releases
-
-Database Management:
-  db:backup               Create database backup
-  db:list                 List available backups
-  db:restore <filename>   Restore from backup
-
   help                    Show this help
 
 Examples:
@@ -1030,18 +924,6 @@ main() {
 	rollback) cmd_rollback ;;
 	status) cmd_status ;;
 	list-releases) cmd_list_releases ;;
-	db:backup) cmd_db_backup ;;
-	db:list)
-		if [[ -d "${DB_BACKUP_DIR}" ]]; then
-			find "${DB_BACKUP_DIR}" -type f -name "*.bak" -printf "%f\n" 2>/dev/null | sort -r || echo "No backups found"
-		else
-			echo "Backup directory ${DB_BACKUP_DIR} does not exist"
-		fi
-		;;
-	db:restore)
-		shift
-		cmd_db_restore "${1:-}"
-		;;
 	help) cmd_usage ;;
 	*)
 		cmd_usage
