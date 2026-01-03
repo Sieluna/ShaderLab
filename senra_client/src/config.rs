@@ -1,21 +1,29 @@
 use senra_api::*;
+use url::Url;
 
 #[derive(Debug, Clone)]
 pub struct ClientConfig {
-    pub base_url: String,
+    pub http_url: Url,
+    pub ws_url: Option<Url>,
     pub token: Option<String>,
     pub protocol_config: ProtocolConfig,
-    pub timeout_ms: Option<u64>,
+    pub timeout_ms: u64,
 }
 
 impl ClientConfig {
-    pub fn new(base_url: impl Into<String>) -> Self {
+    pub fn new(http_url: Url) -> Self {
         Self {
-            base_url: base_url.into(),
+            http_url,
+            ws_url: None,
             token: None,
             protocol_config: ProtocolConfig::default(),
-            timeout_ms: Some(30000),
+            timeout_ms: 30000,
         }
+    }
+
+    pub fn with_ws_url(mut self, ws_url: Url) -> Self {
+        self.ws_url = Some(ws_url);
+        self
     }
 
     pub fn with_token(mut self, token: impl Into<String>) -> Self {
@@ -29,15 +37,15 @@ impl ClientConfig {
     }
 
     pub fn with_timeout(mut self, timeout_ms: u64) -> Self {
-        self.timeout_ms = Some(timeout_ms);
+        self.timeout_ms = timeout_ms;
         self
     }
 
-    pub fn json() -> Self {
-        Self::new("").with_protocol(ProtocolConfig::json())
+    pub fn json(http_url: Url) -> Self {
+        Self::new(http_url).with_protocol(ProtocolConfig::json())
     }
 
-    pub fn postcard() -> Self {
-        Self::new("").with_protocol(ProtocolConfig::postcard())
+    pub fn postcard(http_url: Url) -> Self {
+        Self::new(http_url).with_protocol(ProtocolConfig::postcard())
     }
 }

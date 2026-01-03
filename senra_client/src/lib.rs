@@ -1,17 +1,11 @@
-mod builder;
+pub mod client;
 mod config;
 mod error;
-mod http;
-mod ws;
+pub mod http;
+pub mod ws;
 
-#[cfg(target_arch = "wasm32")]
-mod wasm;
-
-pub use builder::*;
-pub use config::*;
-pub use error::*;
-pub use http::*;
-pub use ws::{WsClient, WsMessage, WsResponse, WsTransport};
-
-#[cfg(target_arch = "wasm32")]
-pub use wasm::*;
+pub use client::ApiClient;
+pub use config::ClientConfig;
+pub use error::{Error, Result};
+pub use http::HttpClient;
+pub use ws::{Message, WebSocket, WsClient};

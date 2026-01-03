@@ -6,7 +6,7 @@ edition.workspace = true
 repository.workspace = true
 
 [dependencies]
-postcard = { version = "1", features = ["alloc"] }
+postcard = { version = "1", default-features = false, features = ["alloc"] }
 serde = { workspace = true, features = ["derive", "alloc"] }
 serde_json = { workspace = true, features = ["alloc"] }
 thiserror.workspace = true

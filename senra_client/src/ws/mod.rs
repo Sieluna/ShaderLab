@@ -1,7 +1,12 @@
 mod client;
-mod message;
-mod transport;
+mod error;
+pub mod message;
+pub mod socket;
 
-pub use client::*;
-pub use message::*;
-pub use transport::*;
+#[cfg(target_arch = "wasm32")]
+pub mod wasm;
+
+pub use client::WsClient;
+pub use error::{Error, Result};
+pub use message::Message;
+pub use socket::WebSocket;
