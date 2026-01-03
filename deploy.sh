@@ -43,98 +43,18 @@ LOG_FILE="/var/log/${SERVICE_NAME}/deploy.log"
 LOG_DIR="/var/log/${SERVICE_NAME}"
 
 #######################################
-# Parse command line arguments
-#######################################
-parse_arguments() {
-	while [[ ${#} -gt 0 ]]; do
-		case "${1}" in
-		--repo=*)
-			GITHUB_REPO="${1#*=}"
-			if [[ -z "${GITHUB_REPO}" ]]; then
-				echo "Error: --repo requires a non-empty value" >&2
-				exit 1
-			fi
-			;;
-		--binary=*)
-			BINARY_NAME="${1#*=}"
-			if [[ -z "${BINARY_NAME}" ]]; then
-				echo "Error: --binary requires a non-empty value" >&2
-				exit 1
-			fi
-			;;
-		--service=*)
-			SERVICE_NAME="${1#*=}"
-			if [[ -z "${SERVICE_NAME}" ]]; then
-				echo "Error: --service requires a non-empty value" >&2
-				exit 1
-			fi
-			;;
-		--app-dir=*)
-			APP_BASE_DIR="${1#*=}"
-			if [[ -z "${APP_BASE_DIR}" ]]; then
-				echo "Error: --app-dir requires a non-empty value" >&2
-				exit 1
-			fi
-			;;
-		--data-dir=*)
-			DATA_DIR="${1#*=}"
-			if [[ -z "${DATA_DIR}" ]]; then
-				echo "Error: --data-dir requires a non-empty value" >&2
-				exit 1
-			fi
-			;;
-		--user=*)
-			SERVICE_USER="${1#*=}"
-			if [[ -z "${SERVICE_USER}" ]]; then
-				echo "Error: --user requires a non-empty value" >&2
-				exit 1
-			fi
-			;;
-		--group=*)
-			SERVICE_GROUP="${1#*=}"
-			if [[ -z "${SERVICE_GROUP}" ]]; then
-				echo "Error: --group requires a non-empty value" >&2
-				exit 1
-			fi
-			;;
-		--)
-			shift
-			break
-			;;
-		install | deploy | rollback | status | list-releases | help) break ;;
-		*)
-			echo "Error: Unknown option '${1}'" >&2
-			echo "Use '${0} help' for usage information." >&2
-			exit 1
-			;;
-		esac
-		shift
-	done
-
-	# Recalculate dependent paths after parsing
-	RELEASES_DIR="${APP_BASE_DIR}/releases"
-	CURRENT_SYMLINK="${APP_BASE_DIR}/current"
-	DB_FILE="${DATA_DIR}/shaderlab.db"
-	LOG_FILE="/var/log/${SERVICE_NAME}/deploy.log"
-	LOG_DIR="/var/log/${SERVICE_NAME}"
-}
-
-parse_arguments "${@}"
-
-#######################################
 # Utility Functions
 #######################################
 
-#######################################
-# Logs a message with timestamp and level
+# Logs a message to stdio and a log file. Exits on ERROR.
 # Arguments:
-#   level: Log level (INFO, WARN, ERROR)
-#   message: Log message
-#######################################
+#   $1: Log level (INFO, WARN, ERROR)
+#   $2: Log message
 log() {
 	local -r level="${1}"
 	local -r message="${2}"
 	local -r timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+
 	echo "[${timestamp}] [${level}] ${message}" | tee -a "${LOG_FILE:-/dev/null}" >&2
 }
 
@@ -151,22 +71,18 @@ log_error() {
 	exit 1
 }
 
-#######################################
-# Verifies script is running as root user
-#######################################
+# Verifies the script is running as the root user.
 check_root() {
 	if [[ "$(id -u)" -ne 0 ]]; then
 		log_error "This script requires root privileges. Use 'sudo ${0} <command>'"
 	fi
 }
 
-#######################################
-# Ensures directory exists with proper permissions
+# Ensures a directory exists with specified ownership and permissions.
 # Arguments:
-#   directory: Directory path
-#   owner: Owner (optional)
-#   permissions: Permissions (default: 755)
-#######################################
+#   $1: Directory path
+#   $2: Owner:group (optional)
+#   $3: Permissions (optional, defaults to 755)
 ensure_directory() {
 	local -r directory="${1}"
 	local -r owner="${2:-}"
@@ -190,188 +106,164 @@ ensure_directory() {
 	fi
 }
 
-#######################################
 # Checks and installs required system dependencies
-# Installs missing packages in batch for efficiency
-#######################################
-check_dependencies() {
-	log_info "Checking system dependencies..."
-	local -a missing_deps=()
-	local -a package_map=()
+ensure_dependencies() {
+	local -A pkg_map=(
+		["curl"]="curl curl curl"
+		["jq"]="jq jq jq"
+		["setcap"]="libcap2-bin libcap libcap"
+		["sha256sum"]="coreutils coreutils coreutils"
+		["sqlite3"]="sqlite3 sqlite sqlite"
+		["unzip"]="unzip unzip unzip"
+	)
+	local -a missing_pkgs=()
+	local pkg_cmd idx=0
 
-	# Check each required dependency
-	local -r required_commands=(curl jq setcap sha256sum sqlite3 unzip)
-	local cmd
-	for cmd in "${required_commands[@]}"; do
-		if ! command -v "${cmd}" >/dev/null 2>&1; then
-			missing_deps+=("${cmd}")
-			# Map command to package name
-			case "${cmd}" in
-			sha256sum) package_map+=("coreutils") ;;
-			setcap) package_map+=("libcap2-bin") ;;
-			*) package_map+=("${cmd}") ;;
-			esac
+	# Detect package manager
+	if command -v apt-get > /dev/null 2>&1; then
+		pkg_cmd="apt-get" idx=1
+	elif command -v yum > /dev/null 2>&1; then
+		pkg_cmd="yum" idx=2
+	elif command -v dnf > /dev/null 2>&1; then
+		pkg_cmd="dnf" idx=3
+	else
+		log_error "Unsupported package manager (need apt-get, yum or dnf)"
+	fi
+
+	# Find missing packages
+	for cmd in "${!pkg_map[@]}"; do
+		if ! command -v "${cmd}" > /dev/null 2>&1; then
+			IFS=' ' read -ra pkg_parts <<< "${pkg_map[$cmd]}"
+			missing_pkgs+=("${pkg_parts[$((idx - 1))]}")
 		fi
 	done
 
-	# Install all missing dependencies at once
-	if [[ ${#missing_deps[@]} -gt 0 ]]; then
-		log_info "Installing missing dependencies: ${missing_deps[*]} -> packages: ${package_map[*]}"
-		if ! apt-get update >/dev/null; then
-			log_error "Failed to update package lists"
-		fi
-		# shellcheck disable=SC2048,SC2086
-		if ! apt-get install -y ${package_map[*]}; then
-			log_error "Failed to install packages: ${package_map[*]}"
-		fi
-
-		# Verify installation
-		for cmd in "${missing_deps[@]}"; do
-			if ! command -v "${cmd}" >/dev/null 2>&1; then
-				log_error "Failed to install dependency: ${cmd}"
-			fi
-		done
-		log_info "All dependencies installed successfully"
+	# Install missing packages if any
+	if ((${#missing_pkgs[@]} > 0)); then
+		log_info "Installing: ${missing_pkgs[*]}"
+		[[ "$pkg_cmd" == "apt-get" ]] && sudo apt-get update
+		${pkg_cmd} install -y "${missing_pkgs[@]}" || log_error "Failed to install packages"
 	fi
 }
 
-#######################################
-# Creates service user and group if they don't exist
-# Handles cases where user and group have same name
-#######################################
+# Creates the service user and group if they do not exist.
 create_service_user() {
-	# Handle case where user and group have the same name
-	if [[ "${SERVICE_USER}" == "${SERVICE_GROUP}" ]]; then
-		# Create user with primary group of the same name (system default)
-		if ! id "${SERVICE_USER}" >/dev/null 2>&1; then
-			log_info "Creating service user and group: ${SERVICE_USER}"
-			if ! useradd --system --shell /bin/false --home-dir "${APP_BASE_DIR}" --create-home "${SERVICE_USER}"; then
-				log_error "Failed to create service user: ${SERVICE_USER}"
-			fi
-		else
-			log_info "Service user ${SERVICE_USER} already exists"
+	if ! getent group "${SERVICE_GROUP}" > /dev/null; then
+		log_info "Creating service group: ${SERVICE_GROUP}"
+		if ! groupadd --system "${SERVICE_GROUP}"; then
+			log_error "Failed to create service group: ${SERVICE_GROUP}"
 		fi
-	else
-		# Create group first, then user
-		if ! getent group "${SERVICE_GROUP}" >/dev/null 2>&1; then
-			log_info "Creating service group: ${SERVICE_GROUP}"
-			if ! groupadd --system "${SERVICE_GROUP}"; then
-				log_error "Failed to create service group: ${SERVICE_GROUP}"
-			fi
-		fi
+	fi
 
-		if ! id "${SERVICE_USER}" >/dev/null 2>&1; then
-			log_info "Creating service user: ${SERVICE_USER}"
-			if ! useradd --system --shell /bin/false --home-dir "${APP_BASE_DIR}" --create-home --gid "${SERVICE_GROUP}" "${SERVICE_USER}"; then
-				log_error "Failed to create service user: ${SERVICE_USER}"
-			fi
-		else
-			# Add existing user to group if not already member
-			if ! id -nG "${SERVICE_USER}" | grep -qw "${SERVICE_GROUP}"; then
-				log_info "Adding user ${SERVICE_USER} to group ${SERVICE_GROUP}"
-				if ! usermod -a -G "${SERVICE_GROUP}" "${SERVICE_USER}"; then
-					log_error "Failed to add user ${SERVICE_USER} to group ${SERVICE_GROUP}"
-				fi
-			fi
+	if ! id "${SERVICE_USER}" > /dev/null 2>&1; then
+		log_info "Creating service user: ${SERVICE_USER}"
+		if ! useradd --system --shell /bin/false --home-dir "${APP_BASE_DIR}" \
+			--create-home --gid "${SERVICE_GROUP}" "${SERVICE_USER}"; then
+			log_error "Failed to create service user: ${SERVICE_USER}"
 		fi
 	fi
 }
 
-#######################################
-# Sets secure file permissions on all application directories
-# Must be called after user/group creation
-#######################################
+# Configures Nginx as reverse proxy for port 80 -> 3000
+setup_nginx() {
+	log_info "Setting up Nginx reverse proxy..."
+
+	# Install Nginx if not present
+	if ! command -v nginx > /dev/null 2>&1; then
+		log_info "Installing Nginx..."
+		apt-get update > /dev/null 2>&1 || log_error "Failed to update package list"
+		apt-get install -y nginx > /dev/null 2>&1 || log_error "Failed to install Nginx"
+	fi
+
+	# Ensure sites-available directory exists
+	mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+
+	# Create Nginx configuration
+	cat > /etc/nginx/sites-available/senra << 'NGINX_EOF'
+server {
+    listen 80 default_server;
+    server_name _;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+}
+NGINX_EOF
+
+	# Enable site
+	if [[ ! -L /etc/nginx/sites-enabled/senra ]]; then
+		ln -s /etc/nginx/sites-available/senra /etc/nginx/sites-enabled/senra
+	fi
+
+	# Remove default site
+	rm -f /etc/nginx/sites-enabled/default
+
+	# Test configuration
+	if ! nginx -t > /dev/null 2>&1; then
+		log_error "Nginx configuration test failed"
+	fi
+
+	# Enable and start Nginx
+	systemctl enable nginx > /dev/null 2>&1 || log_error "Failed to enable Nginx"
+	systemctl restart nginx > /dev/null 2>&1 || log_error "Failed to restart Nginx"
+
+	log_info "Nginx reverse proxy configured successfully"
+}
+
+# Sets secure, consistent permissions on application directories and files.
 set_secure_permissions() {
+	local -r owner="${SERVICE_USER}:${SERVICE_GROUP}"
+
 	log_info "Setting secure permissions..."
+	ensure_directory "${APP_BASE_DIR}" "${owner}" 755
+	ensure_directory "${RELEASES_DIR}" "${owner}" 755
+	ensure_directory "${DATA_DIR}" "${owner}" 755
+	ensure_directory "${LOG_DIR}" "${owner}" 755
 
-	# Ensure user and group exist before setting permissions
-	if ! id "${SERVICE_USER}" >/dev/null 2>&1; then
-		log_error "Service user ${SERVICE_USER} does not exist. Run create_service_user first."
-	fi
-
-	# App directory: owner=service_user, group=service_group, mode=750
-	if [[ -d "${APP_BASE_DIR}" ]]; then
-		if ! chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${APP_BASE_DIR}"; then
-			log_error "Failed to set ownership on ${APP_BASE_DIR}"
-		fi
-		if ! chmod 750 "${APP_BASE_DIR}"; then
-			log_error "Failed to set permissions on ${APP_BASE_DIR}"
-		fi
-	fi
-
-	if [[ -d "${RELEASES_DIR}" ]]; then
-		if ! chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${RELEASES_DIR}"; then
-			log_error "Failed to set ownership on ${RELEASES_DIR}"
-		fi
-		if ! chmod 750 "${RELEASES_DIR}"; then
-			log_error "Failed to set permissions on ${RELEASES_DIR}"
-		fi
-	fi
-
-	# Data directory: owner=service_user, group=service_group, mode=750
-	if [[ -d "${DATA_DIR}" ]]; then
-		if ! chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${DATA_DIR}"; then
-			log_error "Failed to set ownership on ${DATA_DIR}"
-		fi
-		if ! chmod 750 "${DATA_DIR}"; then
-			log_error "Failed to set permissions on ${DATA_DIR}"
-		fi
-	fi
-
-	# Database file: mode=640
+	# Database file: mode=644
 	if [[ -f "${DB_FILE}" ]]; then
-		if ! chown "${SERVICE_USER}:${SERVICE_GROUP}" "${DB_FILE}"; then
+		if ! chown "${owner}" "${DB_FILE}"; then
 			log_error "Failed to set ownership on ${DB_FILE}"
 		fi
-		if ! chmod 640 "${DB_FILE}"; then
+		if ! chmod 644 "${DB_FILE}"; then
 			log_error "Failed to set permissions on ${DB_FILE}"
 		fi
 	fi
-
-	# Log directory
-	if [[ -d "${LOG_DIR}" ]]; then
-		if ! chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${LOG_DIR}"; then
-			log_error "Failed to set ownership on ${LOG_DIR}"
-		fi
-		if ! chmod 750 "${LOG_DIR}"; then
-			log_error "Failed to set permissions on ${LOG_DIR}"
-		fi
-	fi
 }
 
-#######################################
-# Performs application health check with configurable timeout
+# Performs an application health check via an HTTP endpoint.
 # Arguments:
-#   endpoint: Health check endpoint (default: HEALTH_CHECK_ENDPOINT)
-#   timeout: Timeout in seconds (default: HEALTH_CHECK_TIMEOUT)
-#   port: Port number (default: 80)
+#   $1: Health check endpoint (default: HEALTH_CHECK_ENDPOINT)
+#   $2: Timeout in seconds (default: HEALTH_CHECK_TIMEOUT)
+#   $3: Port number (default: 80)
 # Returns:
 #   0 if healthy, 1 if unhealthy
-#######################################
 health_check() {
 	local -r endpoint="${1:-${HEALTH_CHECK_ENDPOINT}}"
 	local -r timeout="${2:-${HEALTH_CHECK_TIMEOUT}}"
 	local -r port="${3:-80}"
+	local i
 
 	log_info "Performing health check (timeout: ${timeout}s)..."
 
-	local i
 	for ((i = 1; i <= timeout; i++)); do
-		# Try health check
-		if curl -f -s --max-time 5 "http://localhost:${port}${endpoint}" >/dev/null 2>&1; then
-			log_info "Health check passed after ${i}s"
+		if curl --fail --silent --max-time 5 "http://localhost:${port}${endpoint}" > /dev/null; then
+			log_info "Health check passed after ${i}s."
 			return 0
 		fi
 
-		# Check if service is still running
 		if ! systemctl is-active --quiet "${SERVICE_NAME}"; then
 			log_error "Service stopped during health check"
 			return 1
 		fi
 
-		if ((i % 10 == 0)); then
-			log_info "Health check still running... (${i}/${timeout}s)"
-		fi
+		((i % 10 == 0)) && log_info "Health check still running... (${i}/${timeout}s)"
 
 		sleep 1
 	done
@@ -380,20 +272,20 @@ health_check() {
 	return 1
 }
 
-#######################################
-# Verifies file integrity using SHA256 checksum
+# Verifies file integrity using SHA256 checksum.
 # Arguments:
-#   file_path: Path to file to verify
-#   expected_checksum: Expected SHA256 checksum
+#   $1: Path to file to verify
+#   $2: Expected SHA256 checksum
 # Returns:
 #   0 if checksum matches, 1 otherwise
-#######################################
-verify_file_integrity() {
+verify_integrity() {
 	local -r file_path="${1}"
 	local expected_checksum="${2}"
+	local actual_checksum
 
 	if [[ ! -f "${file_path}" ]]; then
 		log_error "File does not exist: ${file_path}"
+		return 1
 	fi
 
 	if [[ -z "${expected_checksum}" ]]; then
@@ -402,54 +294,34 @@ verify_file_integrity() {
 	fi
 
 	log_info "Verifying file integrity..."
-	local actual_checksum
-	if ! actual_checksum=$(sha256sum "${file_path}" | cut -d' ' -f1); then
-		log_error "Failed to calculate checksum for ${file_path}"
-	fi
-
-	# Clean up expected checksum (remove any extra whitespace or filename)
-	expected_checksum=$(echo "${expected_checksum}" | tr -d '[:space:]' | cut -d' ' -f1)
+	IFS=' ' read -r actual_checksum _ < <(sha256sum "${file_path}")
 
 	if [[ "${actual_checksum}" != "${expected_checksum}" ]]; then
 		log_error "File integrity check failed. Expected: ${expected_checksum}, Actual: ${actual_checksum}"
+		return 1
 	fi
 
 	log_info "File integrity verified successfully"
 	return 0
 }
 
-#######################################
-# Downloads file with retry mechanism
+# Downloads a file from a URL with retry.
 # Arguments:
-#   url: URL to download
-#   output: Output file path
-#   max_retries: Maximum retry attempts (default: 3)
-#   retry_delay: Delay between retries (default: 5s)
+#   $1: URL to download
+#   $2: Output file path
 # Returns:
 #   0 if successful, 1 if all retries failed
-#######################################
-download_with_retry() {
-	local -r url="${1}"
-	local -r output="${2}"
-	local -r max_retries="${3:-3}"
-	local -r retry_delay="${4:-5}"
+download() {
+	local -r url="$1" output="$2"
 
-	local i
-	for ((i = 1; i <= max_retries; i++)); do
-		log_info "Download attempt ${i}/${max_retries}: ${url}"
+	log_info "Downloading from ${url} to ${output}..."
+	if curl --location --fail --retry 3 --retry-delay 5 \
+		--connect-timeout 20 --max-time 300 "${url}" -o "${output}"; then
+		log_info "Download successful"
+		return 0
+	fi
 
-		if curl -L --fail --retry 2 --retry-delay 2 --max-time 300 "${url}" -o "${output}"; then
-			log_info "Download successful"
-			return 0
-		fi
-
-		if ((i < max_retries)); then
-			log_warn "Download failed, retrying in ${retry_delay}s..."
-			sleep "${retry_delay}"
-		fi
-	done
-
-	log_error "Download failed after ${max_retries} attempts"
+	log_error "Download failed after multiple retries."
 	return 1
 }
 
@@ -457,148 +329,153 @@ download_with_retry() {
 # Service Management Functions
 #######################################
 
-#######################################
-# Restarts the systemd service with health check validation
+# Starts the systemd service.
 # Returns:
-#   0 if service restarted successfully and passes health check
-#   1 if restart or health check failed
-#######################################
+#   0 if service started successfully, 1 otherwise.
+start_service() {
+	log_info "Starting service: ${SERVICE_NAME}"
+	if ! systemctl start "${SERVICE_NAME}"; then
+		log_error "Failed to start service: ${SERVICE_NAME}"
+		return 1
+	fi
+	return 0
+}
+
+# Stops the systemd service.
+# Returns:
+#   0 if service stopped successfully, 1 otherwise.
+stop_service() {
+	if ! is_service_running; then
+		log_info "Service ${SERVICE_NAME} is not running, no need to stop."
+		return 0
+	fi
+	log_info "Stopping service: ${SERVICE_NAME}"
+	if ! systemctl stop "${SERVICE_NAME}"; then
+		log_error "Failed to stop service: ${SERVICE_NAME}"
+		return 1
+	fi
+	return 0
+}
+
+# Restarts the systemd service.
+# Returns:
+#   0 if service restarted successfully, 1 otherwise.
 restart_service() {
 	log_info "Restarting service: ${SERVICE_NAME}"
-
-	# Check if service exists
-	if ! systemctl list-unit-files --type=service | grep -q "^${SERVICE_NAME}.service"; then
-		log_error "Service ${SERVICE_NAME} does not exist"
-	fi
-
-	# Restart the service
 	if ! systemctl restart "${SERVICE_NAME}"; then
 		log_error "Failed to restart service: ${SERVICE_NAME}"
+		return 1
 	fi
+	return 0
+}
 
-	# Give service time to initialize before checking
-	log_info "Waiting for service to initialize..."
-	sleep 3
-
-	# Wait for service to start and verify it's running
-	local -r max_wait=30
+# Waits for the service to become active.
+# Arguments:
+#   $1: Timeout in seconds (default: 30)
+# Returns:
+#   0 if service is active within timeout, 1 otherwise.
+wait_for_service_active() {
+	local -r timeout="${1:-30}"
 	local i
-	for ((i = 1; i <= max_wait; i++)); do
+
+	log_info "Waiting for service to become active (timeout: ${timeout}s)..."
+	for ((i = 1; i <= timeout; i++)); do
 		if systemctl is-active --quiet "${SERVICE_NAME}"; then
-			log_info "Service is active, waiting a bit more for full startup..."
-			sleep 2 # Give service time to fully start
-
-			# Perform health check
-			if health_check; then
-				log_info "Service restarted and health check passed"
-				return 0
-			else
-				log_error "Service started but health check failed"
-				systemctl status "${SERVICE_NAME}" --no-pager >&2
-				return 1
-			fi
+			log_info "Service is now active."
+			return 0
 		fi
-
-		if ((i % 5 == 0)); then
-			log_info "Still waiting for service to start... (${i}/${max_wait}s)"
-		fi
-
 		sleep 1
 	done
 
-	log_error "Service failed to start within ${max_wait}s"
+	log_error "Service did not become active within ${timeout}s."
 	systemctl status "${SERVICE_NAME}" --no-pager >&2
 	return 1
 }
 
-#######################################
 # Checks if the systemd service is currently running
 # Returns:
 #   0 if service is active, 1 otherwise
-#######################################
 is_service_running() {
-	systemctl is-active --quiet "${SERVICE_NAME}" 2>/dev/null
+	systemctl is-active --quiet "${SERVICE_NAME}" 2> /dev/null
 }
 
-#######################################
-# Fetches latest release information from GitHub API
-# Outputs download URL and optional SHA256 digest to stdout
+# Fetches release information from GitHub API.
+# Arguments:
+#   $1: Optional release tag/version. If empty, fetches the latest release.
 # Returns:
-#   0 if successful, 1 if failed
-#######################################
-get_latest_release() {
-	log_info "Fetching latest release information..."
-
+#   0 on success, 1 on failure.
+# Output:
+#   Prints the download URL and SHA256 digest to standard output on success.
+get_release() {
+	local tag="${1:-}"
+	local api_url="https://api.github.com/repos/${GITHUB_REPO}/releases/${tag:+tags/}${tag:-latest}"
 	local release_info
-	if ! release_info=$(curl -s "https://api.github.com/repos/${GITHUB_REPO}/releases/latest"); then
-		log_error "Failed to fetch release information from GitHub API"
+
+	log_info "Fetching release information${tag:+ for version: ${tag}}..."
+
+	release_info=$(curl -sS --fail-with-body "${api_url}" 2>&1) || {
+		log_error "Failed to fetch release from GitHub. Check URL: ${api_url}. Error: ${release_info}"
+		return 1
+	}
+
+	if echo "${release_info}" | jq -e '.message' > /dev/null; then
+		log_error "GitHub API returned an error: $(echo "${release_info}" | jq -r '.message')"
+		return 1
 	fi
 
-	if [[ -z "${release_info}" || "${release_info}" == "null" ]]; then
-		log_error "Invalid release information received"
+	local -a result
+	mapfile -t result < <(echo "${release_info}" \
+		| jq -r --arg binary_name "${BINARY_NAME}" '
+			.assets[] | select(.name | contains($binary_name + ".zip")) |
+			.browser_download_url, (.digest // "" | sub("^sha256:"; ""))
+		')
+
+	if [[ $? -ne 0 || -z "${result[0]}" ]]; then
+		log_error "Asset '${BINARY_NAME}.zip' not found"
+		return 1
 	fi
 
-	local asset_info
-	if ! asset_info=$(echo "${release_info}" | jq -r ".assets[] | select(.name | contains(\"${BINARY_NAME}.zip\"))"); then
-		log_error "Failed to parse release information"
-	fi
+	echo "${result[0]}"
+	[[ -n "${result[1]}" ]] && echo "${result[1]}"
 
-	if [[ -z "${asset_info}" || "${asset_info}" == "null" ]]; then
-		log_error "Binary asset not found in release"
-	fi
-
-	local download_url
-	if ! download_url=$(echo "${asset_info}" | jq -r ".browser_download_url"); then
-		log_error "Failed to extract download URL"
-	fi
-
-	# Get GitHub's calculated SHA256 digest
-	local sha256_digest
-	sha256_digest=$(echo "${asset_info}" | jq -r ".digest // null")
-	if [[ "${sha256_digest}" != "null" && -n "${sha256_digest}" ]]; then
-		sha256_digest=$(echo "${sha256_digest}" | sed 's/^sha256://')
-	else
-		sha256_digest=""
-	fi
-
-	echo "${download_url}"
-	if [[ -n "${sha256_digest}" ]]; then
-		echo "${sha256_digest}"
-	fi
+	log_info "Found release: ${result[0]}"
+	return 0
 }
 
 #######################################
 # Command Implementations
 #######################################
 
-#######################################
-# Installs and configures the application environment
-# Creates users, directories, and systemd service
-#######################################
 cmd_install() {
+	local version="${1:-}"
+
 	check_root
 	log_info "Initializing environment..."
 
-	# Create log directory first
 	ensure_directory "${LOG_DIR}" "" "755"
-
-	check_dependencies
+	ensure_dependencies
 	create_service_user
 
 	if [ -f "${DB_FILE}" ]; then
 		sudo -u "${SERVICE_USER}" sqlite3 "${DB_FILE}" "VACUUM;"
 	fi
 
-	# Create directories with proper ownership
 	ensure_directory "${APP_BASE_DIR}" "${SERVICE_USER}:${SERVICE_GROUP}" "750"
 	ensure_directory "${RELEASES_DIR}" "${SERVICE_USER}:${SERVICE_GROUP}" "750"
 	ensure_directory "${DATA_DIR}" "${SERVICE_USER}:${SERVICE_GROUP}" "750"
 
-	# Set permissions after all directories are created and user exists
 	set_secure_permissions
 
-	# Create systemd service with security hardening
-	cat <<EOF >"/etc/systemd/system/${SERVICE_NAME}.service"
+	# Create empty SQLite database file
+	if [[ ! -f "${DB_FILE}" ]]; then
+		log_info "Creating empty SQLite database file..."
+		touch "${DB_FILE}"
+		chown "${SERVICE_USER}:${SERVICE_GROUP}" "${DB_FILE}"
+		chmod 644 "${DB_FILE}"
+	fi
+
+	# Write systemd unit atomically
+	cat << EOF > "/etc/systemd/system/${SERVICE_NAME}.service"
 [Unit]
 Description=Senra Server
 After=network.target
@@ -616,16 +493,12 @@ Group=${SERVICE_GROUP}
 # Security hardening
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectSystem=full
 ProtectHome=true
-ReadWritePaths=${DATA_DIR} ${LOG_DIR}
-ProtectKernelTunables=true
-ProtectKernelModules=true
-ProtectControlGroups=true
+ReadWritePaths=${APP_BASE_DIR} ${DATA_DIR} ${LOG_DIR}
 
 # Environment variables
 Environment="HOST=0.0.0.0"
-Environment="PORT=80"
+Environment="PORT=3000"
 Environment="DATABASE_URL=sqlite:file:${DB_FILE}"
 Environment="RUST_LOG=info"
 
@@ -633,20 +506,36 @@ Environment="RUST_LOG=info"
 WantedBy=multi-user.target
 EOF
 
-	systemctl daemon-reload
-	log_info "Environment initialized successfully. Run 'deploy' to install the application."
+	if ! systemctl daemon-reload; then
+		log_error "Failed to reload systemd daemon"
+	fi
+
+	if ! systemctl enable "${SERVICE_NAME}"; then
+		log_error "Failed to enable service ${SERVICE_NAME}"
+	fi
+
+	log_info "Environment initialized successfully."
+
+	# Setup Nginx reverse proxy
+	setup_nginx
+
+	if [[ -n "${version}" ]]; then
+		cmd_deploy "${version}"
+	else
+		cmd_deploy
+	fi
 }
 
 cmd_deploy() {
-	check_root
-	log_info "Starting deployment of latest version..."
+	local version="${1:-}"
 
-	# Ensure releases directory exists
+	check_root
+	log_info "Starting deployment ${version:+of version: $version}..."
+
 	ensure_directory "${RELEASES_DIR}" "${SERVICE_USER}:${SERVICE_GROUP}" "750"
 
-	# Get release information
 	local -a release_data
-	mapfile -t release_data < <(get_latest_release)
+	mapfile -t release_data < <(get_release "${version}")
 	local -r asset_url="${release_data[0]}"
 	local -r sha256_digest="${release_data[1]:-}"
 
@@ -659,23 +548,16 @@ cmd_deploy() {
 	if ! temp_dir=$(mktemp -d -p "${RELEASES_DIR}" deploy.XXXXXXXXXX); then
 		log_error "Failed to create temporary directory"
 	fi
-	local temp_dir_created=true
 
-	# Ensure cleanup on exit, but handle the mv case
-	cleanup_temp() {
-		if [[ "${temp_dir_created}" == "true" && -d "${temp_dir}" ]]; then
-			log_info "Cleaning up temporary directory"
-			rm -rf "${temp_dir}"
-		fi
-	}
-	trap cleanup_temp EXIT
+	# Ensure cleanup on exit - only delete if directory still exists
+	trap '[[ -d '"${temp_dir}"' ]] && rm -rf '"${temp_dir}"'' EXIT
 
 	# Download release
-	download_with_retry "${asset_url}" "${temp_dir}/release.zip"
+	download "${asset_url}" "${temp_dir}/release.zip"
 
 	# Verify checksum if available from GitHub API
 	if [[ -n "${sha256_digest}" ]]; then
-		verify_file_integrity "${temp_dir}/release.zip" "${sha256_digest}"
+		verify_integrity "${temp_dir}/release.zip" "${sha256_digest}"
 	fi
 
 	# Extract and validate
@@ -700,9 +582,6 @@ cmd_deploy() {
 		log_error "Failed to move release to final directory"
 	fi
 
-	# Mark temp directory as moved to prevent cleanup
-	temp_dir_created=false
-
 	# Set proper ownership
 	if ! chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${release_dir}"; then
 		log_error "Failed to set ownership on release directory"
@@ -711,7 +590,7 @@ cmd_deploy() {
 	# Set capability to bind to port
 	if ! setcap 'cap_net_bind_service=+ep' "${release_dir}/${BINARY_NAME}"; then
 		log_error "Failed to set capability to bind to port"
- 	fi
+	fi
 
 	# Update symlink
 	if ! ln -sfn "${release_dir}" "${CURRENT_SYMLINK}"; then
@@ -721,19 +600,39 @@ cmd_deploy() {
 	# Restart service and verify
 	if restart_service; then
 		log_info "Deployment successful: $(basename "${release_dir}")"
-		cmd_cleanup_releases
 	else
 		log_error "Deployment failed during service restart"
 	fi
 }
 
 cmd_rollback() {
+	local version="${1:-}"
 	check_root
 	log_info "Starting rollback to previous version..."
 
 	# Ensure releases directory exists
 	if [[ ! -d "${RELEASES_DIR}" ]]; then
 		log_error "Releases directory ${RELEASES_DIR} does not exist"
+	fi
+
+	# If specific version is provided, rollback to that version
+	if [[ -n "${version}" ]]; then
+		local target_release="${RELEASES_DIR}/${version}"
+		if [[ ! -d "${target_release}" ]]; then
+			log_error "Version ${version} not found in releases directory"
+		fi
+
+		log_info "Rolling back to specified version: ${version}"
+		if ! ln -sfn "${target_release}" "${CURRENT_SYMLINK}"; then
+			log_error "Failed to update symlink for rollback to ${version}"
+		fi
+
+		if restart_service; then
+			log_info "Rollback successful: ${version}"
+		else
+			log_error "Rollback failed during service restart"
+		fi
+		return 0
 	fi
 
 	# Get sorted list of valid releases
@@ -744,7 +643,7 @@ cmd_rollback() {
 		if [[ "${base}" =~ ^[0-9]{14,}$ ]]; then
 			releases+=("${REPLY}")
 		fi
-	done < <(find "${RELEASES_DIR}" -maxdepth 1 -mindepth 1 -type d -print0 2>/dev/null | sort -z)
+	done < <(find "${RELEASES_DIR}" -maxdepth 1 -mindepth 1 -type d -print0 2> /dev/null | sort -z)
 
 	if [[ ${#releases[@]} -lt 2 ]]; then
 		log_error "No previous version available for rollback"
@@ -766,113 +665,198 @@ cmd_rollback() {
 	fi
 }
 
-cmd_cleanup_releases() {
-	log_info "Cleaning up old releases..."
+cmd_uninstall() {
+	local version="${1:-}"
 
-	# Check if releases directory exists
-	if [[ ! -d "${RELEASES_DIR}" ]]; then
-		log_warn "Releases directory ${RELEASES_DIR} does not exist"
+	check_root
+
+	if [[ -n "${version}" ]]; then
+		log_info "Uninstalling specific version: ${version}"
+		local target_release="${RELEASES_DIR}/${version}"
+		if [[ ! -d "${target_release}" ]]; then
+			log_error "Version ${version} not found in releases directory"
+		fi
+
+		if [[ -L "${CURRENT_SYMLINK}" ]] && [[ "$(readlink "${CURRENT_SYMLINK}")" == "${target_release}" ]]; then
+			log_info "Stopping service as current version is being uninstalled"
+			stop_service || log_warn "Failed to stop service gracefully"
+			rm -f "${CURRENT_SYMLINK}"
+		fi
+
+		log_info "Removing version: ${version}"
+		rm -rf "${target_release}"
+		log_info "Version ${version} uninstalled successfully"
 		return 0
 	fi
 
-	# Keep only the latest 3 valid timestamp-named release directories
-	local -a releases=()
-	while IFS= read -r -d $'\0'; do
-		local base
-		base=$(basename "${REPLY}")
-		if [[ "${base}" =~ ^[0-9]{14,}$ ]]; then
-			releases+=("${REPLY}")
-		fi
-	done < <(find "${RELEASES_DIR}" -maxdepth 1 -mindepth 1 -type d -print0 2>/dev/null | sort -z)
+	# Full uninstall
+	log_info "Starting complete uninstallation..."
 
-	local -r n=${#releases[@]}
-	local cleaned=0
+	# Stop and disable service
+	if systemctl list-unit-files --type=service | grep -q "^${SERVICE_NAME}.service"; then
+		log_info "Stopping and disabling service: ${SERVICE_NAME}"
+		systemctl stop "${SERVICE_NAME}" 2> /dev/null || true
+		systemctl disable "${SERVICE_NAME}" 2> /dev/null || true
+		rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
+		systemctl daemon-reload
+	fi
 
-	local i
-	for ((i = 0; i < n - 3; i++)); do
-		log_info "Removing old release: $(basename "${releases[i]}")"
-		if rm -rf "${releases[i]}"; then
-			((cleaned++))
-		else
-			log_warn "Failed to remove release: $(basename "${releases[i]}")"
-		fi
-	done
+	# Cleanup Nginx configuration
+	if [[ -f /etc/nginx/sites-available/senra ]]; then
+		log_info "Removing Nginx reverse proxy configuration..."
+		rm -f /etc/nginx/sites-available/senra
+		rm -f /etc/nginx/sites-enabled/senra
+		systemctl restart nginx 2> /dev/null || true
+	fi
 
-	log_info "Cleanup completed: removed ${cleaned} old releases"
+	# Remove application directories
+	log_info "Removing application directories..."
+	rm -rf "${APP_BASE_DIR}"
+	rm -rf "${DATA_DIR}"
+	rm -rf "${LOG_DIR}"
+
+	log_warn "Service user '${SERVICE_USER}' and group '${SERVICE_GROUP}' were not removed"
+	log_info "Complete uninstallation finished"
 }
 
-cmd_list_releases() {
-	# Check if releases directory exists
+cmd_list() {
+	echo "=== Available Releases ==="
+
 	if [[ ! -d "${RELEASES_DIR}" ]]; then
 		echo "No releases directory found at ${RELEASES_DIR}"
 		return 0
 	fi
 
-	echo "Available releases:"
+	# List releases with current marking
+	if [[ -L "${CURRENT_SYMLINK}" ]]; then
+		local current_release
+		current_release=$(basename "$(readlink "${CURRENT_SYMLINK}")")
+		find "${RELEASES_DIR}" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort -r | while read -r release; do
+			if [[ "${release}" == "${current_release}" ]]; then
+				echo "  ${release} (current)"
+			else
+				echo "  ${release}"
+			fi
+		done
+	else
+		# No current symlink, just list all
+		find "${RELEASES_DIR}" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort -r | while read -r release; do
+			echo "  ${release}"
+		done
+	fi
+}
 
-	local -a releases=()
-	while IFS= read -r -d $'\0'; do
-		local base
-		base=$(basename "${REPLY}")
-		if [[ "${base}" =~ ^[0-9]{14,}$ ]]; then
-			releases+=("${base}")
-		fi
-	done < <(find "${RELEASES_DIR}" -maxdepth 1 -mindepth 1 -type d -print0 2>/dev/null)
+cmd_start() {
+	check_root
 
-	if [[ ${#releases[@]} -eq 0 ]]; then
-		echo "  No releases found"
-		return 0
+	# Verify service is installed
+	if ! systemctl list-unit-files --type=service | grep -q "^${SERVICE_NAME}.service"; then
+		log_error "Service ${SERVICE_NAME} is not installed"
 	fi
 
-	# Sort releases in descending order
-	IFS=$'\n' releases=($(sort -r <<<"${releases[*]}"))
-	IFS=$'\n\t'
+	# Start service
+	if ! start_service; then
+		return 1
+	fi
 
-	local release
-	for release in "${releases[@]}"; do
-		if [[ -L "${CURRENT_SYMLINK}" ]] && [[ "$(readlink "${CURRENT_SYMLINK}")" == "${RELEASES_DIR}/${release}" ]]; then
-			echo "  ${release} (current)"
-		else
-			echo "  ${release}"
-		fi
-	done
+	log_info "Service started successfully"
+}
+
+cmd_stop() {
+	check_root
+
+	# Verify service is installed
+	if ! systemctl list-unit-files --type=service | grep -q "^${SERVICE_NAME}.service"; then
+		log_error "Service ${SERVICE_NAME} is not installed"
+	fi
+
+	# Stop service
+	if ! stop_service; then
+		return 1
+	fi
+
+	log_info "Service stopped successfully"
 }
 
 cmd_status() {
-	echo "=== Service Status ==="
+	echo "=== Senra Server Status ==="
+	echo
+
+	# Service status
+	echo "--- Service Status ---"
 	if systemctl list-unit-files --type=service | grep -q "^${SERVICE_NAME}.service"; then
-		systemctl status "${SERVICE_NAME}" --no-pager || true
+		if is_service_running; then
+			echo "Status: RUNNING"
+			systemctl status "${SERVICE_NAME}" --no-pager --lines=5 2> /dev/null || true
+		else
+			echo "Status: STOPPED"
+			systemctl status "${SERVICE_NAME}" --no-pager --lines=3 2> /dev/null || true
+		fi
 	else
-		echo "Service ${SERVICE_NAME} is not installed"
+		echo "Status: NOT INSTALLED"
 	fi
 
-	echo -e "\n=== Current Release ==="
+	echo
+	echo "--- Current Release ---"
 	if [[ -L "${CURRENT_SYMLINK}" ]]; then
 		local current_target
 		current_target=$(readlink "${CURRENT_SYMLINK}")
 		if [[ -d "${current_target}" ]]; then
-			echo "Current: $(basename "${current_target}")"
+			local current_release
+			current_release=$(basename "${current_target}")
+			echo "Current: ${current_release}"
+
+			# Show binary info if available
+			local binary_path="${current_target}/${BINARY_NAME}"
+			if [[ -f "${binary_path}" ]]; then
+				echo "Binary: ${binary_path}"
+				echo "Size: $(du -h "${binary_path}" | cut -f1)"
+				echo "Modified: $(stat -c '%y' "${binary_path}" | cut -d'.' -f1)"
+			fi
 		else
-			echo "Current symlink points to non-existent directory: ${current_target}"
+			echo "ERROR: Current symlink points to non-existent directory: ${current_target}"
 		fi
 	else
-		echo "No current release symlink found"
+		echo "No current release configured"
 	fi
 
-	echo -e "\n=== Health Check ==="
+	echo
+	echo "--- Health Check ---"
 	if systemctl list-unit-files --type=service | grep -q "^${SERVICE_NAME}.service" && is_service_running; then
-		if health_check "" 5; then
-			echo "Service is healthy"
+		if health_check "${HEALTH_CHECK_ENDPOINT}" 10 80; then
+			echo "Health: HEALTHY ✓"
 		else
-			echo "Service health check failed"
+			echo "Health: UNHEALTHY ✗"
 		fi
 	else
-		echo "Service is not running"
+		echo "Health: SERVICE NOT RUNNING"
+	fi
+
+	echo
+	echo "--- Configuration ---"
+	echo "Service Name: ${SERVICE_NAME}"
+	echo "Service User: ${SERVICE_USER}"
+	echo "App Directory: ${APP_BASE_DIR}"
+	echo "Data Directory: ${DATA_DIR}"
+	echo "Log Directory: ${LOG_DIR}"
+	echo "Database: ${DB_FILE}"
+
+	# Show disk usage
+	echo
+	echo "--- Disk Usage ---"
+	if [[ -d "${APP_BASE_DIR}" ]]; then
+		echo "App Directory: $(du -sh "${APP_BASE_DIR}" 2> /dev/null | cut -f1 || echo "N/A")"
+	fi
+	if [[ -d "${DATA_DIR}" ]]; then
+		echo "Data Directory: $(du -sh "${DATA_DIR}" 2> /dev/null | cut -f1 || echo "N/A")"
+	fi
+	if [[ -f "${DB_FILE}" ]]; then
+		echo "Database File: $(du -sh "${DB_FILE}" 2> /dev/null | cut -f1 || echo "N/A")"
 	fi
 }
 
 cmd_usage() {
-	cat <<EOF
+	cat << EOF
 Senra Server Management Tool
 
 Usage: sudo ${0} [options] <command>
@@ -887,30 +871,130 @@ Options:
   --group=<group>         Service group (default: ${DEFAULT_SERVICE_GROUP})
 
 Commands:
-  install                 Initialize environment and install service
-  deploy                  Deploy latest version with health checks
-  rollback                Rollback to previous version
+  install [VERSION]       Initialize environment and install service (optionally specific version)
+  rollback [VERSION]      Rollback to previous version or specific version
+  uninstall [VERSION]     Uninstall completely or remove specific version
+  list                    List available releases
+  start                   Start the service
+  stop                    Stop the service
+  restart                 Restart the service (same as deploy to current version)
   status                  Show service status and health
-  list-releases           List available releases
   help                    Show this help
 
 Examples:
   # Standard installation
   sudo ${0} install
   sudo ${0} deploy
-  
+
   # Custom configuration
   sudo ${0} --user=myuser --data-dir=/custom/data install
-  
-  # Check service health
-  sudo ${0} status
 EOF
 }
 
 # =========================
 # Main Entry
 # =========================
+
+parse_arguments() {
+	local arg
+	local i=1
+	local argc=$#
+
+	# First pass: extract options and positional arguments
+	while ((i <= argc)); do
+		arg="${!i}"
+
+		case "${arg}" in
+			# Handle --help and -h
+			-h | --help)
+				cmd_usage
+				exit 0
+				;;
+
+			# Handle long options with = syntax (--option=value)
+			--repo=*)
+				GITHUB_REPO="${arg#--repo=}"
+				[[ -z "${GITHUB_REPO}" ]] && log_error "--repo requires a non-empty value"
+				;;
+			--binary=*)
+				BINARY_NAME="${arg#--binary=}"
+				[[ -z "${BINARY_NAME}" ]] && log_error "--binary requires a non-empty value"
+				;;
+			--service=*)
+				SERVICE_NAME="${arg#--service=}"
+				[[ -z "${SERVICE_NAME}" ]] && log_error "--service requires a non-empty value"
+				;;
+			--app-dir=*)
+				APP_BASE_DIR="${arg#--app-dir=}"
+				[[ -z "${APP_BASE_DIR}" ]] && log_error "--app-dir requires a non-empty value"
+				;;
+			--data-dir=*)
+				DATA_DIR="${arg#--data-dir=}"
+				[[ -z "${DATA_DIR}" ]] && log_error "--data-dir requires a non-empty value"
+				;;
+			--user=*)
+				SERVICE_USER="${arg#--user=}"
+				[[ -z "${SERVICE_USER}" ]] && log_error "--user requires a non-empty value"
+				;;
+			--group=*)
+				SERVICE_GROUP="${arg#--group=}"
+				[[ -z "${SERVICE_GROUP}" ]] && log_error "--group requires a non-empty value"
+				;;
+
+			# Handle long options with space syntax (--option value)
+			--repo | --binary | --service | --app-dir | --data-dir | --user | --group)
+				((i++))
+				if ((i > argc)); then
+					log_error "${arg} requires a value"
+				fi
+
+				local value="${!i}"
+				case "${arg}" in
+					--repo) GITHUB_REPO="${value}" ;;
+					--binary) BINARY_NAME="${value}" ;;
+					--service) SERVICE_NAME="${value}" ;;
+					--app-dir) APP_BASE_DIR="${value}" ;;
+					--data-dir) DATA_DIR="${value}" ;;
+					--user) SERVICE_USER="${value}" ;;
+					--group) SERVICE_GROUP="${value}" ;;
+				esac
+
+				[[ -z "${value}" ]] && log_error "${arg} requires a non-empty value"
+				;;
+
+			# Handle unknown options
+			--*)
+				log_error "Unknown option: ${arg}"
+				;;
+
+			-*)
+				log_error "Unknown option: ${arg}"
+				;;
+
+			# Positional arguments (command and optional version)
+			*)
+				COMMAND_ARGS+=("${arg}")
+				;;
+		esac
+
+		((i++))
+	done
+
+	# Recalculate dependent paths after parsing
+	RELEASES_DIR="${APP_BASE_DIR}/releases"
+	CURRENT_SYMLINK="${APP_BASE_DIR}/current"
+	DB_FILE="${DATA_DIR}/shaderlab.db"
+	LOG_DIR="/var/log/${SERVICE_NAME}"
+	LOG_FILE="${LOG_DIR}/deploy.log"
+}
+
 main() {
+	# Initialize command args array
+	COMMAND_ARGS=()
+
+	# Parse all arguments
+	parse_arguments "$@"
+
 	# Ensure log directory exists if we're root
 	if [[ "$(id -u)" -eq 0 ]] && [[ ! -d "${LOG_DIR}" ]]; then
 		if ! mkdir -p "${LOG_DIR}"; then
@@ -918,18 +1002,47 @@ main() {
 		fi
 	fi
 
-	case "${1:-help}" in
-	install) cmd_install ;;
-	deploy) cmd_deploy ;;
-	rollback) cmd_rollback ;;
-	status) cmd_status ;;
-	list-releases) cmd_list_releases ;;
-	help) cmd_usage ;;
-	*)
-		cmd_usage
-		exit 1
-		;;
+	# Extract command and version from positional arguments
+	local command="${COMMAND_ARGS[0]:-help}"
+	local version="${COMMAND_ARGS[1]:-}"
+
+	# Dispatch to appropriate command handler
+	case "${command}" in
+		install)
+			cmd_install "${version}"
+			;;
+		deploy)
+			cmd_deploy "${version}"
+			;;
+		rollback)
+			cmd_rollback "${version}"
+			;;
+		uninstall)
+			cmd_uninstall "${version}"
+			;;
+		list)
+			cmd_list
+			;;
+		start)
+			cmd_start
+			;;
+		stop)
+			cmd_stop
+			;;
+		restart)
+			restart_service
+			;;
+		status)
+			cmd_status
+			;;
+		help)
+			cmd_usage
+			;;
+		*)
+			log_error "Unknown command: '${command}'. Use '${0} help' for usage."
+			;;
 	esac
 }
 
-main "${@}"
+# Entry point
+main "$@"
