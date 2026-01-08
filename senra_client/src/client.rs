@@ -1,107 +1,97 @@
+use reqwest::Client as HttpClient;
 use thiserror::Error;
 use url::Url;
 
 use crate::config::ClientConfig;
-use crate::http::HttpClient;
-use crate::ws::{Message, WsClient};
+use crate::ws::WsClient;
 
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("HTTP error: {0}")]
-    Http(#[from] crate::http::Error),
+    Http(#[from] reqwest::Error),
 
     #[error("WebSocket error: {0}")]
     WebSocket(#[from] crate::ws::Error),
+
+    #[error("URL parse error: {0}")]
+    UrlParse(#[from] url::ParseError),
+
+    #[error("Authentication error: {0}")]
+    Auth(String),
+
+    #[error("Serialization error: {0}")]
+    Serialization(String),
+}
+
+#[cfg(target_arch = "wasm32")]
+impl From<serde_wasm_bindgen::Error> for Error {
+    fn from(err: serde_wasm_bindgen::Error) -> Self {
+        Self::Serialization(err.to_string())
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(err: serde_json::Error) -> Self {
+        Self::Serialization(err.to_string())
+    }
 }
 
 pub type Result<T> = core::result::Result<T, Error>;
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct ApiClient {
     http: HttpClient,
     ws: WsClient,
     config: ClientConfig,
+    token: Option<String>,
 }
 
 impl ApiClient {
     pub fn new(config: ClientConfig) -> Result<Self> {
+        let timeout = config.timeout;
+        #[cfg(not(target_arch = "wasm32"))]
+        let http = HttpClient::builder().timeout(timeout).build()?;
+        #[cfg(target_arch = "wasm32")]
+        let http = HttpClient::builder().build()?;
+        let ws = WsClient::new(timeout);
+
         Ok(Self {
-            http: HttpClient::new(config.clone()).map_err(Error::Http)?,
-            ws: WsClient::new(),
+            http,
+            ws,
             config,
+            token: None,
         })
     }
 
-    pub async fn http_request<Req, Res>(
-        &self,
-        method: &str,
-        endpoint: &str,
-        body: Option<Req>,
-    ) -> Result<Res>
-    where
-        Req: serde::Serialize,
-        Res: for<'de> serde::Deserialize<'de>,
-    {
-        self.http
-            .request(method, endpoint, body)
-            .await
-            .map_err(Error::Http)
+    pub fn http_url(&self) -> Url {
+        self.config.http_url.clone()
     }
 
-    pub fn http_base_url(&self) -> &str {
-        self.http.base_url()
+    pub fn ws_url(&self) -> Url {
+        self.config.ws_url.clone()
     }
 
-    pub fn http_token(&self) -> Option<&str> {
-        self.http.token()
+    pub fn token(&self) -> Option<&str> {
+        self.token.as_deref()
     }
 
-    pub fn http_set_token(&mut self, token: String) {
-        self.http.set_token(token);
+    pub fn set_token(&mut self, token: String) {
+        self.token = Some(token);
     }
 
-    pub fn http_clear_token(&mut self) {
-        self.http.clear_token();
+    pub fn clear_token(&mut self) {
+        self.token = None;
     }
 
-    pub async fn ws_connect(&mut self, url: Url) -> Result<()> {
-        self.ws.connect(url).await.map_err(Error::WebSocket)
+    pub fn http(&self) -> &HttpClient {
+        &self.http
     }
 
-    pub async fn ws_disconnect(&mut self) -> Result<()> {
-        self.ws.disconnect().await.map_err(Error::WebSocket)
+    pub fn ws(&self) -> &WsClient {
+        &self.ws
     }
 
-    pub async fn ws_send(&mut self, msg: Message) -> Result<()> {
-        self.ws.send(msg).await.map_err(Error::WebSocket)
-    }
-
-    pub async fn ws_receive(&mut self) -> Result<Option<Message>> {
-        self.ws.receive().await.map_err(Error::WebSocket)
-    }
-
-    pub fn ws_is_connected(&self) -> bool {
-        self.ws.is_connected()
-    }
-
-    pub fn ws_url(&self) -> Option<&Url> {
-        self.ws.url()
-    }
-
-    pub fn ws_token(&self) -> Option<&str> {
-        self.config.token.as_deref()
-    }
-
-    pub fn set_config_token(&mut self, token: String) {
-        self.config.token = Some(token.clone());
-        self.http_set_token(token);
-    }
-
-    pub fn clear_config_token(&mut self) {
-        self.config.token = None;
-        self.http_clear_token();
-    }
-
-    pub fn ws_url_from_config(&self) -> Option<&Url> {
-        self.config.ws_url.as_ref()
+    pub fn ws_mut(&mut self) -> &mut WsClient {
+        &mut self.ws
     }
 }

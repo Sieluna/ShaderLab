@@ -240,7 +240,7 @@ async fn handle_socket(mut socket: axum::extract::ws::WebSocket, state: AppState
     info!("WebSocket connection established for user {}", user_id);
 
     let router = MessageRouter::new();
-    let protocol_config = ProtocolConfig::default();
+    let protocol_codec = ProtocolCodec::default();
 
     while let Some(msg) = socket.recv().await {
         match msg {
@@ -249,7 +249,7 @@ async fn handle_socket(mut socket: axum::extract::ws::WebSocket, state: AppState
                     &mut socket,
                     &state,
                     &router,
-                    &protocol_config,
+                    &protocol_codec,
                     user_id,
                     data,
                     false,
@@ -265,7 +265,7 @@ async fn handle_socket(mut socket: axum::extract::ws::WebSocket, state: AppState
                     &mut socket,
                     &state,
                     &router,
-                    &protocol_config,
+                    &protocol_codec,
                     user_id,
                     text.into(),
                     true,
@@ -306,7 +306,7 @@ async fn handle_message(
     socket: &mut axum::extract::ws::WebSocket,
     state: &AppState,
     router: &MessageRouter,
-    protocol_config: &ProtocolConfig,
+    protocol_codec: &ProtocolCodec,
     user_id: i64,
     data: Bytes,
     is_text: bool,
@@ -316,7 +316,7 @@ async fn handle_message(
             crate::errors::AppError::ValidationError(format!("Failed to parse JSON: {}", e))
         })?
     } else {
-        protocol_config.codec.decode(&data).map_err(|e| {
+        protocol_codec.decode(&data).map_err(|e| {
             crate::errors::AppError::ValidationError(format!("Failed to decode message: {}", e))
         })?
     };
@@ -328,13 +328,13 @@ async fn handle_message(
 
     let response = router.route(state, user_id, &message).await;
 
-    send_response(socket, &response, protocol_config, is_text).await
+    send_response(socket, &response, protocol_codec, is_text).await
 }
 
 async fn send_response<T: Serialize>(
     socket: &mut axum::extract::ws::WebSocket,
     response: &T,
-    protocol_config: &ProtocolConfig,
+    protocol_codec: &ProtocolCodec,
     as_text: bool,
 ) -> Result<()> {
     if as_text {
@@ -349,7 +349,7 @@ async fn send_response<T: Serialize>(
                 crate::errors::AppError::ValidationError(format!("Failed to send response: {}", e))
             })?;
     } else {
-        let response_data = protocol_config.codec.encode(response).map_err(|e| {
+        let response_data = protocol_codec.encode(response).map_err(|e| {
             crate::errors::AppError::ValidationError(format!("Failed to encode response: {}", e))
         })?;
 

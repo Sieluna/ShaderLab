@@ -1,51 +1,48 @@
-use senra_api::*;
+use core::time::Duration;
+
 use url::Url;
 
 #[derive(Debug, Clone)]
 pub struct ClientConfig {
     pub http_url: Url,
-    pub ws_url: Option<Url>,
-    pub token: Option<String>,
-    pub protocol_config: ProtocolConfig,
-    pub timeout_ms: u64,
+    pub ws_url: Url,
+    pub timeout: Duration,
 }
 
 impl ClientConfig {
-    pub fn new(http_url: Url) -> Self {
+    pub fn new(base_url: Url, tls: bool) -> Self {
+        let mut http_url = base_url.clone();
+        http_url
+            .set_scheme(if tls { "https" } else { "http" })
+            .unwrap();
+        let mut ws_url = base_url.clone();
+        ws_url.set_scheme(if tls { "wss" } else { "ws" }).unwrap();
+
         Self {
             http_url,
-            ws_url: None,
-            token: None,
-            protocol_config: ProtocolConfig::default(),
-            timeout_ms: 30000,
+            ws_url,
+            timeout: Duration::from_secs(30),
         }
     }
 
-    pub fn with_ws_url(mut self, ws_url: Url) -> Self {
-        self.ws_url = Some(ws_url);
+    pub fn with_http_url(mut self, http_url: Url, tls: bool) -> Self {
+        let mut http_url = http_url.clone();
+        http_url
+            .set_scheme(if tls { "https" } else { "http" })
+            .unwrap();
+        self.http_url = http_url;
         self
     }
 
-    pub fn with_token(mut self, token: impl Into<String>) -> Self {
-        self.token = Some(token.into());
+    pub fn with_ws_url(mut self, ws_url: Url, tls: bool) -> Self {
+        let mut ws_url = ws_url.clone();
+        ws_url.set_scheme(if tls { "wss" } else { "ws" }).unwrap();
+        self.ws_url = ws_url;
         self
     }
 
-    pub fn with_protocol(mut self, protocol_config: ProtocolConfig) -> Self {
-        self.protocol_config = protocol_config;
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
         self
-    }
-
-    pub fn with_timeout(mut self, timeout_ms: u64) -> Self {
-        self.timeout_ms = timeout_ms;
-        self
-    }
-
-    pub fn json(http_url: Url) -> Self {
-        Self::new(http_url).with_protocol(ProtocolConfig::json())
-    }
-
-    pub fn postcard(http_url: Url) -> Self {
-        Self::new(http_url).with_protocol(ProtocolConfig::postcard())
     }
 }

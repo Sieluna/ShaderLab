@@ -9,7 +9,7 @@ let client = null;
 
 const clientInitPromise = init().then(() => {
     client = new ApiClient(API_URL);
-    client.load_token();
+    client.wasm_load_token();
     return client;
 });
 
@@ -29,98 +29,98 @@ const ensureClient = async () => {
 export const authApi = {
     login: async (username, password) => {
         const client = await ensureClient();
-        return await client.login(username, password);
+        return await client.wasm_login(username, password);
     },
     register: async (username, email, password) => {
         const client = await ensureClient();
-        return await client.register(username, email, password);
+        return await client.wasm_register(username, email, password);
     },
     verifyToken: async () => {
         const client = await ensureClient();
-        return await client.verify_token();
+        return await client.wasm_verify_token();
     },
     logout: async () => {
         const client = await ensureClient();
-        return await client.logout();
+        return await client.wasm_logout();
     },
 };
 
 export const userApi = {
     getSelf: async (page = 1, perPage = 10) => {
         const client = await ensureClient();
-        return await client.get_self(page, perPage);
+        return await client.wasm_get_self(page, perPage);
     },
     getUser: async (id, page = 1, perPage = 10) => {
         const client = await ensureClient();
-        return await client.get_user(id, page, perPage);
+        return await client.wasm_get_user(id, page, perPage);
     },
     updateUser: async (data) => {
         const client = await ensureClient();
-        return await client.update_user(data);
+        return await client.wasm_update_user(data);
     },
 };
 
 export const notebookApi = {
     listNotebooks: async (page = 1, perPage = 10) => {
         const client = await ensureClient();
-        return await client.get_notebooks(page, perPage);
+        return await client.wasm_get_notebooks(page, perPage);
     },
     getNotebook: async (id) => {
         const client = await ensureClient();
-        return await client.get_notebook(id);
+        return await client.wasm_get_notebook(id);
     },
     createNotebook: async (data) => {
         const client = await ensureClient();
-        return await client.create_notebook(data);
+        return await client.wasm_create_notebook(data);
     },
     updateNotebook: async (id, data) => {
         const client = await ensureClient();
-        return await client.update_notebook(id, data);
+        return await client.wasm_update_notebook(id, data);
     },
     deleteNotebook: async (id) => {
         const client = await ensureClient();
-        return await client.delete_notebook(id);
+        return await client.wasm_delete_notebook(id);
     },
     likeNotebook: async (id) => {
         const client = await ensureClient();
-        return await client.like_notebook(id);
+        return await client.wasm_like_notebook(id);
     },
     unlikeNotebook: async (id) => {
         const client = await ensureClient();
-        return await client.unlike_notebook(id);
+        return await client.wasm_unlike_notebook(id);
     },
     listVersions: async (id, page = 1, perPage = 10) => {
         const client = await ensureClient();
-        return await client.get_notebook_versions(id, page, perPage);
+        return await client.wasm_get_notebook_versions(id, page, perPage);
     },
     listComments: async (id, page = 1, perPage = 10) => {
         const client = await ensureClient();
-        return await client.get_notebook_comments(id, page, perPage);
+        return await client.wasm_get_notebook_comments(id, page, perPage);
     },
     createComment: async (id, content) => {
         const client = await ensureClient();
-        return await client.create_notebook_comment(id, { content });
+        return await client.wasm_create_notebook_comment(id, { content });
     },
     deleteComment: async (id, commentId) => {
         const client = await ensureClient();
-        return await client.delete_notebook_comment(id, commentId);
+        return await client.wasm_delete_notebook_comment(id, commentId);
     },
 };
 
 export const wsApi = {
     connect: async () => {
         const client = await ensureClient();
-        return await client.connect_websocket();
+        return await client.wasm_connect_websocket();
     },
 
     sendMessage: async (messageType, payload) => {
         const client = await ensureClient();
-        return await client.send_ws_message(messageType, payload);
+        return await client.wasm_send_ws_message(messageType, payload);
     },
 
     receiveMessage: async () => {
         const client = await ensureClient();
-        return await client.receive_ws_message();
+        return await client.wasm_receive_ws_message();
     },
 
     messageListeners: new Set(),
@@ -139,7 +139,7 @@ export const wsApi = {
         const listenLoop = async () => {
             try {
                 while (true) {
-                    const message = await client.receive_ws_message();
+                    const message = await client.wasm_receive_ws_message();
                     wsApi.messageListeners.forEach(listener => {
                         try {
                             listener(message);

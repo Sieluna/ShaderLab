@@ -1,7 +1,7 @@
 pub mod codec;
 pub mod error;
 
-pub use codec::{Codec, JsonCodec, PostcardCodec, ProtocolCodec, ProtocolConfig};
+pub use codec::{Codec, JsonCodec, PostcardCodec, ProtocolCodec};
 pub use error::ProtocolError;
 
 use core::future::Future;

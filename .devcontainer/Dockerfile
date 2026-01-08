@@ -1,4 +1,4 @@
-ARG VARIANT=bookworm-slim
+ARG VARIANT=trixie-slim
 FROM debian:${VARIANT}
 ENV DEBIAN_FRONTEND=noninteractive
 

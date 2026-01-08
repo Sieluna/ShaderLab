@@ -1,3 +1,6 @@
+use core::str::FromStr;
+
+use alloc::format;
 use alloc::vec::Vec;
 
 use serde::{Deserialize, Serialize};
@@ -73,37 +76,32 @@ impl Codec for ProtocolCodec {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct ProtocolConfig {
-    pub codec: ProtocolCodec,
-    pub timeout_ms: Option<u64>,
+impl Default for ProtocolCodec {
+    fn default() -> Self {
+        Self::Json(JsonCodec)
+    }
 }
 
-impl ProtocolConfig {
-    pub fn new(codec: ProtocolCodec) -> Self {
-        Self {
-            codec,
-            timeout_ms: Some(30000),
+impl FromStr for ProtocolCodec {
+    type Err = ProtocolError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "json" => Ok(Self::Json(JsonCodec)),
+            "postcard" => Ok(Self::Postcard(PostcardCodec)),
+            _ => Err(ProtocolError {
+                message: format!("Invalid codec identifier: {}", s),
+            }),
         }
     }
-
-    pub fn json() -> Self {
-        Self::new(ProtocolCodec::Json(JsonCodec))
-    }
-
-    pub fn postcard() -> Self {
-        Self::new(ProtocolCodec::Postcard(PostcardCodec))
-    }
-
-    pub fn with_timeout(mut self, timeout_ms: u64) -> Self {
-        self.timeout_ms = Some(timeout_ms);
-        self
-    }
 }
 
-impl Default for ProtocolConfig {
-    fn default() -> Self {
-        Self::json()
+impl ProtocolCodec {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Json(_) => "json",
+            Self::Postcard(_) => "postcard",
+        }
     }
 }
 
@@ -145,14 +143,5 @@ mod tests {
 
         assert_eq!(data, decoded);
         assert_eq!(codec.content_type(), "application/octet-stream");
-    }
-
-    #[test]
-    fn test_protocol_config() {
-        let config = ProtocolConfig::json().with_timeout(60000);
-        assert_eq!(config.timeout_ms, Some(60000));
-
-        let config = ProtocolConfig::postcard();
-        assert_eq!(config.timeout_ms, Some(30000));
     }
 }
