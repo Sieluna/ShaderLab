@@ -79,7 +79,7 @@ impl UserService {
         for y in 0..grid_size {
             for x in 0..(grid_size / 2 + 1) {
                 let pattern = (seed >> (y * 3 + x)) & 0x7;
-                if pattern % 2 == 0 {
+                if pattern.is_multiple_of(2) {
                     for px in padding + x * cell_size..padding + (x + 1) * cell_size {
                         for py in padding + y * cell_size..padding + (y + 1) * cell_size {
                             *img.get_pixel_mut(px as u32, py as u32) = color;

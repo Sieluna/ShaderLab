@@ -20,7 +20,7 @@ pub enum Error {
 
     #[cfg(target_arch = "wasm32")]
     #[error("WebSocket error: {0}")]
-    Transport(String),
+    Transport(alloc::string::String),
 }
 
 pub type Result<T> = core::result::Result<T, Error>;

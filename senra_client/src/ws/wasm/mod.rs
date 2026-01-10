@@ -2,7 +2,11 @@ mod stream;
 
 pub use stream::{WsState, WsStream};
 
-use std::sync::Arc;
+use core::cell::RefCell;
+
+use alloc::boxed::Box;
+use alloc::string::{String, ToString};
+use alloc::sync::Arc;
 
 use url::Url;
 use wasm_bindgen::JsCast;
@@ -17,16 +21,15 @@ pub struct WebSocket {
 
 impl WebSocket {
     pub async fn connect(url: &Url) -> Result<(Self, WsStream)> {
-        let ws = Arc::new(
-            WebSysSocket::new(url.as_str())
-                .map_err(|_| Error::Transport(format!("failed to create websocket: {}", url)))?,
-        );
+        let ws = Arc::new(WebSysSocket::new(url.as_str()).map_err(|_| {
+            Error::Transport(alloc::format!("failed to create websocket: {}", url))
+        })?);
 
         ws.set_binary_type(BinaryType::Arraybuffer);
 
         let ws_clone = Arc::clone(&ws);
         let (tx, rx) = futures_channel::oneshot::channel();
-        let tx = std::cell::RefCell::new(Some(tx));
+        let tx = RefCell::new(Some(tx));
 
         {
             let tx = &tx;

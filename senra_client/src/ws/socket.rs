@@ -4,19 +4,21 @@ use core::result::Result;
 use core::task::{Context, Poll};
 use core::time::Duration;
 
+#[cfg(not(target_arch = "wasm32"))]
+use alloc::boxed::Box;
+#[cfg(target_arch = "wasm32")]
+use alloc::string::ToString;
+
 use futures_util::{Sink, Stream};
-use url::Url;
-
-use crate::ws::{Error, Message};
-
 #[cfg(not(target_arch = "wasm32"))]
 use tokio::net::TcpStream;
-
 #[cfg(not(target_arch = "wasm32"))]
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+use url::Url;
 
 #[cfg(target_arch = "wasm32")]
 use crate::ws::wasm::WsStream;
+use crate::ws::{Error, Message};
 
 #[cfg(not(target_arch = "wasm32"))]
 type WsStream<T> = WebSocketStream<MaybeTlsStream<T>>;
@@ -44,6 +46,7 @@ impl WebSocket {
 
         #[cfg(target_arch = "wasm32")]
         {
+            let _ = timeout;
             let (_ws, stream) = crate::ws::wasm::connect(url)
                 .await
                 .map_err(|e| Error::Transport(e.to_string()))?;

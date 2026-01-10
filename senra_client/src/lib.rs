@@ -1,3 +1,7 @@
+#![no_std]
+
+extern crate alloc;
+
 pub mod client;
 mod config;
 pub mod ws;
@@ -5,6 +9,8 @@ pub mod ws;
 pub use client::ApiClient;
 pub use config::ClientConfig;
 pub use ws::{Message, WebSocket, WsClient};
+
+use alloc::string::{String, ToString};
 
 use senra_api::*;
 #[cfg(target_arch = "wasm32")]
@@ -54,19 +60,22 @@ impl From<crate::client::Error> for ApiError {
             crate::client::Error::Http(e) => {
                 if let Some(status) = e.status() {
                     (
-                        format!("HTTP {}: {}", status.as_u16(), e),
+                        alloc::format!("HTTP {}: {}", status.as_u16(), e),
                         "HTTP_ERROR".to_string(),
                     )
                 } else {
-                    (format!("Network error: {}", e), "NETWORK_ERROR".to_string())
+                    (
+                        alloc::format!("Network error: {}", e),
+                        "NETWORK_ERROR".to_string(),
+                    )
                 }
             }
             crate::client::Error::WebSocket(e) => (
-                format!("WebSocket error: {}", e),
+                alloc::format!("WebSocket error: {}", e),
                 "WEBSOCKET_ERROR".to_string(),
             ),
             crate::client::Error::UrlParse(e) => (
-                format!("URL parse error: {}", e),
+                alloc::format!("URL parse error: {}", e),
                 "URL_PARSE_ERROR".to_string(),
             ),
             crate::client::Error::Auth(msg) => (msg, "AUTH_ERROR".to_string()),
@@ -183,7 +192,7 @@ impl ApiClient {
 
         let url = self
             .http_url()
-            .join(&format!("/user?page={page}&per_page={per_page}"))?;
+            .join(&alloc::format!("/user?page={page}&per_page={per_page}"))?;
         let mut req = self.http().get(url);
         if let Some(token) = self.token() {
             req = req.bearer_auth(token);
@@ -204,9 +213,9 @@ impl ApiClient {
         let page = page.unwrap_or(1);
         let per_page = per_page.unwrap_or(10);
 
-        let url = self
-            .http_url()
-            .join(&format!("/user/{id}?page={page}&per_page={per_page}"))?;
+        let url = self.http_url().join(&alloc::format!(
+            "/user/{id}?page={page}&per_page={per_page}"
+        ))?;
         let mut req = self.http().get(url);
         if let Some(token) = self.token() {
             req = req.bearer_auth(token);
@@ -244,9 +253,9 @@ impl ApiClient {
         let page = page.unwrap_or(1);
         let per_page = per_page.unwrap_or(10);
 
-        let url = self
-            .http_url()
-            .join(&format!("/notebooks?page={page}&per_page={per_page}"))?;
+        let url = self.http_url().join(&alloc::format!(
+            "/notebooks?page={page}&per_page={per_page}"
+        ))?;
         let mut req = self.http().get(url);
         if let Some(token) = self.token() {
             req = req.bearer_auth(token);
@@ -259,7 +268,7 @@ impl ApiClient {
     }
 
     pub async fn get_notebook(&self, id: u32) -> crate::client::Result<NotebookResponse> {
-        let url = self.http_url().join(&format!("/notebooks/{id}"))?;
+        let url = self.http_url().join(&alloc::format!("/notebooks/{id}"))?;
         let mut req = self.http().get(url);
         if let Some(token) = self.token() {
             req = req.bearer_auth(token);
@@ -292,7 +301,7 @@ impl ApiClient {
         id: u32,
         request: EditNotebookRequest,
     ) -> crate::client::Result<NotebookResponse> {
-        let url = self.http_url().join(&format!("/notebooks/{id}"))?;
+        let url = self.http_url().join(&alloc::format!("/notebooks/{id}"))?;
         let mut req = self.http().patch(url).json(&request);
         if let Some(token) = self.token() {
             req = req.bearer_auth(token);
@@ -305,7 +314,7 @@ impl ApiClient {
     }
 
     pub async fn delete_notebook(&mut self, id: u32) -> crate::client::Result<()> {
-        let url = self.http_url().join(&format!("/notebooks/{id}"))?;
+        let url = self.http_url().join(&alloc::format!("/notebooks/{id}"))?;
         let mut req = self.http().delete(url);
         if let Some(token) = self.token() {
             req = req.bearer_auth(token);
@@ -317,7 +326,9 @@ impl ApiClient {
     }
 
     pub async fn like_notebook(&mut self, id: u32) -> crate::client::Result<()> {
-        let url = self.http_url().join(&format!("/notebooks/{id}/like"))?;
+        let url = self
+            .http_url()
+            .join(&alloc::format!("/notebooks/{id}/like"))?;
         let mut req = self.http().post(url);
         if let Some(token) = self.token() {
             req = req.bearer_auth(token);
@@ -329,7 +340,9 @@ impl ApiClient {
     }
 
     pub async fn unlike_notebook(&mut self, id: u32) -> crate::client::Result<()> {
-        let url = self.http_url().join(&format!("/notebooks/{id}/unlike"))?;
+        let url = self
+            .http_url()
+            .join(&alloc::format!("/notebooks/{id}/unlike"))?;
         let mut req = self.http().post(url);
         if let Some(token) = self.token() {
             req = req.bearer_auth(token);
@@ -349,7 +362,7 @@ impl ApiClient {
         let page = page.unwrap_or(1);
         let per_page = per_page.unwrap_or(10);
 
-        let url = self.http_url().join(&format!(
+        let url = self.http_url().join(&alloc::format!(
             "/notebooks/{id}/versions?page={page}&per_page={per_page}"
         ))?;
         let mut req = self.http().get(url);
@@ -372,7 +385,7 @@ impl ApiClient {
         let page = page.unwrap_or(1);
         let per_page = per_page.unwrap_or(10);
 
-        let url = self.http_url().join(&format!(
+        let url = self.http_url().join(&alloc::format!(
             "/notebooks/{id}/comments?page={page}&per_page={per_page}"
         ))?;
         let mut req = self.http().get(url);
@@ -391,7 +404,9 @@ impl ApiClient {
         id: u32,
         request: CreateNotebookCommentRequest,
     ) -> crate::client::Result<NotebookCommentResponse> {
-        let url = self.http_url().join(&format!("/notebooks/{id}/comments"))?;
+        let url = self
+            .http_url()
+            .join(&alloc::format!("/notebooks/{id}/comments"))?;
         let mut req = self.http().post(url).json(&request);
         if let Some(token) = self.token() {
             req = req.bearer_auth(token);
@@ -410,7 +425,7 @@ impl ApiClient {
     ) -> crate::client::Result<()> {
         let url = self
             .http_url()
-            .join(&format!("/notebooks/{id}/comments/{comment_id}"))?;
+            .join(&alloc::format!("/notebooks/{id}/comments/{comment_id}"))?;
         let mut req = self.http().delete(url);
         if let Some(token) = self.token() {
             req = req.bearer_auth(token);
@@ -429,7 +444,7 @@ impl ApiClient {
     #[wasm_bindgen(constructor)]
     pub fn wasm_constructor(base_url: String) -> Result<ApiClient, ApiError> {
         let url = url::Url::parse(&base_url).map_err(|e| ApiError {
-            message: format!("Invalid URL: {}", e),
+            message: alloc::format!("Invalid URL: {}", e),
             code: "URL_PARSE_ERROR".to_string(),
         })?;
 
@@ -631,7 +646,7 @@ impl ApiClient {
         }
 
         self.ws_mut().connect(ws_url).await.map_err(|e| ApiError {
-            message: format!("WebSocket connection failed: {}", e),
+            message: alloc::format!("WebSocket connection failed: {}", e),
             code: "WEBSOCKET_ERROR".to_string(),
         })?;
 
@@ -648,7 +663,7 @@ impl ApiClient {
         let payload_value: serde_json::Value = serde_wasm_bindgen::from_value(payload)?;
 
         // Build message according to server's WsMessage format
-        let id = format!("{:x}", js_sys::Date::now() as u64);
+        let id = alloc::format!("{:x}", js_sys::Date::now() as u64);
         let message = serde_json::json!({
             "id": id,
             "message_type": message_type,
@@ -693,7 +708,10 @@ impl ApiClient {
             crate::ws::Message::Binary(data) => {
                 // For binary messages, return as base64 string
                 let base64 = js_sys::Uint8Array::from(&data[..]);
-                Ok(JsValue::from_str(&format!("binary:{}", base64.to_string())))
+                Ok(JsValue::from_str(&alloc::format!(
+                    "binary:{}",
+                    base64.to_string()
+                )))
             }
         }
     }

@@ -2,8 +2,10 @@ use core::cell::RefCell;
 use core::pin::Pin;
 use core::task::{Context, Poll, Waker};
 
-use std::collections::VecDeque;
-use std::sync::Arc;
+use alloc::boxed::Box;
+use alloc::collections::VecDeque;
+use alloc::string::ToString;
+use alloc::sync::Arc;
 
 use futures_util::{Sink, Stream};
 use wasm_bindgen::JsCast;
@@ -30,7 +32,10 @@ impl TryFrom<u16> for WsState {
             WebSysSocket::OPEN => Ok(WsState::Open),
             WebSysSocket::CLOSING => Ok(WsState::Closing),
             WebSysSocket::CLOSED => Ok(WsState::Closed),
-            _ => Err(Error::Transport(format!("invalid ws state: {}", state))),
+            _ => Err(Error::Transport(alloc::format!(
+                "invalid ws state: {}",
+                state
+            ))),
         }
     }
 }
@@ -135,7 +140,7 @@ impl Sink<Message> for WsStream {
     fn poll_ready(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<std::result::Result<(), Self::Error>> {
+    ) -> Poll<core::result::Result<(), Self::Error>> {
         match self.ready_state() {
             Ok(WsState::Open) => Poll::Ready(Ok(())),
             Ok(WsState::Connecting) => {
@@ -147,7 +152,7 @@ impl Sink<Message> for WsStream {
         }
     }
 
-    fn start_send(self: Pin<&mut Self>, item: Message) -> std::result::Result<(), Self::Error> {
+    fn start_send(self: Pin<&mut Self>, item: Message) -> core::result::Result<(), Self::Error> {
         match self.ready_state() {
             Ok(WsState::Open) => {
                 match item {
@@ -172,14 +177,14 @@ impl Sink<Message> for WsStream {
     fn poll_flush(
         self: Pin<&mut Self>,
         _cx: &mut Context<'_>,
-    ) -> Poll<std::result::Result<(), Self::Error>> {
+    ) -> Poll<core::result::Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
     fn poll_close(
         self: Pin<&mut Self>,
         _cx: &mut Context<'_>,
-    ) -> Poll<std::result::Result<(), Self::Error>> {
+    ) -> Poll<core::result::Result<(), Self::Error>> {
         match self.ready_state() {
             Ok(WsState::Open) | Ok(WsState::Connecting) => {
                 let _ = self.ws.close();

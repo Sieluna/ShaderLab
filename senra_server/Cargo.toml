@@ -8,7 +8,7 @@ repository.workspace = true
 [dependencies]
 async-trait = { version = "0.1", default-features = false }
 axum = { version = "0.8", default-features = false, features = ["form", "http1", "json", "matched-path", "original-uri", "query", "tokio", "tower-log", "tracing", "ws"] }
-bcrypt = { version = "0.17", default-features = false, features = ["std"] }
+bcrypt = { version = "0.18", default-features = false, features = ["std"] }
 image = { version = "0.25", default-features = false, features = ["rayon", "jpeg", "png", "webp"] }
 mime = { version = "0.3", default-features = false }
 senra_api = { workspace = true, features = ["docs"] }

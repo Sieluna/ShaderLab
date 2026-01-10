@@ -15,5 +15,5 @@ utoipa = { workspace = true, features = ["macros", "time"], optional = true }
 
 [features]
 default = ["std"]
-std = ["serde/std", "serde_json/std"]
+std = ["serde/std", "serde_json/std", "thiserror/std", "time/std"]
 docs = ["dep:utoipa", "std"]

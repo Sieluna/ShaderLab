@@ -1,9 +1,12 @@
+use alloc::string::String;
 #[cfg(not(target_arch = "wasm32"))]
-use tokio_tungstenite::tungstenite::protocol::CloseFrame as TungsteniteCloseFrame;
+use alloc::string::ToString;
+use alloc::vec::Vec;
+
 #[cfg(not(target_arch = "wasm32"))]
-use tokio_tungstenite::tungstenite::protocol::Message as TungsteniteMessage;
-#[cfg(not(target_arch = "wasm32"))]
-use tokio_tungstenite::tungstenite::protocol::frame::coding::CloseCode;
+use tokio_tungstenite::tungstenite::protocol::{
+    CloseFrame as TungsteniteCloseFrame, Message as TungsteniteMessage, frame::coding::CloseCode,
+};
 
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

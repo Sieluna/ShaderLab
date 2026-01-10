@@ -1,3 +1,5 @@
+use alloc::string::{String, ToString};
+
 use reqwest::Client as HttpClient;
 use thiserror::Error;
 use url::Url;
